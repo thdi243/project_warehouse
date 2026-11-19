@@ -1048,24 +1048,6 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
-            // Auto Notif Poin 1: Jika perlu sampling QC (tujuan WRM atau WPM dan bukan retur), kirim notif ke supir untuk serahkan dokumen ke Lab QC
-            if ($jenis !== 'retur' && in_array($targetLoc->s_loc, ['B006', 'C001'])) {
-                $targetArea = ($targetLoc->s_loc === 'C001') ? 'WPM' : 'WRM';
-                $this->notifyDriverQcDocument($transaction, $targetArea);
-            }
-
-            // Auto Notif Retur: Jika muatan retur tujuan WRM atau WPM, langsung arahkan supir ke area (tanpa sampling QC)
-            if ($jenis === 'retur' && in_array($targetLoc->s_loc, ['B006', 'C001'])) {
-                $targetArea = ($targetLoc->s_loc === 'C001') ? 'WPM' : 'WRM';
-                $this->notifyDriverReturDirectToDock($transaction, $targetArea);
-            }
-
-            // Auto Notif WFG / SMU: Setelah timbang masuk, notif supir untuk urus dokumen ke Admin WFG
-            if (in_array($targetLoc->s_loc, ['A001', 'A002'])) {
-                $targetArea = ($targetLoc->s_loc === 'A002') ? 'SMU' : 'WFG';
-                $this->notifyDriverWfgDocument($transaction, $targetArea);
-            }
-
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
@@ -1118,9 +1100,11 @@ class VehicleTrackingController extends Controller
                 $tracking = $tx->activeTracking;
                 $arrivalTime = $tracking ? $tracking->arrival_time : $tx->check_in_time;
                 $actionName = $tx->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
+                $isOvernight = $tx->check_in_time ? $tx->check_in_time->lt(Carbon::today()) : false;
 
                 return [
                     'id' => $tx->id,
+                    'is_overnight' => $isOvernight,
                     'no_pol' => $tx->vehicle ? $tx->vehicle->no_pol : 'N/A',
                     'vendor' => $tx->vendor,
                     'nama_driver' => $tx->nama_driver,
@@ -1311,23 +1295,11 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Helper to reorder and compact QC queue numbers sequentially (#01, #02, ...).
+     * Helper to reorder and compact QC queue numbers (Deprecated: kini menggunakan model tiket tetap).
      */
     private function reorderQcQueue()
     {
-        $activeQc = VehicleTransaction::whereIn('qc_status', ['waiting_sampling', 'on_check'])
-            ->whereNotNull('no_antrian')
-            ->orderByRaw('CASE WHEN queue_taken_time IS NULL THEN 1 ELSE 0 END, queue_taken_time ASC, CAST(no_antrian AS UNSIGNED) ASC, id ASC')
-            ->get();
-
-        $i = 1;
-        foreach ($activeQc as $tx) {
-            $expected = str_pad($i, 2, '0', STR_PAD_LEFT);
-            if ($tx->no_antrian !== $expected) {
-                $tx->update(['no_antrian' => $expected]);
-            }
-            $i++;
-        }
+        // No-op: Nomor antrian kini permanen (Model Tiket RS)
     }
 
     /**
@@ -1343,12 +1315,9 @@ class VehicleTrackingController extends Controller
      */
     public function qcData()
     {
-        // Reorder & compact active QC queues to ensure sequential ordering
-        $this->reorderQcQueue();
-
         $queue = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'activeTracking'])
             ->whereIn('qc_status', ['waiting_dokumen', 'waiting_sampling', 'on_check'])
-            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, CAST(no_antrian AS UNSIGNED) ASC, check_in_time ASC')
+            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, COALESCE(DATE(queue_taken_time), DATE(created_at)) ASC, CAST(no_antrian AS UNSIGNED) ASC, check_in_time ASC')
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
@@ -1366,9 +1335,12 @@ class VehicleTrackingController extends Controller
                     default => ucfirst(str_replace('_', ' ', $tx->status ?? '-'))
                 };
 
+                $isOvernight = $tx->queue_taken_time ? $tx->queue_taken_time->lt(Carbon::today()) : ($tx->created_at ? $tx->created_at->lt(Carbon::today()) : false);
+
                 return [
                     'id' => $tx->id,
                     'no_antrian' => $tx->no_antrian,
+                    'is_overnight' => $isOvernight,
                     'no_pol' => $tx->vehicle ? $tx->vehicle->no_pol : 'N/A',
                     'vendor' => $tx->vendor,
                     'nama_driver' => $tx->nama_driver,
@@ -1419,11 +1391,15 @@ class VehicleTrackingController extends Controller
 
             $transaction = VehicleTransaction::findOrFail($id);
 
-            // Reorder existing first to maintain clean sequences
-            $this->reorderQcQueue();
-
-            $maxAntrian = VehicleTransaction::whereIn('qc_status', ['waiting_sampling', 'on_check'])
-                ->whereNotNull('no_antrian')
+            $today = Carbon::today();
+            $maxAntrian = VehicleTransaction::whereNotNull('no_antrian')
+                ->where(function ($q) use ($today) {
+                    $q->whereDate('queue_taken_time', $today)
+                        ->orWhere(function ($q2) use ($today) {
+                            $q2->whereNull('queue_taken_time')
+                                ->whereDate('created_at', $today);
+                        });
+                })
                 ->where('id', '!=', $transaction->id)
                 ->get()
                 ->map(function ($tx) {
@@ -1443,13 +1419,6 @@ class VehicleTrackingController extends Controller
                 'updated_by' => Auth::id()
             ]);
 
-            // Ensure tight continuous ordering
-            $this->reorderQcQueue();
-
-            $transaction->refresh();
-            $formattedAntrian = $transaction->no_antrian ?? $formattedAntrian;
-
-            // Update tracking log status note
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
                 ->where('location_id', $transaction->current_location_id)
                 ->whereNull('departure_time')
@@ -1517,9 +1486,6 @@ class VehicleTrackingController extends Controller
                 'qc_status' => 'waiting_dokumen',
                 'updated_by' => Auth::id()
             ]);
-
-            // Reorder remaining active queues to maintain continuous sequence
-            $this->reorderQcQueue();
 
             // Update status log catatan
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
@@ -1637,10 +1603,6 @@ class VehicleTrackingController extends Controller
             $transaction = VehicleTransaction::findOrFail($id);
             $now = Carbon::now();
 
-            // Clear antrian from transaction and reorder remaining active QC queues
-            $transaction->update(['no_antrian' => null]);
-            $this->reorderQcQueue();
-
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
             // Release kantong parkir slot if any
@@ -1654,7 +1616,6 @@ class VehicleTrackingController extends Controller
                 'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
                 'finish_sampling_time' => $transaction->finish_sampling_time ?? $now,
                 'finish_sampling_by' => Auth::id(),
-                'no_antrian' => null,
                 'updated_by' => Auth::id()
             ];
 
@@ -1739,9 +1700,11 @@ class VehicleTrackingController extends Controller
                 $tracking = $tx->activeTracking;
                 $arrivalTime = $tracking ? $tracking->arrival_time : $tx->check_in_time;
                 $actionName = $tx->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
+                $isOvernight = $tx->check_in_time ? $tx->check_in_time->lt(Carbon::today()) : false;
 
                 return [
                     'id' => $tx->id,
+                    'is_overnight' => $isOvernight,
                     'no_pol' => $tx->vehicle ? $tx->vehicle->no_pol : 'N/A',
                     'vendor' => $tx->vendor,
                     'nama_driver' => $tx->nama_driver,
@@ -1953,16 +1916,18 @@ class VehicleTrackingController extends Controller
     {
         $queue = VehicleTransaction::with(['vehicle', 'item', 'targetLocation', 'activeTracking'])
             ->where('status', 'wfg')
-            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, CAST(no_antrian AS UNSIGNED) ASC, check_in_time ASC')
+            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, COALESCE(DATE(queue_taken_time), DATE(created_at)) ASC, CAST(no_antrian AS UNSIGNED) ASC, check_in_time ASC')
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
 
                 $arrivalTime = $tracking ? $tracking->arrival_time : $tx->check_in_time;
+                $isOvernight = $tx->queue_taken_time ? $tx->queue_taken_time->lt(Carbon::today()) : ($tx->created_at ? $tx->created_at->lt(Carbon::today()) : false);
 
                 return [
                     'id' => $tx->id,
                     'no_antrian' => $tx->no_antrian,
+                    'is_overnight' => $isOvernight,
                     'no_pol' => $tx->vehicle->no_pol,
                     'vendor' => $tx->vendor,
                     'nama_driver' => $tx->nama_driver,
@@ -2094,7 +2059,6 @@ class VehicleTrackingController extends Controller
                 'unloading_status' => 'completed',
                 'finish_loading_time' => $transaction->finish_loading_time ?? $now,
                 'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
-                'no_antrian' => null, // Reset no antrian agar slot nomor antrian kembali bersih
                 'updated_by' => Auth::id()
             ];
 
@@ -2105,26 +2069,6 @@ class VehicleTrackingController extends Controller
             }
 
             $transaction->update($updateData);
-
-            // Shift nomor antrian yang tersisa agar tetap urut (hanya pada jenis muatan yang sama di WFG)
-            if ($completedAntrian > 0) {
-                $shiftQuery = VehicleTransaction::where('status', 'wfg')
-                    ->whereNotNull('no_antrian');
-
-                if (!empty($transactionJenis)) {
-                    $shiftQuery->where('jenis', $transactionJenis);
-                }
-
-                $remainingQueue = $shiftQuery->get();
-
-                foreach ($remainingQueue as $remainingTx) {
-                    $currentNum = (int)$remainingTx->no_antrian;
-                    if ($currentNum > $completedAntrian) {
-                        $newNum = str_pad($currentNum - 1, 2, '0', STR_PAD_LEFT);
-                        $remainingTx->update(['no_antrian' => $newNum]);
-                    }
-                }
-            }
 
             if (!$isAlreadyCompleted) {
                 // Create new tracking log for Timbangan (Menunggu Timbang Keluar)
@@ -2157,6 +2101,9 @@ class VehicleTrackingController extends Controller
             // 4. Notifikasi ke supir bahwa proses muat/bongkar telah selesai (WFG)
             $this->notifyDriverCompleted($transaction, 'WFG');
 
+            // 5. Pemanggilan otomatis truk antrian berikutnya jika kuota dock belum penuh
+            $this->notifyNextDriverToEnterDockWfgOrSmu($transaction, 'WFG');
+
             return response()->json(['success' => true, 'message' => 'Proses Bongkar/Muat di WFG selesai. Truk diarahkan ke Timbangan.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2173,23 +2120,11 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Helper to reorder and compact SMU queue numbers sequentially (#01, #02, ...).
+     * Helper to reorder and compact SMU queue numbers (Deprecated: kini menggunakan model tiket tetap).
      */
     private function reorderSmuQueue()
     {
-        $activeSmu = VehicleTransaction::where('status', 'smu')
-            ->whereNotNull('no_antrian')
-            ->orderByRaw('CASE WHEN queue_taken_time IS NULL THEN 1 ELSE 0 END, queue_taken_time ASC, CAST(no_antrian AS UNSIGNED) ASC, id ASC')
-            ->get();
-
-        $i = 1;
-        foreach ($activeSmu as $tx) {
-            $expected = str_pad($i, 2, '0', STR_PAD_LEFT);
-            if ($tx->no_antrian !== $expected) {
-                $tx->update(['no_antrian' => $expected]);
-            }
-            $i++;
-        }
+        // No-op: Nomor antrian kini permanen (Model Tiket RS)
     }
 
     /**
@@ -2213,21 +2148,20 @@ class VehicleTrackingController extends Controller
      */
     public function smuData()
     {
-        // Reorder & compact active SMU queues to ensure sequential ordering
-        $this->reorderSmuQueue();
-
         $queue = VehicleTransaction::with(['vehicle', 'item', 'activeTracking'])
             ->where('status', 'smu')
-            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, CAST(no_antrian AS UNSIGNED) ASC, check_in_time ASC')
+            ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, COALESCE(DATE(queue_taken_time), DATE(created_at)) ASC, CAST(no_antrian AS UNSIGNED) ASC, check_in_time ASC')
             ->get()
             ->map(function ($tx) {
                 $tracking = $tx->activeTracking;
 
                 $arrivalTime = $tracking ? $tracking->arrival_time : $tx->check_in_time;
+                $isOvernight = $tx->queue_taken_time ? $tx->queue_taken_time->lt(Carbon::today()) : ($tx->created_at ? $tx->created_at->lt(Carbon::today()) : false);
 
                 return [
                     'id' => $tx->id,
                     'no_antrian' => $tx->no_antrian,
+                    'is_overnight' => $isOvernight,
                     'no_pol' => $tx->vehicle ? $tx->vehicle->no_pol : 'N/A',
                     'vendor' => $tx->vendor,
                     'nama_driver' => $tx->nama_driver,
@@ -2271,9 +2205,21 @@ class VehicleTrackingController extends Controller
 
             // Auto-assign queue number if not yet set
             if (empty($transaction->no_antrian)) {
-                $this->reorderSmuQueue();
-                $maxAntrian = VehicleTransaction::where('status', 'smu')
-                    ->whereNotNull('no_antrian')
+                $today = Carbon::today();
+                $maxAntrian = VehicleTransaction::whereNotNull('no_antrian')
+                    ->where(function ($q) use ($today) {
+                        $q->whereDate('queue_taken_time', $today)
+                            ->orWhere(function ($q2) use ($today) {
+                                $q2->whereNull('queue_taken_time')
+                                    ->whereDate('created_at', $today);
+                            });
+                    })
+                    ->where(function ($q) {
+                        $q->where('status', 'smu')
+                            ->orWhereHas('targetLocation', function ($tl) {
+                                $tl->whereIn('s_loc', ['A002', 'SMU']);
+                            });
+                    })
                     ->where('id', '!=', $transaction->id)
                     ->get()
                     ->map(function ($tx) {
@@ -2385,7 +2331,6 @@ class VehicleTrackingController extends Controller
                 'unloading_status' => 'completed',
                 'finish_loading_time' => $transaction->finish_loading_time ?? $now,
                 'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
-                'no_antrian' => null, // Clear its own queue
                 'updated_by' => Auth::id()
             ];
 
@@ -2397,9 +2342,6 @@ class VehicleTrackingController extends Controller
             }
 
             $transaction->update($updateData);
-
-            // Reorder remaining active queues in SMU
-            $this->reorderSmuQueue();
 
             if (!$isAlreadyCompleted) {
                 // Create new tracking log for Timbangan
@@ -2430,6 +2372,9 @@ class VehicleTrackingController extends Controller
 
             // 4. Notifikasi ke supir bahwa proses muat/bongkar telah selesai (SMU)
             $this->notifyDriverCompleted($transaction, 'SMU');
+
+            // 5. Pemanggilan otomatis truk antrian berikutnya jika kuota dock belum penuh
+            $this->notifyNextDriverToEnterDockWfgOrSmu($transaction, 'SMU');
 
             return response()->json(['success' => true, 'message' => 'Truk ' . $noPol . ' selesai di SMU. Diarahkan kembali ke Timbangan untuk Check-Out.']);
         } catch (\Exception $e) {
@@ -2514,25 +2459,6 @@ class VehicleTrackingController extends Controller
             }
 
             $transaction->update($updateData);
-
-            // Reorder antrian yang tersisa
-            if ($areaCode === 'SMU') {
-                $this->reorderSmuQueue();
-            } elseif ($areaCode === 'A001' && $oldAntrian) {
-                $oldAntrianInt = (int)$oldAntrian;
-                $shiftQuery = VehicleTransaction::where('status', 'wfg')
-                    ->whereNotNull('no_antrian');
-                if (!empty($jenis)) {
-                    $shiftQuery->where('jenis', $jenis);
-                }
-                $remaining = $shiftQuery->get();
-                foreach ($remaining as $tx) {
-                    $curr = (int)$tx->no_antrian;
-                    if ($curr > $oldAntrianInt) {
-                        $tx->update(['no_antrian' => str_pad($curr - 1, 2, '0', STR_PAD_LEFT)]);
-                    }
-                }
-            }
 
             if (!$isAlreadyCompleted) {
                 // Create new tracking log for Timbangan
@@ -2839,16 +2765,38 @@ class VehicleTrackingController extends Controller
 
             $transaction = VehicleTransaction::findOrFail($id);
 
-            // Auto-assign queue number: find max in current status (dan per jenis jika di WFG)
+            // Auto-assign queue number: Model Tiket RS (Auto-increment per hari, reset setiap tanggal baru)
             $status = $transaction->status;
             $jenis = strtolower(trim($transaction->jenis ?? ''));
+            $today = Carbon::today();
 
-            $query = VehicleTransaction::where('status', $status)
-                ->whereNotNull('no_antrian');
+            $query = VehicleTransaction::whereNotNull('no_antrian')
+                ->where(function ($q) use ($today) {
+                    $q->whereDate('queue_taken_time', $today)
+                        ->orWhere(function ($q2) use ($today) {
+                            $q2->whereNull('queue_taken_time')
+                                ->whereDate('created_at', $today);
+                        });
+                });
 
-            // Pisahkan antrian berdasarkan jenis jika di WFG (slipsheet vs curah)
-            if ($status === 'wfg' && !empty($jenis)) {
-                $query->where('jenis', $jenis);
+            // Pisahkan antrian berdasarkan area dan jenis (di WFG: bongkaran vs slipsheet vs curah)
+            if ($status === 'wfg') {
+                $query->where(function ($q) {
+                    $q->where('status', 'wfg')
+                        ->orWhereHas('targetLocation', function ($tl) {
+                            $tl->where('s_loc', 'A001');
+                        });
+                });
+                if (!empty($jenis)) {
+                    $query->where('jenis', $jenis);
+                }
+            } elseif ($status === 'smu') {
+                $query->where(function ($q) {
+                    $q->where('status', 'smu')
+                        ->orWhereHas('targetLocation', function ($tl) {
+                            $tl->whereIn('s_loc', ['A002', 'SMU']);
+                        });
+                });
             }
 
             $maxAntrian = $query->get()
@@ -2951,25 +2899,6 @@ class VehicleTrackingController extends Controller
             }
 
             $transaction->update($updateData);
-
-            // Jika di WFG, shift antrian yang tersisa agar tetap urut berdasarkan jenisnya
-            if ($status === 'wfg' && $oldAntrian) {
-                $oldAntrianInt = (int)$oldAntrian;
-                $shiftQuery = VehicleTransaction::where('status', 'wfg')
-                    ->whereNotNull('no_antrian');
-
-                if (!empty($jenis)) {
-                    $shiftQuery->where('jenis', $jenis);
-                }
-
-                $remaining = $shiftQuery->get();
-                foreach ($remaining as $tx) {
-                    $curr = (int)$tx->no_antrian;
-                    if ($curr > $oldAntrianInt) {
-                        $tx->update(['no_antrian' => str_pad($curr - 1, 2, '0', STR_PAD_LEFT)]);
-                    }
-                }
-            }
 
             $currentLoc = $transaction->currentLocation ? $transaction->currentLocation->s_loc : 'N/A';
 
@@ -3172,24 +3101,6 @@ class VehicleTrackingController extends Controller
             ]));
 
             DB::commit();
-
-            // Auto Notif Poin 1: Jika destinasi diubah ke WRM / WPM dan perlu sampling QC
-            if (isset($targetLoc) && $oldTargetId != $request->target_location_id && $jenis !== 'retur' && in_array($targetLoc->s_loc, ['B006', 'C001'])) {
-                $targetArea = ($targetLoc->s_loc === 'C001') ? 'WPM' : 'WRM';
-                $this->notifyDriverQcDocument($transaction, $targetArea);
-            }
-
-            // Auto Notif Retur: Jika destinasi diubah ke WRM / WPM dan muatan retur
-            if (isset($targetLoc) && $oldTargetId != $request->target_location_id && $jenis === 'retur' && in_array($targetLoc->s_loc, ['B006', 'C001'])) {
-                $targetArea = ($targetLoc->s_loc === 'C001') ? 'WPM' : 'WRM';
-                $this->notifyDriverReturDirectToDock($transaction, $targetArea);
-            }
-
-            // Auto Notif WFG / SMU: Jika destinasi diubah ke WFG / SMU
-            if (isset($targetLoc) && $oldTargetId != $request->target_location_id && in_array($targetLoc->s_loc, ['A001', 'A002'])) {
-                $targetArea = ($targetLoc->s_loc === 'A002') ? 'SMU' : 'WFG';
-                $this->notifyDriverWfgDocument($transaction, $targetArea);
-            }
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -3890,8 +3801,97 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Dapatkan kuota dock maksimum berdasarkan kategori muatan:
+     * - Slipsheet : 2 mobil
+     * - Curah     : 4 mobil
+     * - Bongkaran : 2 mobil (mencakup bongkaran di WFG dan SMU)
+     */
+    public function getDockQuota(string $category): int
+    {
+        return match (strtolower(trim($category))) {
+            'slipsheet' => 2,
+            'curah' => 4,
+            'bongkaran', 'smu' => 2,
+            default => 2,
+        };
+    }
+
+    /**
+     * Tentukan kategori dock dari transaksi truk:
+     * - 'bongkaran' (jika jenis bongkaran atau area SMU)
+     * - 'slipsheet'
+     * - 'curah'
+     */
+    public function resolveDockCategory(VehicleTransaction $transaction, ?string $area = null): string
+    {
+        $areaUpper = strtoupper($area ?? $transaction->status ?? '');
+        $jenis = strtolower(trim($transaction->jenis ?? ''));
+
+        if ($areaUpper === 'SMU' || $jenis === 'bongkaran' || ($transaction->targetLocation && in_array($transaction->targetLocation->s_loc, ['A002', 'SMU']))) {
+            return 'bongkaran';
+        }
+
+        if ($jenis === 'curah') {
+            return 'curah';
+        }
+
+        return 'slipsheet';
+    }
+
+    /**
+     * Hitung jumlah truk yang sedang aktif di dock (unloading_status = 'process').
+     */
+    public function getActiveDockOccupancy(string $category, ?int $excludeTxId = null): int
+    {
+        $cat = strtolower(trim($category));
+        $query = VehicleTransaction::where(function ($q) {
+                $q->where('unloading_status', 'process')
+                  ->orWhere(function ($q2) {
+                      $q2->whereNotNull('start_loading_time')
+                         ->whereNull('finish_loading_time')
+                         ->whereNotIn('unloading_status', ['completed', 'cancelled']);
+                  });
+            })
+            ->whereNull('check_out_time')
+            ->whereNull('timbangan_out_time')
+            ->whereNotIn('status', ['completed', 'timbangan_out']);
+
+        if ($excludeTxId) {
+            $query->where('id', '!=', $excludeTxId);
+        }
+
+        if ($cat === 'slipsheet') {
+            $query->where('jenis', 'slipsheet');
+        } elseif ($cat === 'curah') {
+            $query->where('jenis', 'curah');
+        } elseif (in_array($cat, ['bongkaran', 'smu'])) {
+            $query->where(function ($q) {
+                $q->where('jenis', 'bongkaran')
+                  ->orWhere('status', 'smu')
+                  ->orWhereHas('targetLocation', function ($tl) {
+                      $tl->whereIn('s_loc', ['A002', 'SMU']);
+                  });
+            });
+        }
+
+        return $query->count();
+    }
+
+    /**
+     * Cek apakah dock untuk kategori tersebut masih ada kuota kosong.
+     */
+    public function isDockSlotAvailable(string $category, ?int $excludeTxId = null): bool
+    {
+        $quota = $this->getDockQuota($category);
+        $active = $this->getActiveDockOccupancy($category, $excludeTxId);
+        return $active < $quota;
+    }
+
+    /**
      * 1. Notifikasi Info Nomor Antrian Mobil ke Supir.
      * Dikirim saat admin mengambil nomor antrian (WFG & SMU).
+     * Jika kuota dock untuk kategori muatan belum penuh, supir LANGSUNG dipanggil masuk dock!
+     * Dilengkapi instruksi konfirmasi balas 'OKE' untuk mencegah deteksi spam.
      */
     public function notifyDriverQueueTaken(VehicleTransaction $transaction, string $area = 'WFG'): array
     {
@@ -3920,19 +3920,53 @@ class VehicleTrackingController extends Controller
             }
 
             $jenis = strtolower(trim($transaction->jenis ?? ''));
+            $category = $this->resolveDockCategory($transaction, $areaUpper);
+            $quota = $this->getDockQuota($category);
+            $activeOccupancy = $this->getActiveDockOccupancy($category, $transaction->id);
+            $isDockAvailable = $activeOccupancy < $quota;
+
+            $categoryLabel = match ($category) {
+                'slipsheet' => 'Slipsheet',
+                'curah' => 'Curah',
+                'bongkaran' => 'Bongkar (SMU/WFG)',
+                default => ucfirst($category),
+            };
+
             $jenisLabel = ($areaUpper === 'WFG' && !empty($jenis)) ? ' (' . ucfirst($jenis) . ')' : '';
-            $actionLabel = ($jenis === 'bongkaran') ? 'Bongkar' : 'Muat';
+            $actionLabel = ($category === 'bongkaran') ? 'Bongkar' : 'Muat';
             $now = Carbon::now()->format('d/m/Y H:i');
 
-            $message = "📋 *INFO NOMOR ANTRIAN DOCK {$areaUpper}*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo *{$driver['name']}*, nomor antrian untuk truk Anda telah berhasil diterbitkan:\n\n"
-                . "• No. Polisi  : *{$noPol}*\n"
-                . "• Area Tujuan : *{$areaUpper}*{$jenisLabel}\n"
-                . "• No. Antrian : *#{$antrian}*\n"
-                . "• Waktu Ambil : {$now}\n\n"
-                . "Silakan standby di kantong parkir. Sistem akan mengirimkan pesan WhatsApp saat proses truk sebelum Anda mulai agar Anda dapat bersiap-siap.\n\n"
-                . "Terima kasih. 🙏";
+            if ($isDockAvailable) {
+                // Dock masih ada slot kosong (belum terisi kuota), langsung panggil masuk dock!
+                $message = "🔔 *PANGGILAN LANGSUNG MASUK DOCK {$areaUpper}*\n"
+                    . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    . "Halo Bpk/Ibu *{$driver['name']}*, nomor antrian untuk truk Anda telah diterbitkan dan slot dock saat ini *TERSEDIA*:\n\n"
+                    . "• No. Polisi  : *{$noPol}*\n"
+                    . "• Area Tujuan : *{$areaUpper}*{$jenisLabel}\n"
+                    . "• Kategori    : *{$categoryLabel}*\n"
+                    . "• No. Antrian : *#{$antrian}*\n"
+                    . "• Waktu       : {$now}\n\n"
+                    . "👉 *DOCK TERSEDIA:* Silakan *SEGERA MASUKKAN KENDARAAN KE LOADING DOCK {$areaUpper}* untuk memulai proses {$actionLabel}.\n\n"
+                    . "⚠️ *PENTING - KONFIRMASI PENERIMAAN:*\n"
+                    . "Mohon *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
+                    . "sebagai tanda konfirmasi bahwa Anda telah menerima info ini dan siap masuk.\n\n"
+                    . "Terima kasih atas kerja samanya. 🙏";
+            } else {
+                // Dock sedang penuh terisi sesuai kuota, infokan no antrian dan instruksi standby di parkir
+                $message = "📋 *INFO NOMOR ANTRIAN DOCK {$areaUpper}*\n"
+                    . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    . "Halo Bpk/Ibu *{$driver['name']}*, nomor antrian untuk truk Anda telah berhasil diterbitkan:\n\n"
+                    . "• No. Polisi  : *{$noPol}*\n"
+                    . "• Area Tujuan : *{$areaUpper}*{$jenisLabel}\n"
+                    . "• Kategori    : *{$categoryLabel}*\n"
+                    . "• No. Antrian : *#{$antrian}*\n"
+                    . "• Waktu Ambil : {$now}\n\n"
+                    . "👉 *STATUS DOCK:* Saat ini Loading Dock {$categoryLabel} sedang terisi penuh ({$activeOccupancy}/{$quota} mobil). Silakan *STANDBY DI KANTONG PARKIR*. Anda akan dipanggil masuk via WhatsApp segera setelah slot dock tersedia.\n\n"
+                    . "⚠️ *PENTING - KONFIRMASI PENERIMAAN:*\n"
+                    . "Mohon *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
+                    . "agar nomor antrian Anda terverifikasi dan notifikasi panggilan dock dapat masuk tanpa kendala.\n\n"
+                    . "Terima kasih atas kerja samanya. 🙏";
+            }
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -3940,7 +3974,7 @@ class VehicleTrackingController extends Controller
 
             if (!empty($res['status'])) {
                 $transaction->update(['notif_queue_taken_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Info antrian #{$antrian} berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Info antrian #{$antrian} (" . ($isDockAvailable ? "Langsung Masuk Dock" : "Standby Parkir") . ") berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
             }
 
             return $res;
@@ -3992,18 +4026,27 @@ class VehicleTrackingController extends Controller
                 $nextQuery->where('jenis', $currentJenis);
             }
 
-            // Utamakan antrian dengan nomor antrian lebih besar dari antrian saat ini
+            // Utamakan antrian hari sebelumnya yang belum selesai (Carry-Over), lalu urutan antrian berikutnya
+            $currentDate = $currentTx->queue_taken_time ? $currentTx->queue_taken_time->toDateString() : ($currentTx->created_at ? $currentTx->created_at->toDateString() : date('Y-m-d'));
             $currentAntrianNum = (int)$currentTx->no_antrian;
             $nextTx = null;
+
             if ($currentAntrianNum > 0) {
                 $nextTx = (clone $nextQuery)
-                    ->whereRaw('CAST(no_antrian AS UNSIGNED) > ?', [$currentAntrianNum])
-                    ->orderByRaw('CAST(no_antrian AS UNSIGNED) ASC')
+                    ->where(function ($q) use ($currentDate, $currentAntrianNum) {
+                        $q->where(function ($q2) use ($currentDate, $currentAntrianNum) {
+                            $q2->whereDate(DB::raw('COALESCE(queue_taken_time, created_at)'), '=', $currentDate)
+                                ->whereRaw('CAST(no_antrian AS UNSIGNED) > ?', [$currentAntrianNum]);
+                        })->orWhereDate(DB::raw('COALESCE(queue_taken_time, created_at)'), '>', $currentDate);
+                    })
+                    ->orderByRaw('COALESCE(DATE(queue_taken_time), DATE(created_at)) ASC, CAST(no_antrian AS UNSIGNED) ASC')
                     ->first();
             }
 
             if (!$nextTx) {
-                $nextTx = $nextQuery->orderByRaw('CAST(no_antrian AS UNSIGNED) ASC')->first();
+                $nextTx = $nextQuery
+                    ->orderByRaw('COALESCE(DATE(queue_taken_time), DATE(created_at)) ASC, CAST(no_antrian AS UNSIGNED) ASC')
+                    ->first();
             }
 
             if (!$nextTx) {
@@ -4031,12 +4074,15 @@ class VehicleTrackingController extends Controller
 
             $message = "⏳ *INFO PERSIAPAN MASUK DOCK {$areaUpper}*\n"
                 . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo *{$nextDriver['name']}*, truk antrian sebelum Anda (*{$currentNoPol}*) saat ini sudah *MULAI PROSES {$actionLabel}* di Loading Dock {$areaUpper}.\n\n"
+                . "Halo Bpk/Ibu *{$nextDriver['name']}*, truk antrian sebelum Anda (*{$currentNoPol}*) saat ini sudah *MULAI PROSES {$actionLabel}* di Loading Dock {$areaUpper}.\n\n"
                 . "• Truk Anda   : *{$nextNoPol}*\n"
                 . "• Area Tujuan : *{$areaUpper}*{$jenisLabel}\n"
                 . "• No. Antrian : *#{$nextTx->no_antrian}*\n\n"
                 . "👉 Mohon *BERSIAP-SIAP* dan merapat ke dekat area Loading Dock. Anda akan segera dipanggil masuk setelah proses truk saat ini selesai.\n\n"
-                . "Terima kasih! 🙏";
+                . "⚠️ *PENTING - KONFIRMASI:*\n"
+                . "Mohon *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
+                . "sebagai tanda bahwa Anda telah menerima info ini dan siap bersiaga.\n\n"
+                . "Terima kasih atas kerja samanya. 🙏";
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $nextDriver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4160,13 +4206,13 @@ class VehicleTrackingController extends Controller
                 ->whereNull('follow_up_time')
                 ->whereNotNull('no_hp_driver');
 
-            // Prioritas 1: Dahulukan yang status hasil sampling QC nya RELEASED (urut id ASC)
+            // Prioritas 1: Dahulukan yang status hasil sampling QC nya RELEASED (urut tanggal & id ASC)
             $nextTx = (clone $candidatesQuery)
                 ->where('qc_status', 'released')
-                ->orderBy('id', 'asc')
+                ->orderByRaw('COALESCE(DATE(check_in_time), DATE(created_at)) ASC, id ASC')
                 ->first();
 
-            // Prioritas 2: Jika tidak ada yang released, dahulukan item 'Import' untuk WRM (urut id ASC)
+            // Prioritas 2: Jika tidak ada yang released, dahulukan item 'Import' untuk WRM (urut tanggal & id ASC)
             if (!$nextTx) {
                 if ($areaUpper === 'WRM') {
                     $nextTx = (clone $candidatesQuery)
@@ -4175,7 +4221,7 @@ class VehicleTrackingController extends Controller
                                 $iq->where('name', 'LIKE', '%IMPORT%');
                             })->orWhere('jenis', 'retur');
                         })
-                        ->orderBy('id', 'asc')
+                        ->orderByRaw('COALESCE(DATE(check_in_time), DATE(created_at)) ASC, id ASC')
                         ->first();
                 } else {
                     $nextTx = (clone $candidatesQuery)
@@ -4184,7 +4230,7 @@ class VehicleTrackingController extends Controller
                                 $iq->where('name', 'LIKE', '%PACKAGING%');
                             })->orWhere('jenis', 'retur');
                         })
-                        ->orderBy('id', 'asc')
+                        ->orderByRaw('COALESCE(DATE(check_in_time), DATE(created_at)) ASC, id ASC')
                         ->first();
                 }
             }
@@ -4212,8 +4258,11 @@ class VehicleTrackingController extends Controller
 
             $message = "📢 *PANGGILAN DOCK {$areaUpper}*\n"
                 . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo *{$driver['name']}*, kendaraan *{$nextNoPol}* dipersilakan *SEGERA MERAPAT* ke area Dock {$areaUpper} untuk proses {$actionLabel}.\n\n"
-                . "Terima kasih! 🙏";
+                . "Halo Bpk/Ibu *{$driver['name']}*, kendaraan *{$nextNoPol}* dipersilakan *SEGERA MERAPAT & MASUK* ke area Dock {$areaUpper} untuk proses {$actionLabel}.\n\n"
+                . "⚠️ *PENTING - KONFIRMASI:*\n"
+                . "Mohon *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
+                . "jika Anda sudah menerima panggilan ini dan sedang menuju ke Dock {$areaUpper}.\n\n"
+                . "Terima kasih atas kerja samanya. 🙏";
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4227,6 +4276,135 @@ class VehicleTrackingController extends Controller
             return $res;
         } catch (\Exception $e) {
             Log::error("[VehicleTracking] Gagal kirim WA panggilan dock ({$area}): " . $e->getMessage());
+            return ['status' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Pemanggilan Otomatis Truk Antrian Berikutnya ke Loading Dock WFG / SMU.
+     * Dipicu ketika salah satu truk selesai proses bongkar/muat di WFG / SMU.
+     * Logika kuota dock:
+     * - Slipsheet : 2 mobil
+     * - Curah     : 4 mobil
+     * - Bongkaran : 2 mobil (mencakup bongkaran di WFG dan SMU)
+     */
+    public function notifyNextDriverToEnterDockWfgOrSmu(VehicleTransaction $completedTx, string $area = 'WFG'): array
+    {
+        try {
+            $areaUpper = strtoupper($area);
+            if (!in_array($areaUpper, ['WFG', 'SMU'])) {
+                return ['status' => false, 'message' => 'Hanya aktif untuk WFG dan SMU.'];
+            }
+
+            $category = $this->resolveDockCategory($completedTx, $areaUpper);
+            $quota = $this->getDockQuota($category);
+            $activeOccupancy = $this->getActiveDockOccupancy($category, $completedTx->id);
+
+            // Jika dock masih terisi penuh sesuai kuota, jangan panggil dulu
+            if ($activeOccupancy >= $quota) {
+                Log::info("[VehicleTracking] Dock {$category} masih terisi ({$activeOccupancy}/{$quota}). Belum ada slot kosong untuk dipanggil.");
+                return ['status' => false, 'message' => "Dock {$category} masih penuh."];
+            }
+
+            // Cari kandidat antrian berikutnya yang menunggu di kategori dock tersebut
+            $query = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])
+                ->where('id', '!=', $completedTx->id)
+                ->whereNotNull('no_antrian')
+                ->where(function ($q) {
+                    $q->whereNull('unloading_status')
+                        ->orWhereIn('unloading_status', ['pending', 'waiting']);
+                })
+                ->whereNull('start_loading_time')
+                ->whereNull('finish_loading_time')
+                ->whereNull('check_out_time')
+                ->whereNull('timbangan_out_time')
+                ->whereNull('follow_up_time')
+                ->whereNotIn('status', ['completed', 'timbangan_out']);
+
+            if ($category === 'slipsheet') {
+                $query->where(function ($q) {
+                    $q->where('status', 'wfg')
+                      ->orWhereHas('targetLocation', function ($tl) {
+                          $tl->where('s_loc', 'A001');
+                      });
+                })->where('jenis', 'slipsheet');
+            } elseif ($category === 'curah') {
+                $query->where(function ($q) {
+                    $q->where('status', 'wfg')
+                      ->orWhereHas('targetLocation', function ($tl) {
+                          $tl->where('s_loc', 'A001');
+                      });
+                })->where('jenis', 'curah');
+            } elseif ($category === 'bongkaran') {
+                $query->where(function ($q) {
+                    $q->where('jenis', 'bongkaran')
+                      ->orWhere('status', 'smu')
+                      ->orWhereHas('targetLocation', function ($tl) {
+                          $tl->whereIn('s_loc', ['A002', 'SMU']);
+                      });
+                });
+            }
+
+            // Prioritaskan carry-over (hari kemarin) terlebih dahulu, lalu urutan no antrian ASC
+            $nextTx = $query
+                ->orderByRaw('CASE WHEN no_antrian IS NULL THEN 1 ELSE 0 END, COALESCE(DATE(queue_taken_time), DATE(created_at)) ASC, CAST(no_antrian AS UNSIGNED) ASC, id ASC')
+                ->first();
+
+            if (!$nextTx) {
+                Log::info("[VehicleTracking] Tidak ada antrian berikutnya yang menunggu untuk dock {$category}.");
+                return ['status' => false, 'message' => "Tidak ada antrian berikutnya untuk dock {$category}."];
+            }
+
+            $nextNoPol = $nextTx->vehicle ? $nextTx->vehicle->no_pol : 'N/A';
+
+            // Anti-spam / Duplicate Lock: jangan panggil supir yang sama berkali-kali jika baru saja dipanggil dalam 15 menit
+            if (!empty($nextTx->notif_prepare_at) && $nextTx->notif_prepare_at->gt(now()->subMinutes(15))) {
+                Log::info("[VehicleTracking] Truk {$nextNoPol} sudah dipanggil {$nextTx->notif_prepare_at->diffForHumans()}. Skip duplicate WA.");
+                return ['status' => false, 'message' => "Truk {$nextNoPol} baru saja dipanggil sebelumnya."];
+            }
+
+            $driver = $this->resolveDriverInfo($nextTx->nama_driver, $nextTx->no_hp_driver);
+            if (empty($driver['phone'])) {
+                Log::warning("[VehicleTracking] Nomor HP supir tidak tersedia untuk truk {$nextNoPol}");
+                return ['status' => false, 'message' => "Nomor HP supir untuk truk {$nextNoPol} belum terdaftar."];
+            }
+
+            $targetAreaUpper = strtoupper($nextTx->status ?? $areaUpper);
+            $nextJenis = strtolower(trim($nextTx->jenis ?? ''));
+            $categoryLabel = match ($category) {
+                'slipsheet' => 'Slipsheet',
+                'curah' => 'Curah',
+                'bongkaran' => 'Bongkar (SMU/WFG)',
+                default => ucfirst($category),
+            };
+            $jenisLabel = ($targetAreaUpper === 'WFG' && !empty($nextJenis)) ? ' (' . ucfirst($nextJenis) . ')' : '';
+            $actionLabel = ($category === 'bongkaran') ? 'Bongkar' : 'Muat';
+
+            $message = "📢 *PANGGILAN MASUK LOADING DOCK {$targetAreaUpper}*\n"
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Halo Bpk/Ibu *{$driver['name']}*, proses kendaraan sebelumnya telah selesai dan slot Loading Dock {$categoryLabel} saat ini *TERSEDIA*:\n\n"
+                . "• Truk Anda   : *{$nextNoPol}*\n"
+                . "• Area Tujuan : *{$targetAreaUpper}*{$jenisLabel}\n"
+                . "• Kategori    : *{$categoryLabel}*\n"
+                . "• No. Antrian : *#{$nextTx->no_antrian}*\n\n"
+                . "👉 *DIPERSILAKAN MASUK:* Silakan *SEGERA MERAPAT & MASUK KE LOADING DOCK {$targetAreaUpper}* untuk memulai proses {$actionLabel}.\n\n"
+                . "⚠️ *PENTING - KONFIRMASI:*\n"
+                . "Mohon *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
+                . "jika Anda sudah menerima panggilan ini dan sedang bergerak menuju Loading Dock.\n\n"
+                . "Terima kasih atas kerja samanya. 🙏";
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
+            $fonnte = app(FonnteService::class);
+            $res = $fonnte->sendMessage($cleanPhone, $message);
+
+            if (!empty($res['status'])) {
+                $nextTx->update(['notif_prepare_at' => Carbon::now()]);
+                Log::info("[VehicleTracking] Panggilan otomatis masuk dock {$targetAreaUpper} ({$category}) berhasil dikirim ke supir {$nextNoPol} ({$cleanPhone})");
+            }
+
+            return $res;
+        } catch (\Exception $e) {
+            Log::error("[VehicleTracking] Gagal kirim WA panggilan masuk dock WFG/SMU: " . $e->getMessage());
             return ['status' => false, 'message' => $e->getMessage()];
         }
     }
@@ -4495,9 +4673,12 @@ class VehicleTrackingController extends Controller
 
             $message = "📢 *PANGGILAN MENUJU AREA {$area}*\n"
                 . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo *{$driver['name']}*, dokumen kendaraan *{$noPol}* telah diterima di QC (No. Antrian QC: *#{$antrian}*).\n\n"
+                . "Halo Bpk/Ibu *{$driver['name']}*, dokumen kendaraan *{$noPol}* telah diterima di QC (No. Antrian QC: *#{$antrian}*).\n\n"
                 . "Untuk muatan *{$itemName}*, Anda dipersilakan *LANGSUNG MENUJU AREA {$area}* untuk persiapan proses bongkar/muat tanpa perlu menunggu hasil sampling QC.\n\n"
-                . "Terima kasih. 🙏";
+                . "⚠️ *PENTING - KONFIRMASI:*\n"
+                . "Mohon *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
+                . "sebagai konfirmasi penerimaan pesan.\n\n"
+                . "Terima kasih atas kerja samanya. 🙏";
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4575,9 +4756,12 @@ class VehicleTrackingController extends Controller
 
             $message = "✅ *HASIL SAMPLING QC: RELEASED*\n"
                 . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo *{$driver['name']}*, hasil sampling QC untuk kendaraan *{$noPol}* telah selesai dan dinyatakan *RELEASED (Lolos)*.\n\n"
-                . "Silakan segera merapat dan menuju ke area *{$area}* untuk proses bongkar/muat.\n\n"
-                . "Terima kasih. 🙏";
+                . "Halo Bpk/Ibu *{$driver['name']}*, hasil sampling QC untuk kendaraan *{$noPol}* telah selesai dan dinyatakan *RELEASED (Lolos)*.\n\n"
+                . "Silakan *SEGERA MERAPAT* dan menuju ke area *{$area}* untuk proses bongkar/muat.\n\n"
+                . "⚠️ *PENTING - KONFIRMASI:*\n"
+                . "Mohon *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
+                . "sebagai konfirmasi bahwa Anda telah menerima info ini dan siap bergerak.\n\n"
+                . "Terima kasih atas kerja samanya. 🙏";
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4631,7 +4815,12 @@ class VehicleTrackingController extends Controller
 
             // Format pesan pribadi ke HP supir (tanpa tag @)
             $message = "📢 *PANGGILAN DOCK {$area}*\n"
-                . "Halo *{$driver['name']}*, kendaraan *{$noPol}* dipersilakan *SEGERA MERAPAT* ke area Dock {$area} untuk proses {$actionLabel}. Terima kasih! 🙏";
+                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                . "Halo Bpk/Ibu *{$driver['name']}*, kendaraan *{$noPol}* dipersilakan *SEGERA MERAPAT & MASUK* ke area Dock {$area} untuk proses {$actionLabel}.\n\n"
+                . "⚠️ *PENTING - KONFIRMASI:*\n"
+                . "Mohon *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
+                . "sebagai tanda konfirmasi bahwa Anda siap menuju ke dock.\n\n"
+                . "Terima kasih atas kerja samanya. 🙏";
 
             if (empty($driver['phone'])) {
                 return [
@@ -4717,19 +4906,13 @@ class VehicleTrackingController extends Controller
     {
         $areaUpper = strtoupper($area);
 
-        // 1. Dept Head Warehouse
-        $deptHeads = User::where('departemen', 'warehouse')
-            ->where('jabatan', 'dept_head')
-            ->where('is_active', true)
-            ->get();
-
-        // 2. Supervisor Warehouse
+        // 1. Supervisor Warehouse
         $supervisors = User::where('departemen', 'warehouse')
             ->where('jabatan', 'supervisor')
             ->where('is_active', true)
             ->get();
 
-        // 3. Foreman Warehouse disesuaikan dengan bagian
+        // 2. Foreman Warehouse disesuaikan dengan bagian
         $foremanQuery = User::where('departemen', 'warehouse')
             ->where('jabatan', 'foreman')
             ->where('is_active', true);
@@ -4747,15 +4930,14 @@ class VehicleTrackingController extends Controller
         $foremen = $foremanQuery->get();
 
         return [
-            'dept_heads' => $deptHeads,
             'supervisors' => $supervisors,
             'foremen' => $foremen,
-            'all' => $deptHeads->concat($supervisors)->concat($foremen)->unique('id'),
+            'all' => $supervisors->concat($foremen)->unique('id'),
         ];
     }
 
     /**
-     * 3. Notifikasi ke Dept Head, Supervisor dan Foreman untuk proses bongkar/muat melebihi 2 jam.
+     * 3. Notifikasi ke Supervisor dan Foreman untuk proses bongkar/muat melebihi 2 jam.
      */
     public function sendOverdueLoadingAlert(VehicleTransaction $tx, string $area, int $diffMinutes, Carbon $startTime): array
     {
@@ -4772,7 +4954,6 @@ class VehicleTrackingController extends Controller
             $recipients = $this->getWarehouseManagementRecipients($area);
             $foremenNames = $recipients['foremen']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['foremen']->pluck('username')->implode(', ') ?: 'Foreman WH');
             $spvNames = $recipients['supervisors']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['supervisors']->pluck('username')->implode(', ') ?: 'SPV WH');
-            $deptHeadNames = $recipients['dept_heads']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['dept_heads']->pluck('username')->implode(', ') ?: 'Dept Head WH');
 
             $message = "⚠️ *ALERT: PROSES BONGKAR/MUAT MELEBIHI 2 JAM*\n"
                 . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -4785,18 +4966,19 @@ class VehicleTrackingController extends Controller
                 . "⏱️ Durasi    : *{$durationStr}* (Melebihi batas 2 Jam)\n\n"
                 . "Mohon atensi Bapak/Ibu:\n"
                 . "• Foreman {$area}: {$foremenNames}\n"
-                . "• Supervisor WH  : {$spvNames}\n"
-                . "• Dept Head WH   : {$deptHeadNames}\n\n"
+                . "• Supervisor WH  : {$spvNames}\n\n"
                 . "Untuk pengecekan kendala operasional di lapangan. Terima kasih. 🙏";
 
             $fonnte = app(FonnteService::class);
 
-            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp
+            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp dengan delay agar aman dari deteksi spam
             $sentCount = 0;
             foreach ($recipients['all'] as $u) {
                 if (!empty($u->no_hp)) {
-                    $fonnte->sendMessage($u->no_hp, $message);
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $u->no_hp);
+                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => 5]);
                     $sentCount++;
+                    sleep(3); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
                 }
             }
 
@@ -4809,7 +4991,7 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * 4. Notifikasi ke Dept Head, Supervisor dan Foreman untuk truck duration lebih dari 7.5 jam.
+     * 4. Notifikasi ke Supervisor dan Foreman untuk truck duration lebih dari 7.5 jam.
      */
     public function sendOverdueDurationAlert(VehicleTransaction $tx, string $area, int $totalMinutes, Carbon $checkIn): array
     {
@@ -4826,7 +5008,6 @@ class VehicleTrackingController extends Controller
             $recipients = $this->getWarehouseManagementRecipients($area);
             $foremenNames = $recipients['foremen']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['foremen']->pluck('username')->implode(', ') ?: 'Foreman WH');
             $spvNames = $recipients['supervisors']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['supervisors']->pluck('username')->implode(', ') ?: 'SPV WH');
-            $deptHeadNames = $recipients['dept_heads']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['dept_heads']->pluck('username')->implode(', ') ?: 'Dept Head WH');
 
             $message = "🚨 *ALERT: TRUCK DURATION MELEBIHI 7.5 JAM*\n"
                 . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -4838,18 +5019,19 @@ class VehicleTrackingController extends Controller
                 . "⏱️ Total Waktu: *{$durationStr}* (Melebihi batas 7.5 Jam)\n\n"
                 . "Mohon atensi percepatan penanganan oleh:\n"
                 . "• Foreman {$area}: {$foremenNames}\n"
-                . "• Supervisor WH  : {$spvNames}\n"
-                . "• Dept Head WH   : {$deptHeadNames}\n\n"
+                . "• Supervisor WH  : {$spvNames}\n\n"
                 . "Terima kasih. 🙏";
 
             $fonnte = app(FonnteService::class);
 
-            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp
+            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp dengan delay agar aman dari deteksi spam
             $sentCount = 0;
             foreach ($recipients['all'] as $u) {
                 if (!empty($u->no_hp)) {
-                    $fonnte->sendMessage($u->no_hp, $message);
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $u->no_hp);
+                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => 5]);
                     $sentCount++;
+                    sleep(3); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
                 }
             }
 
@@ -4936,8 +5118,9 @@ class VehicleTrackingController extends Controller
             foreach ($foremen as $f) {
                 if (!empty($f->no_hp)) {
                     $cleanPhone = preg_replace('/[^0-9]/', '', $f->no_hp);
-                    $fonnte->sendMessage($cleanPhone, $message);
+                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => 5]);
                     $sentCount++;
+                    sleep(5); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
                 }
             }
 
