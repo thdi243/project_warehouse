@@ -228,6 +228,11 @@ class MasterKempuModel extends Model
         return $this->hasMany(KempuCycleFillingModel::class, 'kempu_master_id')->orderBy('reused_count', 'desc');
     }
 
+    public function latestCycleFilling()
+    {
+        return $this->hasOne(KempuCycleFillingModel::class, 'kempu_master_id')->latestOfMany('id');
+    }
+
     // =========================================================================
     // ACCESSOR & MUTATOR DELEGATION KE KEMPU_MAIN (SEAMLESS COMPATIBILITY)
     // =========================================================================

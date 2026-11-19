@@ -208,6 +208,7 @@ class KempuTraceabilityController extends Controller
     {
         $kempu = MasterKempuModel::with([
             'main',
+            'latestCycleFilling',
             'cycleFillings' => function ($q) {
                 $q->with('creator:id,username,nama_lengkap')->orderBy('reused_count', 'desc');
             },

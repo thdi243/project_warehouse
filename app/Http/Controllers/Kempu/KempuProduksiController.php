@@ -1256,6 +1256,38 @@ class KempuProduksiController extends Controller
                 ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
+        // 11. General Metrics (All Kempu Se-Pabrik)
+        $totalAllKempu = MasterKempuModel::count();
+        $totalAllScrap = MasterKempuModel::whereHas('main', function ($q) {
+            $q->where('current_status', MasterKempuModel::STATUS_SCRAPPED)
+                ->orWhere('current_location', MasterKempuModel::LOC_SCRAP);
+        })->count();
+        $totalAllActive = max(0, $totalAllKempu - $totalAllScrap);
+
+        $totalWithPhotos = MasterKempuModel::whereHas('main', function ($q) {
+            $q->whereNotNull('foto_1')
+                ->orWhereNotNull('foto_2')
+                ->orWhereNotNull('foto_3')
+                ->orWhereNotNull('foto_4');
+        })->orWhereHas('cycleFillings', function ($q) {
+            $q->whereNotNull('foto_1')
+                ->orWhereNotNull('foto_2')
+                ->orWhereNotNull('foto_3')
+                ->orWhereNotNull('foto_4');
+        })->count();
+
+        $locationsCount = [
+            'WPM'                  => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_WPM))->count(),
+            'QC_PM'                => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_QC_PM))->count(),
+            'PRODUKSI'             => $totalCurrentProduksi,
+            'QC_PROSES'            => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_QC_PROSES))->count(),
+            'WFG'                  => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_WFG))->count(),
+            'WAREHOUSE_PAS'        => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_PAS))->count(),
+            'ENGINEERING_WORKSHOP' => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_ENG))->count(),
+            'IN_TRANSIT'           => MasterKempuModel::whereHas('main', fn($q) => $q->where('current_location', MasterKempuModel::LOC_IN_TRANSIT))->count(),
+            'SCRAP'                => $totalAllScrap,
+        ];
+
         return response()->json([
             'status' => true,
             'data'   => [
@@ -1279,6 +1311,12 @@ class KempuProduksiController extends Controller
                 'total_force_today'             => $totalForceToday,
                 'total_force_all'               => $totalForceAll,
                 'total_warning_reused'          => $totalWarningReused,
+                // General Metrics (All Kempu)
+                'total_all_kempu'               => $totalAllKempu,
+                'total_all_active'              => $totalAllActive,
+                'total_all_scrap'               => $totalAllScrap,
+                'total_all_with_photos'         => $totalWithPhotos,
+                'locations_count'               => $locationsCount,
             ],
         ]);
     }
@@ -1288,15 +1326,139 @@ class KempuProduksiController extends Controller
      */
     public function reportDataApi(Request $request)
     {
-        $viewMode = $request->input('view_mode', 'history'); // 'history' | 'current'
+        $viewMode = $request->input('view_mode', 'history'); // 'history' | 'current' | 'all'
         $perPage  = min(100, max(5, (int) $request->input('per_page', 20)));
 
+        // =========================================================================
+        // VIEW MODE: ALL / GENERAL (Semua Kempu Se-Pabrik untuk General Tracking)
+        // =========================================================================
+        if ($viewMode === 'all' || $viewMode === 'general') {
+            $query = MasterKempuModel::query()->with([
+                'main',
+                'latestCycleFilling',
+                'createdBy:id,username,nama_lengkap',
+            ]);
+
+            // Filter Lokasi
+            if ($request->filled('location') && $request->location !== 'all') {
+                $loc = $request->location;
+                if ($loc === 'SCRAP') {
+                    $query->whereHas('main', function ($q) {
+                        $q->where('current_status', MasterKempuModel::STATUS_SCRAPPED)
+                            ->orWhere('current_location', MasterKempuModel::LOC_SCRAP);
+                    });
+                } else {
+                    $query->whereHas('main', function ($q) use ($loc) {
+                        $q->where('current_location', $loc)
+                            ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+                    });
+                }
+            }
+
+            // Filter Status / Alur
+            if ($request->filled('status_filter') && $request->status_filter !== 'all') {
+                $statusFilter = $request->status_filter;
+                $query->whereHas('main', function ($q) use ($statusFilter) {
+                    $q->where('current_status', $statusFilter);
+                });
+            }
+
+            // Filter Reused
+            if ($request->filled('reused_status') && $request->reused_status !== 'all') {
+                $query->whereHas('main', function ($q) use ($request) {
+                    if ($request->reused_status === 'warning') {
+                        $q->whereBetween('reused_count', [18, 20]);
+                    } elseif ($request->reused_status === 'max') {
+                        $q->where('reused_count', '>=', 21);
+                    } elseif ($request->reused_status === 'normal') {
+                        $q->where('reused_count', '<', 18);
+                    }
+                });
+            }
+
+            // Filter Kondisi
+            if ($request->filled('condition') && $request->condition !== 'all') {
+                $cond = $request->condition;
+                $query->whereHas('main', fn($q) => $q->where('condition', $cond));
+            }
+
+            // Filter Memiliki Foto Filling
+            if ($request->filled('has_photo') && $request->has_photo !== 'all') {
+                if ($request->has_photo === 'yes') {
+                    $query->where(function ($q) {
+                        $q->whereHas('main', function ($mq) {
+                            $mq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        })->orWhereHas('cycleFillings', function ($cq) {
+                            $cq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        });
+                    });
+                } elseif ($request->has_photo === 'no') {
+                    $query->whereDoesntHave('main', function ($mq) {
+                        $mq->whereNotNull('foto_1')
+                            ->orWhereNotNull('foto_2')
+                            ->orWhereNotNull('foto_3')
+                            ->orWhereNotNull('foto_4');
+                    })->whereDoesntHave('cycleFillings', function ($cq) {
+                        $cq->whereNotNull('foto_1')
+                            ->orWhereNotNull('foto_2')
+                            ->orWhereNotNull('foto_3')
+                            ->orWhereNotNull('foto_4');
+                    });
+                }
+            }
+
+            // Filter Pencarian
+            if ($request->filled('search')) {
+                $s = trim($request->search);
+                $query->where(function ($q) use ($s) {
+                    $q->where('id_kempu', 'like', "%{$s}%")
+                        ->orWhere('rfid', 'like', "%{$s}%")
+                        ->orWhere('no_spb', 'like', "%{$s}%")
+                        ->orWhere('keterangan', 'like', "%{$s}%")
+                        ->orWhereHas('main', function ($mq) use ($s) {
+                            $mq->where('no_po', 'like', "%{$s}%")
+                                ->orWhere('current_location', 'like', "%{$s}%")
+                                ->orWhere('current_status', 'like', "%{$s}%");
+                        });
+                });
+            }
+
+            $paginated = $query->orderBy(
+                KempuMainModel::selectRaw('COALESCE(last_scanned_at, updated_at)')
+                    ->whereColumn('kempu_main.kempu_master_id', 'kempu_master.id')
+                    ->latest('id')
+                    ->limit(1),
+                'desc'
+            )->orderByDesc('id')->paginate($perPage);
+
+            return response()->json([
+                'status'     => true,
+                'view_mode'  => 'all',
+                'data'       => $paginated->items(),
+                'pagination' => [
+                    'current_page' => $paginated->currentPage(),
+                    'last_page'    => $paginated->lastPage(),
+                    'total'        => $paginated->total(),
+                    'per_page'     => $paginated->perPage(),
+                ],
+            ]);
+        }
+
+        // =========================================================================
+        // VIEW MODE: CURRENT (Hanya Kempu di Area Produksi Saat Ini)
+        // =========================================================================
         if ($viewMode === 'current') {
             // Data kempu yang saat ini berada di lokasi PRODUKSI (kecuali scrapped)
             $query = MasterKempuModel::whereHas('main', function ($q) {
                 $q->where('current_location', MasterKempuModel::LOC_PRODUKSI)
                     ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
-            })->with(['main', 'createdBy:id,username,nama_lengkap']);
+            })->with(['main', 'latestCycleFilling', 'createdBy:id,username,nama_lengkap']);
 
             if ($request->filled('search')) {
                 $s = trim($request->search);
@@ -1304,7 +1466,10 @@ class KempuProduksiController extends Controller
                     $q->where('id_kempu', 'like', "%{$s}%")
                         ->orWhere('rfid', 'like', "%{$s}%")
                         ->orWhere('no_spb', 'like', "%{$s}%")
-                        ->orWhere('keterangan', 'like', "%{$s}%");
+                        ->orWhere('keterangan', 'like', "%{$s}%")
+                        ->orWhereHas('main', function ($mq) use ($s) {
+                            $mq->where('no_po', 'like', "%{$s}%");
+                        });
                 });
             }
 
@@ -1325,6 +1490,10 @@ class KempuProduksiController extends Controller
                         $q->where('reused_count', '<', 18);
                     }
                 });
+            }
+
+            if ($request->filled('condition') && $request->condition !== 'all') {
+                $query->whereHas('main', fn($q) => $q->where('condition', $request->condition));
             }
 
             $paginated = $query->orderBy(
@@ -1348,11 +1517,15 @@ class KempuProduksiController extends Controller
             ]);
         }
 
-        // View Mode: History (Log Transaksi Scan Produksi)
+        // =========================================================================
+        // VIEW MODE: HISTORY (Log Transaksi Scan Produksi)
+        // =========================================================================
         $query = KempuTrackingHistoryModel::whereIn('stage', ['PRODUKSI', 'PRODUKSI_FORCE'])
             ->with([
                 'createdBy:id,username,nama_lengkap',
                 'masterKempu:id,id_kempu,rfid,no_spb,status',
+                'masterKempu.main',
+                'masterKempu.latestCycleFilling',
             ]);
 
         // Filter Proses / Action
@@ -1451,6 +1624,199 @@ class KempuProduksiController extends Controller
      */
     public function exportReportApi(Request $request)
     {
+        $viewMode = $request->input('view_mode', 'history');
+
+        // =========================================================================
+        // EXPORT ALL / GENERAL (Semua Kempu Se-Pabrik)
+        // =========================================================================
+        if ($viewMode === 'all' || $viewMode === 'general') {
+            $query = MasterKempuModel::query()->with(['main', 'latestCycleFilling', 'createdBy:id,username,nama_lengkap']);
+
+            if ($request->filled('location') && $request->location !== 'all') {
+                $loc = $request->location;
+                if ($loc === 'SCRAP') {
+                    $query->whereHas('main', function ($q) {
+                        $q->where('current_status', MasterKempuModel::STATUS_SCRAPPED)
+                            ->orWhere('current_location', MasterKempuModel::LOC_SCRAP);
+                    });
+                } else {
+                    $query->whereHas('main', fn($q) => $q->where('current_location', $loc)->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED));
+                }
+            }
+
+            if ($request->filled('status_filter') && $request->status_filter !== 'all') {
+                $statusFilter = $request->status_filter;
+                $query->whereHas('main', fn($q) => $q->where('current_status', $statusFilter));
+            }
+
+            if ($request->filled('reused_status') && $request->reused_status !== 'all') {
+                $query->whereHas('main', function ($q) use ($request) {
+                    if ($request->reused_status === 'warning') {
+                        $q->whereBetween('reused_count', [18, 20]);
+                    } elseif ($request->reused_status === 'max') {
+                        $q->where('reused_count', '>=', 21);
+                    } elseif ($request->reused_status === 'normal') {
+                        $q->where('reused_count', '<', 18);
+                    }
+                });
+            }
+
+            if ($request->filled('condition') && $request->condition !== 'all') {
+                $query->whereHas('main', fn($q) => $q->where('condition', $request->condition));
+            }
+
+            if ($request->filled('search')) {
+                $s = trim($request->search);
+                $query->where(function ($q) use ($s) {
+                    $q->where('id_kempu', 'like', "%{$s}%")
+                        ->orWhere('rfid', 'like', "%{$s}%")
+                        ->orWhere('no_spb', 'like', "%{$s}%")
+                        ->orWhereHas('main', fn($mq) => $mq->where('no_po', 'like', "%{$s}%"));
+                });
+            }
+
+            $records = $query->orderByDesc('id')->get();
+            $filename = 'Report_All_Kempu_General_' . now()->format('Ymd_His') . '.csv';
+
+            $headers = [
+                'Content-Type'        => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                'Pragma'              => 'no-cache',
+                'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+                'Expires'             => '0',
+            ];
+
+            $callback = function () use ($records) {
+                $file = fopen('php://output', 'w');
+                fputs($file, "\xEF\xBB\xBF");
+
+                fputcsv($file, [
+                    'No',
+                    'ID Kempu',
+                    'RFID',
+                    'No SPB',
+                    'Lokasi Saat Ini',
+                    'Status Saat Ini',
+                    'No PO Filling',
+                    'Foto Filling Tersedia',
+                    'Siklus Reused',
+                    'Kondisi Fisik',
+                    'Tindakan Terakhir',
+                    'Terakhir Scan / Update',
+                ]);
+
+                $no = 1;
+                foreach ($records as $item) {
+                    $main = $item->main;
+                    $hasPhotos = ($main?->foto_1 || $main?->foto_2 || $main?->foto_3 || $main?->foto_4 ||
+                        $item->latestCycleFilling?->foto_1 || $item->latestCycleFilling?->foto_2) ? 'YA' : 'TIDAK';
+
+                    fputcsv($file, [
+                        $no++,
+                        $item->id_kempu,
+                        $item->rfid ?: '-',
+                        $item->no_spb ?: '-',
+                        $main?->current_location ?? 'WPM',
+                        $main?->current_status ?? '-',
+                        $main?->no_po ?: ($item->latestCycleFilling?->no_po ?: '-'),
+                        $hasPhotos,
+                        ($main?->reused_count ?? 0) . '/21',
+                        $main?->condition ?? 'OK',
+                        $main?->last_action ?: '-',
+                        $main?->last_scanned_at ? $main->last_scanned_at->format('Y-m-d H:i:s') : ($item->updated_at ? $item->updated_at->format('Y-m-d H:i:s') : '-'),
+                    ]);
+                }
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        // =========================================================================
+        // EXPORT CURRENT (Kempu di Area Produksi Saat Ini)
+        // =========================================================================
+        if ($viewMode === 'current') {
+            $query = MasterKempuModel::whereHas('main', function ($q) {
+                $q->where('current_location', MasterKempuModel::LOC_PRODUKSI)
+                    ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+            })->with(['main', 'latestCycleFilling', 'createdBy:id,username,nama_lengkap']);
+
+            if ($request->filled('search')) {
+                $s = trim($request->search);
+                $query->where(function ($q) use ($s) {
+                    $q->where('id_kempu', 'like', "%{$s}%")
+                        ->orWhere('rfid', 'like', "%{$s}%")
+                        ->orWhere('no_spb', 'like', "%{$s}%")
+                        ->orWhereHas('main', fn($mq) => $mq->where('no_po', 'like', "%{$s}%"));
+                });
+            }
+
+            if ($request->filled('status_filter') && $request->status_filter !== 'all') {
+                $query->whereHas('main', fn($q) => $q->where('current_status', $request->status_filter));
+            }
+
+            if ($request->filled('condition') && $request->condition !== 'all') {
+                $query->whereHas('main', fn($q) => $q->where('condition', $request->condition));
+            }
+
+            $records = $query->orderByDesc('id')->get();
+            $filename = 'Report_Kempu_Produksi_Current_' . now()->format('Ymd_His') . '.csv';
+
+            $headers = [
+                'Content-Type'        => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                'Pragma'              => 'no-cache',
+                'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+                'Expires'             => '0',
+            ];
+
+            $callback = function () use ($records) {
+                $file = fopen('php://output', 'w');
+                fputs($file, "\xEF\xBB\xBF");
+
+                fputcsv($file, [
+                    'No',
+                    'ID Kempu',
+                    'RFID',
+                    'Status Saat Ini',
+                    'Lokasi',
+                    'No PO Filling',
+                    'Foto Filling Tersedia',
+                    'Siklus Reused',
+                    'Kondisi Fisik',
+                    'Terakhir Scan',
+                ]);
+
+                $no = 1;
+                foreach ($records as $item) {
+                    $main = $item->main;
+                    $hasPhotos = ($main?->foto_1 || $main?->foto_2 || $main?->foto_3 || $main?->foto_4 ||
+                        $item->latestCycleFilling?->foto_1 || $item->latestCycleFilling?->foto_2) ? 'YA' : 'TIDAK';
+
+                    fputcsv($file, [
+                        $no++,
+                        $item->id_kempu,
+                        $item->rfid ?: '-',
+                        $main?->current_status ?? '-',
+                        $main?->current_location ?? 'PRODUKSI',
+                        $main?->no_po ?: ($item->latestCycleFilling?->no_po ?: '-'),
+                        $hasPhotos,
+                        ($main?->reused_count ?? 0) . '/21',
+                        $main?->condition ?? 'OK',
+                        $main?->last_scanned_at ? $main->last_scanned_at->format('Y-m-d H:i:s') : '-',
+                    ]);
+                }
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        // =========================================================================
+        // EXPORT HISTORY (Riwayat Scan Produksi)
+        // =========================================================================
         $query = KempuTrackingHistoryModel::whereIn('stage', ['PRODUKSI', 'PRODUKSI_FORCE'])
             ->with([
                 'createdBy:id,username,nama_lengkap',
@@ -1542,6 +1908,8 @@ class KempuProduksiController extends Controller
                 'ID Kempu',
                 'RFID',
                 'Proses / Tindakan',
+                'No PO Filling',
+                'Foto Filling',
                 'Tipe Scan',
                 'Hasil Keputusan',
                 'Dari Lokasi',
@@ -1555,12 +1923,17 @@ class KempuProduksiController extends Controller
             $no = 1;
             foreach ($records as $item) {
                 $isForce = ($item->stage === 'PRODUKSI_FORCE' || stripos($item->action, '[FORCE SCAN]') !== false);
+                $hasPhotos = !empty($item->photo_urls) ? 'YA (' . count($item->photo_urls) . ' Foto)' : 'TIDAK';
+                $noPo = $item->no_po ?: ($item->metadata['no_po'] ?? '-');
+
                 fputcsv($file, [
                     $no++,
                     $item->created_at ? $item->created_at->format('Y-m-d H:i:s') : '-',
                     $item->id_kempu ?? '-',
                     $item->masterKempu->rfid ?? '-',
                     $item->action ?? '-',
+                    $noPo,
+                    $hasPhotos,
                     $isForce ? 'FORCE SCAN' : 'NORMAL SCAN',
                     $item->action_result ?? '-',
                     $item->from_location ?? '-',

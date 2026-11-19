@@ -34,7 +34,28 @@ class KempuTrackingHistoryModel extends Model
 
     protected $appends = [
         'operator_display_name',
+        'photo_urls',
+        'no_po',
     ];
+
+    public function getPhotoUrlsAttribute(): array
+    {
+        $urls = [];
+        $photos = $this->metadata['photos'] ?? [];
+        if (is_array($photos)) {
+            foreach ($photos as $key => $path) {
+                if ($path) {
+                    $urls[$key] = asset('storage/' . $path);
+                }
+            }
+        }
+        return $urls;
+    }
+
+    public function getNoPoAttribute(): ?string
+    {
+        return $this->metadata['no_po'] ?? null;
+    }
 
     public function getOperatorDisplayNameAttribute(): string
     {

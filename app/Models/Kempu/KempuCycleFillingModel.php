@@ -36,6 +36,20 @@ class KempuCycleFillingModel extends Model
         'filled_at'    => 'datetime',
     ];
 
+    protected $appends = [
+        'photo_urls',
+    ];
+
+    public function getPhotoUrlsAttribute(): array
+    {
+        return [
+            'foto_1' => $this->foto_1 ? asset('storage/' . $this->foto_1) : null,
+            'foto_2' => $this->foto_2 ? asset('storage/' . $this->foto_2) : null,
+            'foto_3' => $this->foto_3 ? asset('storage/' . $this->foto_3) : null,
+            'foto_4' => $this->foto_4 ? asset('storage/' . $this->foto_4) : null,
+        ];
+    }
+
     public function masterKempu()
     {
         return $this->belongsTo(MasterKempuModel::class, 'kempu_master_id');
