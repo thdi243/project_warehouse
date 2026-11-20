@@ -17,6 +17,25 @@ class FonnteService
     }
 
     /**
+     * Lempar pengiriman WhatsApp ke Laravel Queue (asynchronous) dengan delay bertingkat
+     * agar tidak memblokir HTTP request dan aman dari deteksi spam WhatsApp.
+     *
+     * @param string $target Nomor penerima
+     * @param string $message Isi pesan
+     * @param int $delaySeconds Jeda detik sebelum job dieksekusi oleh queue worker
+     * @param array $extraParams Parameter Fonnte tambahan
+     * @param string|null $logContext Keterangan untuk log
+     * @return void
+     */
+    public function queueMessage(string $target, string $message, int $delaySeconds = 0, array $extraParams = [], ?string $logContext = null): void
+    {
+        $delay = $delaySeconds > 0 ? $delaySeconds : rand(15, 45);
+        $job = (new \App\Jobs\SendWhatsAppNotificationJob($target, $message, $extraParams, $logContext))
+            ->delay(now()->addSeconds($delay));
+        dispatch($job);
+    }
+
+    /**
      * Kirim pesan teks WhatsApp melalui Fonnte
      *
      * @param string $target Nomor penerima (contoh: '081234567890' atau format internasional '6281234567890')
@@ -35,10 +54,10 @@ class FonnteService
         }
 
         try {
-            // Berikan natural delay acak (7 s/d 15 detik) jika belum ditentukan
+            // Berikan natural typing delay acak (~15 s/d 45 detik) jika belum ditentukan
             // Parameter 'delay' pada Fonnte API berguna untuk meniru jeda mengetik manusia agar tidak terdeteksi bot spam
             if (!isset($extraParams['delay'])) {
-                $extraParams['delay'] = rand(10, 25);
+                $extraParams['delay'] = rand(15, 45);
             }
 
             $payload = array_merge([

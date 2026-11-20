@@ -12,6 +12,7 @@ use App\Models\Vehicle\VehicleTransaction;
 use App\Models\Vehicle\VehicleVendor;
 use App\Models\User;
 use App\Models\Wrm\MasterSupplierModel;
+use App\Jobs\SendWhatsAppNotificationJob;
 use App\Services\FonnteService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -4153,8 +4154,8 @@ class VehicleTrackingController extends Controller
                     . "• No. Antrian : *#{$antrian}* ({$categoryLabel})\n"
                     . "• Area Dock   : *{$areaUpper}*\n\n"
                     . "👉 {Silakan|Dipersilakan|Bisa} *segera merapat dan masuk ke Loading Dock {$areaUpper}* untuk proses {$actionLabel} ya pak.\n\n"
-                    . "⚠️ *Perhatian:* {Harap segera merapat ke area dock nggih|Mohon segera memposisikan armada}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi}, giliran slot dock akan dialihkan ke antrian kendaraan lain.\n\n"
-                    . "{Bisa tolong balas sebentar ya pak jika sudah siap merapat?|Tolong dikabari nggih pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau armada sudah standby?} 🙏"
+                    . "⚠️ *Perhatian:* {Harap segera merapat ke area dock yaa|Mohon segera memposisikan mobil}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi}, giliran slot dock akan dialihkan ke antrian kendaraan lain.\n\n"
+                    . "{Bisa tolong balas sebentar ya pak jika sudah siap merapat?|Tolong dikabari yaa pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau mobil sudah standby?} 🙏"
                     . $footer;
                 $message = $this->parseSpintax($rawMessage);
             } else {
@@ -4164,7 +4165,7 @@ class VehicleTrackingController extends Controller
                     . "• No. Antrian : *#{$antrian}* ({$categoryLabel})\n"
                     . "• Area Dock   : *{$areaUpper}*\n\n"
                     . "Saat ini Loading Dock {$categoryLabel} sedang terisi penuh ({$activeOccupancy}/{$quota} truk). {Silakan|Mohon|Bisa} *istirahat atau standby di kantong parkir* terlebih dahulu ya pak. Nanti giliran masuk akan kami infokan via WhatsApp & layar monitor segera setelah dock siap.\n\n"
-                    . "{Kalau ada kendala atau butuh bantuan silakan balas chat ini ya pak|Bisa dibalas nggih pak kalau ada pertanyaan|Terima kasih banyak atas kesabarannya menunggu}. 🙏"
+                    . "{Kalau ada kendala atau butuh bantuan silakan balas chat ini ya pak|Bisa dibalas yaaa pak kalau ada pertanyaan|Terima kasih banyak atas kesabarannya menunggu}. 🙏"
                     . $footer;
                 $message = $this->parseSpintax($rawMessage);
             }
@@ -4293,8 +4294,8 @@ class VehicleTrackingController extends Controller
                 . "• Truk Anda   : *{$nextNoPol}*\n"
                 . "• No. Antrian : *#{$nextTx->no_antrian}* ({$areaUpper}{$jenisLabel})\n\n"
                 . "👉 {Mohon|Dipersilakan|Bisa} *mulai bersiap-siap dan merapat ke dekat area dock* ya pak. Begitu truk di depan selesai, giliran Anda akan langsung dipanggil masuk.\n\n"
-                . "⚠️ *Perhatian:* {Jangan sampai terlambat ya pak|Pastikan armada sudah siap}. {Kalau pas dipanggil belum siap, urutan dock terpaksa dialihkan ke antrian berikutnya|Jika terlambat merapat, slot dock akan digantikan truk lain}.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau sudah standby di dekat dock?|Tolong kabari ya pak kalau sudah posisi siap|Bisa konfirmasi balas pesan ini nggih kalau sudah bersiap?} 🙏"
+                . "⚠️ *Perhatian:* {Jangan sampai terlambat ya pak|Pastikan mobil sudah siap}. {Kalau pas dipanggil belum siap, urutan dock terpaksa dialihkan ke antrian berikutnya|Jika terlambat merapat, slot dock akan digantikan truk lain}.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau sudah standby di dekat dock?|Tolong kabari ya pak kalau sudah posisi siap|Bisa konfirmasi balas pesan ini yaa kalau sudah bersiap?} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4476,8 +4477,8 @@ class VehicleTrackingController extends Controller
 
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
                 . "Kendaraan *{$nextNoPol}* {dipersilakan|bisa} *segera masuk ke area Loading Dock {$areaUpper}* untuk proses {$actionLabel} sekarang ya pak.\n\n"
-                . "⚠️ *Perhatian:* {Harap segera merapat ke dock nggih|Mohon segera meluncur ke dock}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi}, giliran dock akan dialihkan/digantikan ke antrian kendaraan lain.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke dock?|Tolong dikabari nggih pak kalau sudah bergerak ke dock|Bisa konfirmasi balas chat ini ya pak kalau armada sudah meluncur?} 🙏"
+                . "⚠️ *Perhatian:* {Harap segera merapat ke dock yaaa|Mohon segera meluncur ke dock}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi}, giliran dock akan dialihkan/digantikan ke antrian kendaraan lain.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke dock?|Tolong dikabari yaaa pak kalau sudah bergerak ke dock|Bisa konfirmasi balas chat ini ya pak kalau mobil sudah meluncur?} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4606,8 +4607,8 @@ class VehicleTrackingController extends Controller
                 . "• No. Antrian : *#{$nextTx->no_antrian}*\n"
                 . "• Area Dock   : *{$targetAreaUpper}*\n\n"
                 . "{Silakan|Dipersilakan|Bisa} *segera merapat dan masuk ke Loading Dock {$targetAreaUpper}* untuk proses {$actionLabel} ya pak.\n\n"
-                . "*Perhatian:* {Harap segera merapat ke area dock nggih|Mohon segera memposisikan mobil}. {Jika datang terlambat atau tidak ada kabar|Apabila terlambat tanpa konfirmasi}, giliran dock akan digantikan dengan antrian kendaraan berikutnya.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau kendaraannya sudah mulai jalan?|Tolong dikabari nggih pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau sudah bergerak ke dock?} 🙏"
+                . "*Perhatian:* {Harap segera merapat ke area dock yaaa|Mohon segera memposisikan mobil}. {Jika datang terlambat atau tidak ada kabar|Apabila terlambat tanpa konfirmasi}, giliran dock akan digantikan dengan antrian kendaraan berikutnya.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau kendaraannya sudah mulai jalan?|Tolong dikabari yaaa pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau sudah bergerak ke dock?} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4715,7 +4716,7 @@ class VehicleTrackingController extends Controller
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
                 . "Kendaraan *{$noPol}* (tujuan area *{$areaUpper}*) sudah selesai proses timbang masuk ya pak.\n\n"
                 . "{Silakan|Dipersilakan|Bisa} *segera menuju ke Lab QC* untuk menyerahkan kelengkapan dokumen guna pengambilan antrian sampling QC.\n\n"
-                . "{Tolong kabari nggih pak kalau sudah di Lab QC|Bisa tolong balas chat ini ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya}. 🙏"
+                . "{Tolong kabari yaaa pak kalau sudah di Lab QC|Bisa tolong balas chat ini ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya}. 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4778,7 +4779,7 @@ class VehicleTrackingController extends Controller
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
                 . "Kendaraan *{$noPol}* (tujuan *{$tujuanLabel}*) sudah selesai proses timbang masuk ya pak.\n\n"
                 . "{Silakan|Dipersilakan|Bisa} *segera menuju ke loket Admin WFG* untuk mengurus dan menyerahkan kelengkapan dokumen antrian.\n\n"
-                . "{Tolong kabari nggih pak kalau sudah di loket|Bisa tolong balas sebentar ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya}. 🙏"
+                . "{Tolong kabari yaa pak kalau sudah di loket|Bisa tolong balas sebentar ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya}. 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -5001,8 +5002,8 @@ class VehicleTrackingController extends Controller
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
                 . "Kabar baik, hasil sampling QC untuk kendaraan *{$noPol}* sudah selesai dan dinyatakan *lolos (released)*.\n\n"
                 . "{Silakan|Dipersilakan|Bisa} *segera merapat dan menuju ke area {$area}* untuk persiapan proses bongkar/muat ya pak.\n\n"
-                . "⚠️ *Perhatian:* {Mohon segera memposisikan truk ke area {$area} nggih|Harap segera meluncur ke area {$area}}. {Kalau terlambat merapat, antrian bongkar/muat berisiko dialihkan ke kendaraan lain|Jika telat hadir, slotnya bisa digantikan antrian berikutnya}.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke {$area}?|Tolong dikabari nggih pak kalau sudah meluncur ke area {$area}|Bisa konfirmasi balas pesan ini ya pak kalau armada sudah meluncur?} 🙏"
+                . "⚠️ *Perhatian:* {Mohon segera memposisikan truk ke area {$area} yaaa|Harap segera meluncur ke area {$area}}. {Kalau terlambat merapat, antrian bongkar/muat berisiko dialihkan ke kendaraan lain|Jika telat hadir, slotnya bisa digantikan antrian berikutnya}.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke {$area}?|Tolong dikabari yaaa pak kalau sudah meluncur ke area {$area}|Bisa konfirmasi balas pesan ini ya pak kalau mobil sudah meluncur?} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -5063,9 +5064,9 @@ class VehicleTrackingController extends Controller
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
                 . "Kendaraan *{$noPol}* {dipersilakan|bisa} *segera merapat dan masuk ke Loading Dock {$area}* untuk proses {$actionLabel} ya pak.\n\n"
                 . "⚠️ *Pemberitahuan Antrian:*\n"
-                . "• {Harap segera merapat ke area dock ya pak|Mohon segera memposisikan armada ke dock}.\n"
+                . "• {Harap segera merapat ke area dock ya pak|Mohon segera memposisikan mobil ke dock}.\n"
                 . "• *{Jika datang terlambat atau berhalangan|Apabila terlambat hadir tanpa konfirmasi}, giliran slot dock akan dialihkan ke antrian kendaraan lain.*\n\n"
-                . "{Bisa tolong balas sebentar ya pak apakah armadanya sudah siap masuk?|Tolong dikabari ya pak kalau sudah mulai jalan ke dock|Bisa konfirmasi balas chat ini ya pak kalau armada sudah meluncur?} 🙏"
+                . "{Bisa tolong balas sebentar ya pak apakah mobilnyaa sudah siap masuk?|Tolong dikabari ya pak kalau sudah mulai jalan ke dock|Bisa konfirmasi balas chat ini yaaa pak kalau mobil sudah meluncur?} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -5077,20 +5078,23 @@ class VehicleTrackingController extends Controller
             }
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
-            $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
 
-            if (!empty($res['status'])) {
-                $currentUser = Auth::user();
-                $userName = $currentUser ? ($currentUser->nama_lengkap ?: $currentUser->username) : 'Pengawas';
-                Cache::put($cooldownKey, [
-                    'user_name' => $userName,
-                    'time' => Carbon::now()->format('H:i'),
-                    'timestamp' => time()
-                ], now()->addMinutes(5));
-            }
+            // Lempar ke Queue Job dengan natural typing delay (~10 s/d 15 detik) agar aman dari deteksi spam
+            SendWhatsAppNotificationJob::dispatch($cleanPhone, $message, [], "Panggilan Manual Truk {$noPol}")
+                ->delay(now()->addSeconds(rand(15, 45)));
 
-            return $res;
+            $currentUser = Auth::user();
+            $userName = $currentUser ? ($currentUser->nama_lengkap ?: $currentUser->username) : 'Pengawas';
+            Cache::put($cooldownKey, [
+                'user_name' => $userName,
+                'time' => Carbon::now()->format('H:i'),
+                'timestamp' => time()
+            ], now()->addMinutes(5));
+
+            return [
+                'status' => true,
+                'message' => "Notifikasi WhatsApp panggilan untuk Truk {$noPol} berhasil dijadwalkan."
+            ];
         } catch (\Exception $e) {
             Log::error("[VehicleTracking] Gagal kirim WA manual ({$area}): " . $e->getMessage());
             return ['status' => false, 'message' => $e->getMessage()];
@@ -5205,7 +5209,8 @@ class VehicleTrackingController extends Controller
             $fonnte = app(FonnteService::class);
             $sentCount = 0;
 
-            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp dengan delay dan pesan humanis personal
+            $delayAccumulative = 0;
+            // Kirim ke nomor pribadi masing-masing PIC via Queue Job dengan delay bertingkat akumulatif
             foreach ($recipients['all'] as $u) {
                 if (!empty($u->no_hp)) {
                     $recipientName = $u->nama_lengkap ?: ($u->name ?: $u->username);
@@ -5218,15 +5223,19 @@ class VehicleTrackingController extends Controller
                         . "• Vendor      : {$vendor}\n"
                         . "• Supir       : {$driver['display']}\n"
                         . "• Mulai Masuk : " . $startTime->format('d/m/Y H:i') . "\n\n"
-                        . "{Mohon bantuannya untuk rekan tim di {$area} dapat mengecek kendala di lapangan ya pak|Mohon bantuan atensinya untuk dicek apakah ada kendala muatan atau antrian di area dock nggih}.\n\n"
-                        . "{Jika ada perkembangan kendala atau butuh bantuan koordinasi, tolong saling berkabar ya pak|Kalau ada kendala di lapangan mohon saling info nggih}. {Terima kasih banyak atas perhatiannya|Terima kasih atas kerja samanya}. 🙏"
+                        . "{Mohon bantuannya untuk rekan tim di {$area} dapat mengecek kendala di lapangan ya pak|Mohon bantuan atensinya untuk dicek apakah ada kendala muatan atau antrian di area dock yaa}.\n\n"
+                        . "{Jika ada perkembangan kendala atau butuh bantuan koordinasi, tolong saling berkabar ya pak|Kalau ada kendala di lapangan mohon saling info yaaa}. {Terima kasih banyak atas perhatiannya|Terima kasih atas kerja samanya}. 🙏"
                         . $footer;
 
                     $message = $this->parseSpintax($rawMessage);
                     $cleanPhone = preg_replace('/[^0-9]/', '', $u->no_hp);
-                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => rand(3, 8)]);
+
+                    // Lempar ke Laravel Queue Job dengan delay bertingkat (15-30 detik antar penerima)
+                    SendWhatsAppNotificationJob::dispatch($cleanPhone, $message, [], "Alert Overdue 2H - {$recipientName}")
+                        ->delay(now()->addSeconds($delayAccumulative));
+
                     $sentCount++;
-                    sleep(2); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
+                    $delayAccumulative += rand(15, 30);
                 }
             }
 
@@ -5341,6 +5350,7 @@ class VehicleTrackingController extends Controller
 
         $fonnte = app(FonnteService::class);
         $sentCount = 0;
+        $delayAccumulative = 0;
         $greetingHour = (Carbon::now()->format('H') < 12) ? '{Selamat pagi|Pagi}' : '{Selamat siang|Siang}';
 
         foreach ($deptHeads as $dh) {
@@ -5372,7 +5382,7 @@ class VehicleTrackingController extends Controller
                         . "*Keterangan Status:*\n"
                         . "• *Closed* : Truk sudah selesai & timbang keluar.\n"
                         . "• *Open*   : Truk masih berada di dalam pabrik.\n\n"
-                        . "Total tercatat *" . count($overdueList) . " armada* ({$closedCount} Closed, {$openCount} Masih Open).\n\n";
+                        . "Total tercatat *" . count($overdueList) . " mobil* ({$closedCount} Closed, {$openCount} Masih Open).\n\n";
                 }
 
                 $rawMessage .= "{Demikian laporan ini kami sampaikan, terima kasih banyak atas arahan dan perhatiannya Bapak/Ibu|Laporan disampaikan untuk menjadi periksa, terima kasih banyak atas arahan dan bimbingannya}. 🙏"
@@ -5380,9 +5390,13 @@ class VehicleTrackingController extends Controller
 
                 $message = $this->parseSpintax($rawMessage);
                 $cleanPhone = preg_replace('/[^0-9]/', '', $dh->no_hp);
-                $fonnte->sendMessage($cleanPhone, $message, ['delay' => rand(3, 8)]);
+
+                // Dispatch via Queue Job dengan delay bertingkat akumulatif antar Dept Head
+                SendWhatsAppNotificationJob::dispatch($cleanPhone, $message, [], "Daily Report Dept Head - {$dhName}")
+                    ->delay(now()->addSeconds($delayAccumulative));
+
                 $sentCount++;
-                sleep(3);
+                $delayAccumulative += rand(15, 30);
             }
         }
 
@@ -5454,6 +5468,7 @@ class VehicleTrackingController extends Controller
             $notesText = !empty($notes) ? "\n• Catatan    : {$notes}" : "";
             $fonnte = app(FonnteService::class);
             $sentCount = 0;
+            $delayAccumulative = 0;
 
             foreach ($foremen as $f) {
                 if (!empty($f->no_hp)) {
@@ -5462,20 +5477,24 @@ class VehicleTrackingController extends Controller
                     $footer = $this->dynamicMessageFooter('FOLLOWUP-TIMBANGAN');
 
                     $rawMessage = "{$greeting} *{$foremanName}* (Foreman {$areaUpper}),\n\n"
-                        . "Ada titipan follow-up dari Timbangan ({$operatorName}) untuk armada *{$noPol}*:\n"
+                        . "Ada titipan follow-up dari Timbangan ({$operatorName}) untuk mobil *{$noPol}*:\n"
                         . "• No. Polisi : *{$noPol}* ({$vendor})\n"
                         . "• Supir      : {$driver['display']}\n"
                         . "• Waktu      : " . $now->format('d/m/Y H:i')
                         . $notesText . "\n\n"
-                        . "Supir sudah bersiap di timbangan keluar ya pak. {Minta tolong bantuannya untuk segera close sistem transaksinya nggih, supaya proses timbang out supir bisa dilanjutkan|Mohon bantuannya untuk dibantu close sistemnya ya pak agar truk bisa segera melanjutkan timbang out}.\n\n"
-                        . "{Tolong dikabari kalau sudah di-close ya pak, terima kasih banyak|Bisa tolong balas sebentar nggih pak kalau sudah selesai di-close? Terima kasih banyak atas bantuannya}. 🙏"
+                        . "Supir sudah bersiap di timbangan keluar ya pak. {Minta tolong bantuannya untuk segera close sistem transaksinya yaaa, supaya proses timbang out supir bisa dilanjutkan|Mohon bantuannya untuk dibantu close sistemnya ya pak agar truk bisa segera melanjutkan timbang out}.\n\n"
+                        . "{Tolong dikabari kalau sudah di-close ya pak, terima kasih banyak|Bisa tolong balas sebentar yaaa pak kalau sudah selesai di-close? Terima kasih banyak atas bantuannya}. 🙏"
                         . $footer;
 
                     $message = $this->parseSpintax($rawMessage);
                     $cleanPhone = preg_replace('/[^0-9]/', '', $f->no_hp);
-                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => rand(3, 8)]);
+
+                    // Lempar ke Laravel Queue Job dengan delay bertingkat akumulatif antar Foreman
+                    SendWhatsAppNotificationJob::dispatch($cleanPhone, $message, [], "Follow Up Timbangan - {$foremanName}")
+                        ->delay(now()->addSeconds($delayAccumulative));
+
                     $sentCount++;
-                    sleep(2); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
+                    $delayAccumulative += rand(15, 30);
                 }
             }
 
