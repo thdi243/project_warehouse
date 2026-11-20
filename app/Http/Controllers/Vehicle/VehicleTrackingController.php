@@ -3935,6 +3935,47 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Dapatkan sapaan humanis ramah berdasarkan waktu setempat dan variasi spintax.
+     */
+    protected function humanGreeting(): string
+    {
+        $hour = (int)Carbon::now()->format('H');
+        if ($hour >= 5 && $hour < 11) {
+            $timeGreeting = '{Selamat pagi|Pagi|Halo}';
+        } elseif ($hour >= 11 && $hour < 15) {
+            $timeGreeting = '{Selamat siang|Siang|Halo}';
+        } elseif ($hour >= 15 && $hour < 18) {
+            $timeGreeting = '{Selamat sore|Sore|Halo}';
+        } else {
+            $timeGreeting = '{Selamat malam|Malam|Halo}';
+        }
+
+        return $this->parseSpintax("{$timeGreeting} {Pak|Bapak/Ibu|Bpk}");
+    }
+
+    /**
+     * Parse template spintax seperti "{Halo|Siang|Salam}" secara acak.
+     */
+    protected function parseSpintax(string $text): string
+    {
+        return preg_replace_callback('/\{([^{}]+)\}/', function ($matches) {
+            $parts = explode('|', $matches[1]);
+            return trim($parts[array_rand($parts)]);
+        }, $text);
+    }
+
+    /**
+     * Buat dynamic footer dengan timestamp detik & random ref ID
+     * agar hash checksum pesan tidak identik di algoritma anti-spam Meta/WhatsApp.
+     */
+    protected function dynamicMessageFooter(string $prefix = 'BAS'): string
+    {
+        $timeStr = Carbon::now()->format('H:i:s');
+        $randomRef = strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 4));
+        return "\n\n_Ref: #{$prefix}-{$timeStr}-{$randomRef}_";
+    }
+
+    /**
      * Resolve driver name & phone safely (auto-detects if phone & name were swapped in inputs/database).
      */
     public function resolveDriverInfo(?string $namaDriver, ?string $noHpDriver): array
@@ -4102,32 +4143,30 @@ class VehicleTrackingController extends Controller
             $actionLabel = ($category === 'bongkaran') ? 'Bongkar' : 'Muat';
             $now = Carbon::now()->format('d/m/Y H:i');
 
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('ANTRIAN');
+
             if ($isDockAvailable) {
                 // Dock masih ada slot kosong (belum terisi kuota), langsung panggil masuk dock!
-                $message = "🔔 *PANGGILAN LANGSUNG MASUK DOCK {$areaUpper}*\n"
-                    . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    . "Halo Bpk/Ibu *{$driver['name']}*, nomor antrian untuk truk Anda telah diterbitkan dan slot dock saat ini *TERSEDIA*:\n\n"
-                    . "• No. Polisi  : *{$noPol}*\n"
-                    . "• Kategori    : *{$categoryLabel}*\n"
-                    . "• No. Antrian : *#{$antrian}*\n"
-                    . "👉 *DOCK TERSEDIA:* Silakan *SEGERA MASUKKAN KENDARAAN KE LOADING DOCK {$areaUpper}* untuk memulai proses {$actionLabel}.\n\n"
-                    . "⚠️ *PENTING - KONFIRMASI PENERIMAAN:*\n"
-                    . "Mohon *SIMPAN NOMOR INI* di kontak HP Anda atau *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                    . "sebagai tanda konfirmasi bahwa Anda telah menerima info ini dan siap masuk.\n\n"
-                    . "Terima kasih atas kerja samanya. 🙏";
+                $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                    . "Nomor antrian untuk kendaraan *{$noPol}* sudah terbit:\n"
+                    . "• No. Antrian : *#{$antrian}* ({$categoryLabel})\n"
+                    . "• Area Dock   : *{$areaUpper}*\n\n"
+                    . "👉 {Silakan|Dipersilakan|Bisa} *segera merapat dan masuk ke Loading Dock {$areaUpper}* untuk proses {$actionLabel} ya pak.\n\n"
+                    . "⚠️ *Perhatian:* {Harap segera merapat ke area dock nggih|Mohon segera memposisikan armada}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi}, giliran slot dock akan dialihkan ke antrian kendaraan lain.\n\n"
+                    . "{Bisa tolong balas sebentar ya pak jika sudah siap merapat?|Tolong dikabari nggih pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau armada sudah standby?} 🙏"
+                    . $footer;
+                $message = $this->parseSpintax($rawMessage);
             } else {
                 // Dock sedang penuh terisi sesuai kuota, infokan no antrian dan instruksi standby di parkir
-                $message = "📋 *INFO NOMOR ANTRIAN DOCK {$areaUpper}*\n"
-                    . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    . "Halo Bpk/Ibu *{$driver['name']}*, nomor antrian untuk truk Anda sebagai berikut:\n\n"
-                    . "• No. Polisi  : *{$noPol}*\n"
-                    . "• Kategori    : *{$categoryLabel}*\n"
-                    . "• No. Antrian : *#{$antrian}*\n\n"
-                    . "👉 *STATUS DOCK:* Saat ini Loading Dock {$categoryLabel} sedang terisi penuh ({$activeOccupancy}/{$quota} mobil). Silakan *STANDBY DI KANTONG PARKIR*. Anda akan dipanggil masuk via WhatsApp segera setelah slot dock tersedia.\n\n"
-                    . "⚠️ *PENTING - KONFIRMASI PENERIMAAN:*\n"
-                    . "Mohon *SIMPAN NOMOR INI* di kontak HP Anda atau *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                    . "agar nomor antrian Anda terverifikasi dan notifikasi panggilan dock dapat masuk tanpa kendala.\n\n"
-                    . "Terima kasih atas kerja samanya. 🙏";
+                $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                    . "Nomor antrian untuk kendaraan *{$noPol}* sudah terbit:\n"
+                    . "• No. Antrian : *#{$antrian}* ({$categoryLabel})\n"
+                    . "• Area Dock   : *{$areaUpper}*\n\n"
+                    . "Saat ini Loading Dock {$categoryLabel} sedang terisi penuh ({$activeOccupancy}/{$quota} truk). {Silakan|Mohon|Bisa} *istirahat atau standby di kantong parkir* terlebih dahulu ya pak. Nanti giliran masuk akan kami infokan via WhatsApp & layar monitor segera setelah dock siap.\n\n"
+                    . "{Kalau ada kendala atau butuh bantuan silakan balas chat ini ya pak|Bisa dibalas nggih pak kalau ada pertanyaan|Terima kasih banyak atas kesabarannya menunggu}. 🙏"
+                    . $footer;
+                $message = $this->parseSpintax($rawMessage);
             }
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
@@ -4246,17 +4285,18 @@ class VehicleTrackingController extends Controller
             $jenisLabel = ($areaUpper === 'WFG' && !empty($nextTx->jenis)) ? ' (' . ucfirst($nextTx->jenis) . ')' : '';
             $actionLabel = ($nextTx->jenis === 'bongkaran') ? 'Bongkar' : 'Muat';
 
-            $message = "⏳ *INFO PERSIAPAN MASUK DOCK {$areaUpper}*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo Bpk/Ibu *{$nextDriver['name']}*, truk antrian sebelum Anda (*{$currentNoPol}*) saat ini sudah *MULAI PROSES {$actionLabel}* di Loading Dock {$areaUpper}.\n\n"
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('PERSIAPAN');
+
+            $rawMessage = "{$greeting} *{$nextDriver['name']}*,\n\n"
+                . "Sekadar info, truk antrian sebelum Anda (*{$currentNoPol}*) saat ini sudah *mulai proses {$actionLabel}* di Loading Dock {$areaUpper}.\n\n"
                 . "• Truk Anda   : *{$nextNoPol}*\n"
-                . "• Area Tujuan : *{$areaUpper}*{$jenisLabel}\n"
-                . "• No. Antrian : *#{$nextTx->no_antrian}*\n\n"
-                . "👉 Mohon *SEGERA* merapat ke dekat area Loading Dock. Anda akan segera dipanggil masuk setelah proses truk saat ini selesai.\n\n"
-                . "⚠️ *PENTING - KONFIRMASI:*\n"
-                . "Mohon *SIMPAN NOMOR INI* atau *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                . "sebagai tanda bahwa Anda telah menerima info ini dan siap bersiaga.\n\n"
-                . "Terima kasih atas kerja samanya. 🙏";
+                . "• No. Antrian : *#{$nextTx->no_antrian}* ({$areaUpper}{$jenisLabel})\n\n"
+                . "👉 {Mohon|Dipersilakan|Bisa} *mulai bersiap-siap dan merapat ke dekat area dock* ya pak. Begitu truk di depan selesai, giliran Anda akan langsung dipanggil masuk.\n\n"
+                . "⚠️ *Perhatian:* {Jangan sampai terlambat ya pak|Pastikan armada sudah siap}. {Kalau pas dipanggil belum siap, urutan dock terpaksa dialihkan ke antrian berikutnya|Jika terlambat merapat, slot dock akan digantikan truk lain}.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau sudah standby di dekat dock?|Tolong kabari ya pak kalau sudah posisi siap|Bisa konfirmasi balas pesan ini nggih kalau sudah bersiap?} 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $nextDriver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4313,14 +4353,15 @@ class VehicleTrackingController extends Controller
             $actionLabel = ($transaction->jenis === 'bongkaran' || $areaUpper === 'WRM') ? 'Bongkar' : 'Muat';
             $now = Carbon::now()->format('d/m/Y H:i');
 
-            $message = "✅ *PROSES SELESAI - DOCK {$areaUpper}*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo *{$driver['name']}*, proses {$actionLabel} untuk truk Anda telah *SELESAI*:\n\n"
-                . "• No. Polisi    : *{$noPol}*\n"
-                . "• Area          : *{$areaUpper}*{$jenisLabel}\n"
-                . "• Waktu Selesai : {$now}\n\n"
-                . "Silakan mengurus kelengkapan dokumen dan segera melanjutkan kendaraan ke *Timbangan Out* (Timbang Keluar).\n\n"
-                . "Terima kasih atas kerja samanya! 🙏";
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('SELESAI');
+
+            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                . "Proses {$actionLabel} untuk truk *{$noPol}* di Dock *{$areaUpper}* telah *selesai* pada pukul {$now}.\n\n"
+                . "{Silakan|Dipersilakan|Bisa} menyelesaikan administrasi dokumen dan segera melanjutkan kendaraan ke *Timbangan Out* (Timbang Keluar) ya pak.\n\n"
+                . "{Terima kasih atas kerja samanya|Matur nuwun|Semoga perjalanan lancar dan selamat sampai tujuan}. 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4430,13 +4471,15 @@ class VehicleTrackingController extends Controller
 
             $actionLabel = ($nextTx->jenis === 'bongkaran' || $areaUpper === 'WRM') ? 'Bongkar' : 'Muat';
 
-            $message = "📢 *PANGGILAN DOCK {$areaUpper}*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo Bpk/Ibu *{$driver['name']}*, kendaraan *{$nextNoPol}* dipersilakan *SEGERA MASUK* ke area Dock {$areaUpper} untuk proses {$actionLabel}.\n\n"
-                . "⚠️ *PENTING - KONFIRMASI:*\n"
-                . "Mohon *SIMPAN NOMOR INI* atau *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                . "jika Anda sudah menerima panggilan ini dan sedang menuju ke Dock {$areaUpper}.\n\n"
-                . "Terima kasih atas kerja samanya. 🙏";
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('DOCK');
+
+            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                . "Kendaraan *{$nextNoPol}* {dipersilakan|bisa} *segera masuk ke area Loading Dock {$areaUpper}* untuk proses {$actionLabel} sekarang ya pak.\n\n"
+                . "⚠️ *Perhatian:* {Harap segera merapat ke dock nggih|Mohon segera meluncur ke dock}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi}, giliran dock akan dialihkan/digantikan ke antrian kendaraan lain.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke dock?|Tolong dikabari nggih pak kalau sudah bergerak ke dock|Bisa konfirmasi balas chat ini ya pak kalau armada sudah meluncur?} 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4554,17 +4597,19 @@ class VehicleTrackingController extends Controller
             $jenisLabel = ($targetAreaUpper === 'WFG' && !empty($nextJenis)) ? ' (' . ucfirst($nextJenis) . ')' : '';
             $actionLabel = ($category === 'bongkaran') ? 'Bongkar' : 'Muat';
 
-            $message = "📢 *PANGGILAN MASUK LOADING DOCK {$targetAreaUpper}*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo Bpk/Ibu *{$driver['name']}*, proses kendaraan sebelumnya telah selesai dan slot Loading Dock {$categoryLabel} saat ini *TERSEDIA*:\n\n"
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('DOCK');
+
+            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                . "Truk sebelumnya sudah selesai dan slot Loading Dock {$categoryLabel} saat ini sudah *siap*:\n"
                 . "• Truk Anda   : *{$nextNoPol}*\n"
-                . "• Kategori    : *{$categoryLabel}*\n"
-                . "• No. Antrian : *#{$nextTx->no_antrian}*\n\n"
-                . "👉 *DIPERSILAKAN MASUK:* Silakan *SEGERA MASUK KE LOADING DOCK {$targetAreaUpper}* untuk memulai proses {$actionLabel}.\n\n"
-                . "⚠️ *PENTING - KONFIRMASI:*\n"
-                . "Mohon *SIMPAN NOMOR INI* atau *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                . "jika Anda sudah menerima panggilan ini dan sedang bergerak menuju Loading Dock.\n\n"
-                . "Terima kasih atas kerja samanya. 🙏";
+                . "• No. Antrian : *#{$nextTx->no_antrian}*\n"
+                . "• Area Dock   : *{$targetAreaUpper}*\n\n"
+                . "{Silakan|Dipersilakan|Bisa} *segera merapat dan masuk ke Loading Dock {$targetAreaUpper}* untuk proses {$actionLabel} ya pak.\n\n"
+                . "*Perhatian:* {Harap segera merapat ke area dock nggih|Mohon segera memposisikan mobil}. {Jika datang terlambat atau tidak ada kabar|Apabila terlambat tanpa konfirmasi}, giliran dock akan digantikan dengan antrian kendaraan berikutnya.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau kendaraannya sudah mulai jalan?|Tolong dikabari nggih pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau sudah bergerak ke dock?} 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4664,11 +4709,15 @@ class VehicleTrackingController extends Controller
                 return ['status' => false, 'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar."];
             }
 
-            $message = "📄 *INFORMASI TIMBANG MASUK & SAMPLING QC*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo *{$driver['name']}*, kendaraan *{$noPol}* tujuan area *{$areaUpper}* telah selesai proses timbang masuk.\n\n"
-                . "Silakan segera menuju ke *Lab QC* untuk menyerahkan dokumen guna proses antrian sampling QC.\n\n"
-                . "Terima kasih. 🙏";
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('QC-DOC');
+
+            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                . "Kendaraan *{$noPol}* (tujuan area *{$areaUpper}*) sudah selesai proses timbang masuk ya pak.\n\n"
+                . "{Silakan|Dipersilakan|Bisa} *segera menuju ke Lab QC* untuk menyerahkan kelengkapan dokumen guna pengambilan antrian sampling QC.\n\n"
+                . "{Tolong kabari nggih pak kalau sudah di Lab QC|Bisa tolong balas chat ini ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya}. 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4723,11 +4772,15 @@ class VehicleTrackingController extends Controller
 
             $tujuanLabel = ($areaUpper === 'SMU') ? 'SMU (Area WFG)' : 'WFG';
 
-            $message = "📄 *INFORMASI TIMBANG MASUK & KELENGKAPAN DOKUMEN*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo *{$driver['name']}*, kendaraan *{$noPol}* tujuan *{$tujuanLabel}* telah selesai proses timbang masuk.\n\n"
-                . "Silakan segera menuju ke loket *Admin WFG* untuk menyerahkan/mengurus kelengkapan dokumen antrian.\n\n"
-                . "Terima kasih. 🙏";
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('WFG-DOC');
+
+            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                . "Kendaraan *{$noPol}* (tujuan *{$tujuanLabel}*) sudah selesai proses timbang masuk ya pak.\n\n"
+                . "{Silakan|Dipersilakan|Bisa} *segera menuju ke loket Admin WFG* untuk mengurus dan menyerahkan kelengkapan dokumen antrian.\n\n"
+                . "{Tolong kabari nggih pak kalau sudah di loket|Bisa tolong balas sebentar ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya}. 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4783,11 +4836,15 @@ class VehicleTrackingController extends Controller
                 return ['status' => false, 'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar."];
             }
 
-            $message = "📢 *PANGGILAN MENUJU AREA {$areaUpper} (RETUR)*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo *{$driver['name']}*, kendaraan *{$noPol}* muatan *Retur* telah selesai proses timbang masuk.\n\n"
-                . "Silakan *LANGSUNG MENUJU AREA {$areaUpper}* untuk persiapan proses bongkar (muatan retur tidak memerlukan sampling QC).\n\n"
-                . "Terima kasih. 🙏";
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('RETUR');
+
+            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                . "Kendaraan *{$noPol}* muatan *Retur* telah selesai proses timbang masuk.\n\n"
+                . "{Silakan|Dipersilakan|Bisa} *langsung menuju area {$areaUpper}* untuk proses bongkar ya pak (muatan retur tidak memerlukan sampling QC).\n\n"
+                . "{Terima kasih banyak|Terima kasih atas kerja samanya|Matur nuwun}. 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4854,14 +4911,15 @@ class VehicleTrackingController extends Controller
 
             $itemName = $transaction->item ? $transaction->item->name : 'Packaging / Import';
 
-            $message = "📢 *PANGGILAN MENUJU AREA {$area}*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo Bpk/Ibu *{$driver['name']}*, dokumen kendaraan *{$noPol}* telah diterima di QC (No. Antrian QC: *#{$antrian}*).\n\n"
-                . "Untuk muatan *{$itemName}*, Anda dipersilakan *LANGSUNG MENUJU AREA {$area}* untuk persiapan proses bongkar/muat tanpa perlu menunggu hasil sampling QC.\n\n"
-                . "⚠️ *PENTING - KONFIRMASI:*\n"
-                . "Mohon *SIMPAN NOMOR INI* di kontak HP Anda atau *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                . "sebagai konfirmasi penerimaan pesan.\n\n"
-                . "Terima kasih atas kerja samanya. 🙏";
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('QC-DIRECT');
+
+            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                . "Dokumen kendaraan *{$noPol}* telah diterima di QC (No. Antrian QC: *#{$antrian}*).\n\n"
+                . "Untuk muatan *{$itemName}*, {silakan|dipersilakan|Anda bisa} *langsung menuju area {$area}* untuk persiapan proses bongkar/muat tanpa perlu menunggu hasil sampling QC ya pak.\n\n"
+                . "{Terima kasih banyak|Matur nuwun|Terima kasih atas kerja samanya}. 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4937,14 +4995,16 @@ class VehicleTrackingController extends Controller
                 return ['status' => false, 'message' => "Nomor HP supir untuk truk {$noPol} belum terdaftar."];
             }
 
-            $message = "✅ *HASIL SAMPLING QC: RELEASED*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo Bpk/Ibu *{$driver['name']}*, hasil sampling QC untuk kendaraan *{$noPol}* telah selesai dan dinyatakan *RELEASED (Lolos)*.\n\n"
-                . "Silakan *SEGERA MERAPAT* dan menuju ke area *{$area}* untuk proses bongkar/muat.\n\n"
-                . "⚠️ *PENTING - KONFIRMASI:*\n"
-                . "Mohon *SIMPAN NOMOR INI* atau *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                . "sebagai konfirmasi bahwa Anda telah menerima info ini dan siap bergerak.\n\n"
-                . "Terima kasih atas kerja samanya. 🙏";
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('QC-RELEASE');
+
+            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                . "Kabar baik, hasil sampling QC untuk kendaraan *{$noPol}* sudah selesai dan dinyatakan *lolos (released)*.\n\n"
+                . "{Silakan|Dipersilakan|Bisa} *segera merapat dan menuju ke area {$area}* untuk persiapan proses bongkar/muat ya pak.\n\n"
+                . "⚠️ *Perhatian:* {Mohon segera memposisikan truk ke area {$area} nggih|Harap segera meluncur ke area {$area}}. {Kalau terlambat merapat, antrian bongkar/muat berisiko dialihkan ke kendaraan lain|Jika telat hadir, slotnya bisa digantikan antrian berikutnya}.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke {$area}?|Tolong dikabari nggih pak kalau sudah meluncur ke area {$area}|Bisa konfirmasi balas pesan ini ya pak kalau armada sudah meluncur?} 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
@@ -4996,14 +5056,18 @@ class VehicleTrackingController extends Controller
             $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
             $actionLabel = $transaction->jenis === 'bongkaran' ? 'Bongkar' : ($transaction->jenis === 'slipsheet' ? 'Muat' : ucfirst($transaction->jenis ?? 'Bongkar/Muat'));
 
-            // Format pesan pribadi ke HP supir (tanpa tag @)
-            $message = "📢 *PANGGILAN DOCK {$area}*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo Bpk/Ibu *{$driver['name']}*, kendaraan *{$noPol}* dipersilakan *SEGERA MASUK* ke area Dock {$area} untuk proses {$actionLabel}.\n\n"
-                . "⚠️ *PENTING - KONFIRMASI:*\n"
-                . "Mohon *SIMPAN NOMOR INI* atau *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                . "sebagai tanda konfirmasi bahwa Anda siap menuju ke dock.\n\n"
-                . "Terima kasih atas kerja samanya. 🙏";
+            $greeting = $this->humanGreeting();
+            $footer = $this->dynamicMessageFooter('PANGGILAN');
+
+            // Format pesan pribadi ramah & humanis ke HP supir (dilengkapi spintax, natural reply trigger, & dynamic ref anti-spam)
+            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                . "Kendaraan *{$noPol}* {dipersilakan|bisa} *segera merapat dan masuk ke Loading Dock {$area}* untuk proses {$actionLabel} ya pak.\n\n"
+                . "⚠️ *Pemberitahuan Antrian:*\n"
+                . "• {Harap segera merapat ke area dock ya pak|Mohon segera memposisikan armada ke dock}.\n"
+                . "• *{Jika datang terlambat atau berhalangan|Apabila terlambat hadir tanpa konfirmasi}, giliran slot dock akan dialihkan ke antrian kendaraan lain.*\n\n"
+                . "{Bisa tolong balas sebentar ya pak apakah armadanya sudah siap masuk?|Tolong dikabari ya pak kalau sudah mulai jalan ke dock|Bisa konfirmasi balas chat ini ya pak kalau armada sudah meluncur?} 🙏"
+                . $footer;
+            $message = $this->parseSpintax($rawMessage);
 
             if (empty($driver['phone'])) {
                 return [
@@ -5138,34 +5202,31 @@ class VehicleTrackingController extends Controller
             $foremenNames = $recipients['foremen']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['foremen']->pluck('username')->implode(', ') ?: 'Foreman WH');
             $spvNames = $recipients['supervisors']->pluck('nama_lengkap')->filter()->implode(', ') ?: ($recipients['supervisors']->pluck('username')->implode(', ') ?: 'SPV WH');
 
-            $message = "⚠️ *ALERT: PROSES BONGKAR/MUAT MELEBIHI 2 JAM*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "Area Dock   : *Dock {$area}*\n"
-                . "No. Polisi  : *{$noPol}*\n"
-                . "Aktivitas   : {$action}\n"
-                . "Supir       : {$driver['display']}\n"
-                . "Vendor      : {$vendor}\n"
-                . "Mulai Proses: " . $startTime->format('d/m/Y H:i') . "\n"
-                . "⏱️ Durasi    : *{$durationStr}* (Melebihi batas 2 Jam)\n\n"
-                . "Mohon atensi Bapak/Ibu:\n"
-                . "• Foreman {$area}: {$foremenNames}\n"
-                . "• Supervisor WH  : {$spvNames}\n\n"
-                . "Untuk pengecekan kendala operasional di lapangan.\n\n"
-                . "⚠️ *PENTING - KONFIRMASI:*\n"
-                . "Mohon *SIMPAN NOMOR INI* di kontak HP Anda dan *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                . "sebagai tanda atensi operasional.\n\n"
-                . "Terima kasih. 🙏";
-
             $fonnte = app(FonnteService::class);
-
-            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp dengan delay agar aman dari deteksi spam
             $sentCount = 0;
+
+            // Kirim ke nomor pribadi masing-masing PIC jika ada no_hp dengan delay dan pesan humanis personal
             foreach ($recipients['all'] as $u) {
                 if (!empty($u->no_hp)) {
+                    $recipientName = $u->nama_lengkap ?: ($u->name ?: $u->username);
+                    $greeting = $this->humanGreeting();
+                    $footer = $this->dynamicMessageFooter('OVERDUE-2H');
+
+                    $rawMessage = "{$greeting} *{$recipientName}*,\n\n"
+                        . "Izin menginfokan, aktivitas {$action} untuk truk *{$noPol}* di *Dock {$area}* saat ini durasinya sudah mencapai *{$durationStr}* (melebihi batas SLA 2 jam):\n\n"
+                        . "• No. Polisi  : *{$noPol}*\n"
+                        . "• Vendor      : {$vendor}\n"
+                        . "• Supir       : {$driver['display']}\n"
+                        . "• Mulai Masuk : " . $startTime->format('d/m/Y H:i') . "\n\n"
+                        . "{Mohon bantuannya untuk rekan tim di {$area} dapat mengecek kendala di lapangan ya pak|Mohon bantuan atensinya untuk dicek apakah ada kendala muatan atau antrian di area dock nggih}.\n\n"
+                        . "{Jika ada perkembangan kendala atau butuh bantuan koordinasi, tolong saling berkabar ya pak|Kalau ada kendala di lapangan mohon saling info nggih}. {Terima kasih banyak atas perhatiannya|Terima kasih atas kerja samanya}. 🙏"
+                        . $footer;
+
+                    $message = $this->parseSpintax($rawMessage);
                     $cleanPhone = preg_replace('/[^0-9]/', '', $u->no_hp);
-                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => 5]);
+                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => rand(3, 8)]);
                     $sentCount++;
-                    sleep(3); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
+                    sleep(2); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
                 }
             }
 
@@ -5194,13 +5255,13 @@ class VehicleTrackingController extends Controller
         $txs = VehicleTransaction::with(['vehicle', 'targetLocation', 'currentLocation'])
             ->where(function ($q) use ($targetDateStr) {
                 $q->whereDate('check_in_time', $targetDateStr)
-                  ->orWhereDate('timbangan_out_time', $targetDateStr)
-                  ->orWhereDate('check_out_time', $targetDateStr)
-                  ->orWhere(function ($sub) {
-                      $sub->whereNull('check_out_time')
-                          ->whereNull('timbangan_out_time')
-                          ->whereNotIn('status', ['completed', 'timbangan_out']);
-                  });
+                    ->orWhereDate('timbangan_out_time', $targetDateStr)
+                    ->orWhereDate('check_out_time', $targetDateStr)
+                    ->orWhere(function ($sub) {
+                        $sub->whereNull('check_out_time')
+                            ->whereNull('timbangan_out_time')
+                            ->whereNotIn('status', ['completed', 'timbangan_out']);
+                    });
             })
             ->get();
 
@@ -5278,49 +5339,50 @@ class VehicleTrackingController extends Controller
             ];
         }
 
-        // Susun pesan WhatsApp
-        $message = "📊 *DAILY REPORT: OVERDUE TRUCK DURATION (> 7.5 JAM)*\n"
-            . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            . "📅 *Periode*   : {$formattedDate}\n"
-            . "⏰ *Jam Lapor* : 07:00 WIB\n"
-            . "🎯 *Ditujukan* : Dept Head Warehouse\n\n";
-
-        if (empty($overdueList)) {
-            $message .= "✅ *NIHIL / AMAN*\n"
-                . "Tidak ada kendaraan dengan durasi melebihi batas 7.5 Jam pada periode ini. Semua aktivitas operasional berjalan lancar sesuai SLA.\n\n";
-        } else {
-            $message .= "Berikut daftar kendaraan dengan durasi melebihi batas 7.5 Jam:\n\n"
-                . "```\n"
-                . str_pad("TRUCK", 13) . str_pad("STATUS", 9) . str_pad("DURASI", 10) . "AREA\n"
-                . str_repeat("-", 38) . "\n";
-
-            foreach ($overdueList as $item) {
-                $line = str_pad($item['nopol'], 13)
-                    . str_pad($item['status'], 9)
-                    . str_pad($item['duration_str'], 10)
-                    . $item['area'];
-                $message .= $line . "\n";
-            }
-
-            $message .= "```\n\n"
-                . "*Keterangan:*\n"
-                . "• *Closed* : Truk sudah keluar / proses selesai.\n"
-                . "• *Open*   : Truk masih aktif di area pabrik.\n\n"
-                . "📈 *Total Overdue*: " . count($overdueList) . " Truk ({$closedCount} Closed, {$openCount} Masih Open)\n\n";
-        }
-
-        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            . "Sistem Monitoring Logistik & Warehouse PT BAS";
-
         $fonnte = app(FonnteService::class);
         $sentCount = 0;
+        $greetingHour = (Carbon::now()->format('H') < 12) ? '{Selamat pagi|Pagi}' : '{Selamat siang|Siang}';
 
         foreach ($deptHeads as $dh) {
             if (!empty($dh->no_hp)) {
+                $dhName = $dh->nama_lengkap ?: ($dh->name ?: $dh->username);
+                $footer = $this->dynamicMessageFooter('REPORT-DH');
+
+                $rawMessage = "{$greetingHour} Bapak/Ibu *{$dhName}*,\n\n"
+                    . "Izin menyampaikan laporan ringkasan harian kendaraan dengan durasi di area pabrik melebihi 7.5 Jam untuk periode *{$formattedDate}*:\n\n";
+
+                if (empty($overdueList)) {
+                    $rawMessage .= "✅ *Kondisi Operasional Normal (SLA Aman)*\n"
+                        . "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7.5 Jam pada periode ini. Semua alur berjalan sesuai standar operasional.\n\n";
+                } else {
+                    $rawMessage .= "Daftar unit kendaraan durasi > 7.5 Jam:\n\n"
+                        . "```\n"
+                        . str_pad("TRUCK", 13) . str_pad("STATUS", 9) . str_pad("DURASI", 10) . "AREA\n"
+                        . str_repeat("-", 38) . "\n";
+
+                    foreach ($overdueList as $item) {
+                        $line = str_pad($item['nopol'], 13)
+                            . str_pad($item['status'], 9)
+                            . str_pad($item['duration_str'], 10)
+                            . $item['area'];
+                        $rawMessage .= $line . "\n";
+                    }
+
+                    $rawMessage .= "```\n\n"
+                        . "*Keterangan Status:*\n"
+                        . "• *Closed* : Truk sudah selesai & timbang keluar.\n"
+                        . "• *Open*   : Truk masih berada di dalam pabrik.\n\n"
+                        . "Total tercatat *" . count($overdueList) . " armada* ({$closedCount} Closed, {$openCount} Masih Open).\n\n";
+                }
+
+                $rawMessage .= "{Demikian laporan ini kami sampaikan, terima kasih banyak atas arahan dan perhatiannya Bapak/Ibu|Laporan disampaikan untuk menjadi periksa, terima kasih banyak atas arahan dan bimbingannya}. 🙏"
+                    . $footer;
+
+                $message = $this->parseSpintax($rawMessage);
                 $cleanPhone = preg_replace('/[^0-9]/', '', $dh->no_hp);
-                $fonnte->sendMessage($cleanPhone, $message, ['delay' => 5]);
+                $fonnte->sendMessage($cleanPhone, $message, ['delay' => rand(3, 8)]);
                 $sentCount++;
-                sleep(5);
+                sleep(3);
             }
         }
 
@@ -5389,32 +5451,31 @@ class VehicleTrackingController extends Controller
                 return ['status' => false, 'message' => "Tidak ada Foreman aktif untuk {$targetBagianName}."];
             }
 
-            $notesText = !empty($notes) ? "\nCatatan      : {$notes}" : "";
-
-            $message = "⚠️ *FOLLOW UP DARI TIMBANGAN*\n"
-                . "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                . "No. Polisi   : *{$noPol}*\n"
-                . "Vendor       : {$vendor}\n"
-                . "Supir        : {$driver['display']}\n"
-                . "Area Tujuan  : *{$areaUpper}* ({$targetBagianName})\n"
-                . "Waktu        : " . $now->format('d/m/Y H:i') . "\n"
-                . "Pengirim     : {$operatorName}{$notesText}\n\n"
-                . "👉 *TINDAKAN DIPERLUKAN:*\n"
-                . "*SEGERA CLOSE SISTEM* untuk truk di atas agar proses Timbang Keluar dapat dilanjutkan.\n\n"
-                . "⚠️ *PENTING - KONFIRMASI:*\n"
-                . "Mohon *SIMPAN NOMOR INI* di kontak HP Anda atau *BALAS PESAN INI DENGAN KETIK:* *OKE*\n"
-                . "jika sistem telah selesai di-close / ditindaklanjuti.\n\n"
-                . "Terima kasih. 🙏";
-
+            $notesText = !empty($notes) ? "\n• Catatan    : {$notes}" : "";
             $fonnte = app(FonnteService::class);
             $sentCount = 0;
 
             foreach ($foremen as $f) {
                 if (!empty($f->no_hp)) {
+                    $foremanName = $f->nama_lengkap ?: ($f->name ?: $f->username);
+                    $greeting = $this->humanGreeting();
+                    $footer = $this->dynamicMessageFooter('FOLLOWUP-TIMBANGAN');
+
+                    $rawMessage = "{$greeting} *{$foremanName}* (Foreman {$areaUpper}),\n\n"
+                        . "Ada titipan follow-up dari Timbangan ({$operatorName}) untuk armada *{$noPol}*:\n"
+                        . "• No. Polisi : *{$noPol}* ({$vendor})\n"
+                        . "• Supir      : {$driver['display']}\n"
+                        . "• Waktu      : " . $now->format('d/m/Y H:i')
+                        . $notesText . "\n\n"
+                        . "Supir sudah bersiap di timbangan keluar ya pak. {Minta tolong bantuannya untuk segera close sistem transaksinya nggih, supaya proses timbang out supir bisa dilanjutkan|Mohon bantuannya untuk dibantu close sistemnya ya pak agar truk bisa segera melanjutkan timbang out}.\n\n"
+                        . "{Tolong dikabari kalau sudah di-close ya pak, terima kasih banyak|Bisa tolong balas sebentar nggih pak kalau sudah selesai di-close? Terima kasih banyak atas bantuannya}. 🙏"
+                        . $footer;
+
+                    $message = $this->parseSpintax($rawMessage);
                     $cleanPhone = preg_replace('/[^0-9]/', '', $f->no_hp);
-                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => 5]);
+                    $fonnte->sendMessage($cleanPhone, $message, ['delay' => rand(3, 8)]);
                     $sentCount++;
-                    sleep(5); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
+                    sleep(2); // Jeda pengiriman antar nomor untuk mencegah deteksi spam
                 }
             }
 

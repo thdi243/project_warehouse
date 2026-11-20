@@ -35,6 +35,12 @@ class FonnteService
         }
 
         try {
+            // Berikan natural delay acak (7 s/d 15 detik) jika belum ditentukan
+            // Parameter 'delay' pada Fonnte API berguna untuk meniru jeda mengetik manusia agar tidak terdeteksi bot spam
+            if (!isset($extraParams['delay'])) {
+                $extraParams['delay'] = rand(10, 25);
+            }
+
             $payload = array_merge([
                 'target' => $target,
                 'message' => $message,
