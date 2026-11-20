@@ -44,9 +44,15 @@ class FonnteService
             $response = Http::withHeaders([
                 'Authorization' => $this->token,
             ])
-            ->timeout(25)
-            ->connectTimeout(10)
-            ->retry(2, 1000, throw: false)
+            ->withOptions([
+                'curl' => [
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                    CURLOPT_TCP_NODELAY => 1,
+                ],
+                'verify' => false,
+            ])
+            ->timeout(15)
+            ->connectTimeout(5)
             ->asForm()
             ->post($this->url, $payload);
 
@@ -108,6 +114,12 @@ class FonnteService
         try {
             $response = Http::withHeaders([
                 'Authorization' => $this->token,
+            ])
+            ->withOptions([
+                'curl' => [
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                ],
+                'verify' => false,
             ])
             ->timeout(10)
             ->connectTimeout(5)
