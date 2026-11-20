@@ -677,8 +677,8 @@ class KempuProduksiController extends Controller
         // Nomor PO/SPB tetap tampil di area WPM, Retur WFG, Pre Cuci, hingga Cuci, dan baru di-reset saat Filling Kempu
         $cycleNoPo = $cycleFilling?->no_po
             ?: ($kempu->main?->no_po
-            ?: ($latestFilledCycle?->no_po
-            ?: ($kempu->no_spb ?? '')));
+                ?: ($latestFilledCycle?->no_po
+                    ?: ($kempu->no_spb ?? '')));
 
         if (empty($cycleNoPo)) {
             $lastTracking = KempuTrackingHistoryModel::where('kempu_master_id', $kempu->id)
@@ -798,8 +798,15 @@ class KempuProduksiController extends Controller
         $actionResult  = 'OK';
         $resultMessage = "Aksi '{$card['title']}' untuk kempu {$idKempu} berhasil diproses.";
 
+        $forceTarget = ($cardKey === 'prod-force')
+            ? strtoupper(trim($request->input('force_target', $request->input('target_status', ''))))
+            : null;
+
         $isBypassWpm = false;
-        if ($cardKey === 'transfer-in-from-wpm') {
+        $isTargetingTransferInWpm = ($cardKey === 'transfer-in-from-wpm') ||
+            ($cardKey === 'prod-force' && in_array($forceTarget ?? '', ['PROD_TRANSFER_IN_WPM', 'TRANSFER-IN-FROM-WPM']));
+
+        if ($isTargetingTransferInWpm) {
             $qcPmReleaseStatuses = [
                 MasterKempuModel::STATUS_QC_PM_RELEASE,
                 MasterKempuModel::STATUS_QC_PM_PASSED,
@@ -827,8 +834,6 @@ class KempuProduksiController extends Controller
                     'message' => 'Catatan/alasan wajib diisi untuk eksekusi Force Scan Produksi.',
                 ], 422);
             }
-
-            $forceTarget = strtoupper(trim($request->input('force_target', $request->input('target_status', ''))));
 
             switch ($forceTarget) {
                 case 'PROD_TRANSFER_IN_WPM':
@@ -1149,18 +1154,32 @@ class KempuProduksiController extends Controller
 
             // Auto-insert step "Transfer Out To Produksi" di WPM jika kempu bypass langsung dari QC PM Release
             if ($isBypassWpm) {
-                $wpmUserId = 98;
-                if (!User::where('id', $wpmUserId)->exists()) {
+                // User ID 98 adalah akun dari database project_warehouse (BUKAN ID dari aplikasi/portal produksi)
+                $wpmWarehouseUserId = 98;
+                $wpmWarehouseUser   = User::find($wpmWarehouseUserId);
+
+                if (!$wpmWarehouseUser) {
+                    // Fallback jika belum ada di database lokal/baru
                     DB::table('users')->insert([
                         'id'           => 98,
                         'username'     => 'wpm_system',
-                        'nama_lengkap' => 'WPM System Auto',
+                        'nama_lengkap' => 'WPM System (Warehouse)',
                         'email'        => 'wpm_system@pt-bas.co.id',
                         'password'     => bcrypt('wpm_auto_system_98'),
+                        'jabatan'      => 'operator',
+                        'departemen'   => 'Warehouse',
+                        'bagian'       => 'WPM',
+                        'is_active'    => 1,
                         'created_at'   => now(),
                         'updated_at'   => now(),
                     ]);
+                    $wpmWarehouseUser = User::find($wpmWarehouseUserId);
                 }
+
+                $wpmOperatorName = $wpmWarehouseUser?->nama_lengkap
+                    ?? $wpmWarehouseUser?->username
+                    ?? $wpmWarehouseUser?->name
+                    ?? 'Eni';
 
                 KempuTrackingHistoryModel::create([
                     'kempu_master_id' => $kempu->id,
@@ -1174,13 +1193,18 @@ class KempuProduksiController extends Controller
                     'condition'       => $condition,
                     'notes'           => '[Auto Generated - Bypass Transfer In Produksi]',
                     'metadata'        => [
-                        'app_source'      => 'production',
-                        'is_auto_step'    => true,
-                        'auto_reason'     => 'Bypass Transfer In from WPM (QC PM Released)',
-                        'previous_status' => $currentStatus,
-                        'triggered_by'    => $operatorName,
+                        'app_source'        => 'warehouse', // Sumber aplikasi adalah Warehouse (project_warehouse), bukan produksi
+                        'operator_name'     => $wpmOperatorName,
+                        'operator_email'    => $wpmWarehouseUser?->email ?? null,
+                        'operator_nik'      => $wpmWarehouseUser?->nik ?? null,
+                        'warehouse_user_id' => $wpmWarehouseUserId,
+                        'is_auto_step'      => true,
+                        'auto_reason'       => 'Bypass Transfer In from WPM (QC PM Released)',
+                        'previous_status'   => $currentStatus,
+                        'triggered_by'      => $operatorName,
+                        'triggered_source'  => $appSource,
                     ],
-                    'created_by'      => $wpmUserId,
+                    'created_by'      => $wpmWarehouseUserId, // Strictly ID 98 dari database project_warehouse
                 ]);
 
                 $trackingMetadata['is_wpm_bypassed'] = true;
