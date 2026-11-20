@@ -96,8 +96,11 @@
                                 id="checkInForm">
                                 @csrf
                                 <div class="mb-3">
-                                    <label for="no_pol" class="form-label">No. Polisi (Plate Number) <span
-                                            class="text-danger">*</span></label>
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <label for="no_pol" class="form-label mb-0">No. Polisi (Plate Number) <span
+                                                class="text-danger">*</span></label>
+                                        <div id="driver_synced_badge" style="display: none;"></div>
+                                    </div>
                                     <select class="form-select" id="no_pol" name="no_pol" required>
                                         <option value="" selected disabled>Pilih atau Ketik No. Polisi</option>
                                     </select>
@@ -165,9 +168,42 @@
                                             step="any" placeholder="Kuantitas SPB">
                                     </div>
                                 </div>
+
+                                <!-- Driver Information Section: Muncul jika Nopol baru atau data driver dari Pos 1 kosong -->
+                                <div class="row" id="driver_fields_container" style="display: none;">
+                                    <div class="col-12 mb-2">
+                                        <div class="alert alert-warning py-2 px-3 mb-2 d-flex align-items-center justify-content-between border-0 shadow-sm"
+                                            id="driver_alert_box">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="ri-alert-line fs-18 text-warning" id="driver_alert_icon"></i>
+                                                <div>
+                                                    <strong class="fs-12 d-block text-dark" id="driver_alert_title">Data Driver Belum Ada di Sistem</strong>
+                                                    <span class="fs-11 text-muted" id="driver_alert_desc">Nopol baru atau belum memiliki data driver di Pos 1. Harap isi Nama & No. HP Driver agar tersinkronisasi:</span>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-warning text-dark fs-11 px-2 py-1" id="driver_badge_state">Wajib Diisi</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="nama_driver" class="form-label">Nama Driver / Supir <span class="text-danger" id="req_nama_driver">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light text-muted"><i class="ri-user-3-line"></i></span>
+                                            <input type="text" class="form-control" id="nama_driver" name="nama_driver"
+                                                placeholder="Masukkan nama driver / supir">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="no_hp_driver" class="form-label">No. HP Driver (WhatsApp) <span class="text-danger" id="req_no_hp_driver">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light text-success"><i class="ri-whatsapp-line"></i></span>
+                                            <input type="text" class="form-control" id="no_hp_driver" name="no_hp_driver"
+                                                placeholder="Contoh: 08123456789 atau 62812...">
+                                        </div>
+                                        <small class="text-muted fs-11">Nomor WhatsApp aktif untuk menerima panggilan dock & status bongkar/muat.</small>
+                                    </div>
+                                </div>
+
                                 <div class="row">
-                                    <input type="hidden" id="nama_driver" name="nama_driver">
-                                    <input type="hidden" id="no_hp_driver" name="no_hp_driver">
                                     <input type="hidden" id="checkin_pos1" name="checkin_pos1">
                                     <input type="hidden" id="trnvisitorid" name="trnvisitorid">
                                     <div class="d-grid">
@@ -485,19 +521,27 @@
             // Load on init
             loadSupplierData();
 
-            // Handle plate selection change to auto populate vendor name
+            function escapeHtml(text) {
+                if (!text) return '';
+                return $('<div>').text(text).html();
+            }
+
+            // Handle plate selection change to auto populate vendor name & driver details
             $('#no_pol').on('change', function() {
                 const selectedNopol = $(this).val();
                 if (!selectedNopol) {
-                    $('#nama_driver').val('');
-                    $('#no_hp_driver').val('');
+                    $('#nama_driver').val('').prop('required', false);
+                    $('#no_hp_driver').val('').prop('required', false);
+                    $('#driver_fields_container').slideUp(200);
+                    $('#driver_synced_badge').hide().empty();
                     return;
                 }
 
+                const cleanedNopol = selectedNopol.toUpperCase().replace(/\s+/g, '');
+
                 // Find the matched supplier item from the API response
                 const matchedSupplier = supplierDataList.find(function(item) {
-                    return item.nopol.toUpperCase().replace(/\s+/g, '') === selectedNopol
-                        .toUpperCase().replace(/\s+/g, '');
+                    return item.nopol && item.nopol.toUpperCase().replace(/\s+/g, '') === cleanedNopol;
                 });
 
                 if (matchedSupplier) {
@@ -519,17 +563,95 @@
                         }
                     }
 
-                    // Auto populate driver name, phone & supplier check-in pos 1
-                    $('#nama_driver').val(matchedSupplier.nama_driver || '');
-                    $('#no_hp_driver').val(matchedSupplier.no_hp_driver || '');
                     $('#checkin_pos1').val(matchedSupplier.checkin_pos1 || '');
                     $('#trnvisitorid').val(matchedSupplier.trnvisitorid || '');
+
+                    const apiDriverName = (matchedSupplier.nama_driver || '').trim();
+                    const apiDriverPhone = (matchedSupplier.no_hp_driver || '').trim();
+
+                    // Cek apakah data driver dari Pos 1 ada dan lengkap
+                    if (apiDriverName && apiDriverPhone) {
+                        $('#nama_driver').val(apiDriverName).prop('required', false);
+                        $('#no_hp_driver').val(apiDriverPhone).prop('required', false);
+                        $('#driver_fields_container').slideUp(200);
+
+                        $('#driver_synced_badge').html(`
+                            <span class="badge bg-soft-success text-success border border-success-subtle px-2 py-1 fs-11">
+                                <i class="ri-checkbox-circle-fill me-1"></i>Driver: <strong>${escapeHtml(apiDriverName)}</strong> (${escapeHtml(apiDriverPhone)})
+                            </span>
+                            <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-decoration-none fs-11 text-primary" id="btn_toggle_driver_edit" title="Klik untuk mengedit data driver">
+                                <i class="ri-pencil-line"></i> Ubah
+                            </button>
+                        `).show();
+                    } else {
+                        // Data driver di Pos 1 kosong / tidak lengkap
+                        $('#nama_driver').val(apiDriverName).prop('required', true);
+                        $('#no_hp_driver').val(apiDriverPhone).prop('required', true);
+                        $('#driver_synced_badge').hide().empty();
+
+                        $('#driver_alert_title').text('Data Driver Belum Ada di Pos 1');
+                        $('#driver_alert_desc').text('Kendaraan ini belum memiliki data driver di Pos 1. Harap masukkan Nama & No. HP Driver agar tersinkronisasi:');
+                        $('#driver_alert_box').removeClass('alert-info').addClass('alert-warning');
+                        $('#driver_badge_state').removeClass('bg-info').addClass('bg-warning text-dark').text('Wajib Diisi');
+                        $('#driver_fields_container').slideDown(250);
+                    }
                 } else {
-                    $('#nama_driver').val('');
-                    $('#no_hp_driver').val('');
+                    // Nopol BARU (tidak ada di data API Pos 1)
                     $('#checkin_pos1').val('');
                     $('#trnvisitorid').val('');
+                    $('#driver_synced_badge').hide().empty();
+
+                    // Coba cari riwayat transaksi lokal untuk nopol ini
+                    $.ajax({
+                        url: "{{ route('vehicle.monitoring.timbangan.driver_lookup') }}",
+                        type: 'GET',
+                        data: { no_pol: cleanedNopol },
+                        success: function(lookup) {
+                            if (lookup && lookup.found) {
+                                $('#nama_driver').val(lookup.nama_driver || '').prop('required', true);
+                                $('#no_hp_driver').val(lookup.no_hp_driver || '').prop('required', true);
+                                if (lookup.vendor && !$('#vendor').val()) {
+                                    if ($("#vendor").find("option[value='" + lookup.vendor + "']").length === 0) {
+                                        const newOption = new Option(lookup.vendor, lookup.vendor, true, true);
+                                        $("#vendor").append(newOption).trigger('change');
+                                    } else {
+                                        $('#vendor').val(lookup.vendor).trigger('change');
+                                    }
+                                }
+                                $('#driver_alert_title').text('Nopol Baru di Pos 1 (Ditemukan Riwayat Kunjungan)');
+                                $('#driver_alert_desc').text('Data driver diambil dari riwayat kunjungan sebelumnya. Silakan verifikasi Nama & No. HP Driver:');
+                                $('#driver_alert_box').removeClass('alert-warning').addClass('alert-info');
+                                $('#driver_badge_state').removeClass('bg-warning text-dark').addClass('bg-info text-white').text('Riwayat Ditemukan');
+                            } else {
+                                $('#nama_driver').val('').prop('required', true);
+                                $('#no_hp_driver').val('').prop('required', true);
+                                $('#driver_alert_title').text('Nopol Baru - Belum Ada Data Driver');
+                                $('#driver_alert_desc').text('Nomor polisi ini baru / belum terdaftar di Pos 1. Harap masukkan Nama & No. HP Driver agar tersinkronisasi:');
+                                $('#driver_alert_box').removeClass('alert-info').addClass('alert-warning');
+                                $('#driver_badge_state').removeClass('bg-info').addClass('bg-warning text-dark').text('Wajib Diisi');
+                            }
+                            $('#driver_fields_container').slideDown(250);
+                        },
+                        error: function() {
+                            $('#nama_driver').val('').prop('required', true);
+                            $('#no_hp_driver').val('').prop('required', true);
+                            $('#driver_alert_title').text('Nopol Baru - Belum Ada Data Driver');
+                            $('#driver_alert_desc').text('Nomor polisi ini baru / belum terdaftar di Pos 1. Harap masukkan Nama & No. HP Driver agar tersinkronisasi:');
+                            $('#driver_alert_box').removeClass('alert-info').addClass('alert-warning');
+                            $('#driver_badge_state').removeClass('bg-info').addClass('bg-warning text-dark').text('Wajib Diisi');
+                            $('#driver_fields_container').slideDown(250);
+                        }
+                    });
                 }
+            });
+
+            // Handle klik tombol Ubah pada badge driver tersinkron
+            $(document).on('click', '#btn_toggle_driver_edit', function() {
+                $('#driver_alert_title').text('Perbarui Data Driver');
+                $('#driver_alert_desc').text('Silakan ubah Nama atau No. HP Driver di bawah jika ada pergantian supir:');
+                $('#driver_alert_box').removeClass('alert-warning').addClass('alert-info');
+                $('#driver_badge_state').removeClass('bg-warning text-dark').addClass('bg-primary text-white').text('Edit Driver');
+                $('#driver_fields_container').slideToggle(200);
             });
 
             fetchTransactions();
@@ -992,8 +1114,10 @@
                         $('#vendor').val(null).trigger('change');
                         $('#no_spb').val('');
                         $('#qty_spb').val('');
-                        $('#nama_driver').val('');
-                        $('#no_hp_driver').val('');
+                        $('#nama_driver').val('').prop('required', false);
+                        $('#no_hp_driver').val('').prop('required', false);
+                        $('#driver_fields_container').hide();
+                        $('#driver_synced_badge').hide().empty();
                         $('#checkin_pos1').val('');
                         $('#trnvisitorid').val('');
 

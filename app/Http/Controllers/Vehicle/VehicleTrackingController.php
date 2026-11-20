@@ -727,6 +727,36 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Lookup driver info from previous transactions for a given plate number.
+     */
+    public function driverLookup(Request $request)
+    {
+        $nopol = strtoupper(str_replace(' ', '', $request->get('no_pol', '')));
+        if (empty($nopol)) {
+            return response()->json(['found' => false]);
+        }
+
+        $lastTx = VehicleTransaction::whereHas('vehicle', function ($q) use ($nopol) {
+            $q->where(DB::raw("REPLACE(UPPER(no_pol), ' ', '')"), $nopol);
+        })
+            ->whereNotNull('nama_driver')
+            ->where('nama_driver', '!=', '')
+            ->latest('id')
+            ->first();
+
+        if ($lastTx) {
+            return response()->json([
+                'found' => true,
+                'nama_driver' => $lastTx->nama_driver,
+                'no_hp_driver' => $lastTx->no_hp_driver,
+                'vendor' => $lastTx->vendor
+            ]);
+        }
+
+        return response()->json(['found' => false]);
+    }
+
+    /**
      * Get supplier data from external API.
      */
     public function getSupplierData(Request $request)
@@ -872,6 +902,23 @@ class VehicleTrackingController extends Controller
                         $cleanedVendor = trim(substr($cleanedVendor, 1));
                     }
                     $vendor = $cleanedVendor;
+                }
+            }
+
+            // Fallback: cek riwayat transaksi lokal jika masih kosong
+            if (empty($namaDriver) || empty($noHpDriver)) {
+                $lastTx = VehicleTransaction::whereHas('vehicle', function ($q) use ($noPol) {
+                    $q->where(DB::raw("REPLACE(UPPER(no_pol), ' ', '')"), $noPol);
+                })
+                    ->whereNotNull('nama_driver')
+                    ->where('nama_driver', '!=', '')
+                    ->latest('id')
+                    ->first();
+
+                if ($lastTx) {
+                    if (empty($namaDriver)) $namaDriver = $lastTx->nama_driver;
+                    if (empty($noHpDriver)) $noHpDriver = $lastTx->no_hp_driver;
+                    if (empty($vendor)) $vendor = $lastTx->vendor;
                 }
             }
         }
