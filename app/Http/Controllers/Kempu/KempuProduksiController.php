@@ -788,6 +788,7 @@ class KempuProduksiController extends Controller
             ], 422);
         }
 
+        $currentStatus = trim($kempu->main?->current_status ?? $kempu->current_status ?? '');
         $currentReused = (int)($kempu->main?->reused_count ?? 0);
         $fromLocation  = $kempu->main?->current_location ?? $card['from_loc'];
         $toLocation    = $card['to_loc'];
@@ -796,6 +797,27 @@ class KempuProduksiController extends Controller
         $actionTitle   = $card['title'];
         $actionResult  = 'OK';
         $resultMessage = "Aksi '{$card['title']}' untuk kempu {$idKempu} berhasil diproses.";
+
+        $isBypassWpm = false;
+        if ($cardKey === 'transfer-in-from-wpm') {
+            $qcPmReleaseStatuses = [
+                MasterKempuModel::STATUS_QC_PM_RELEASE,
+                MasterKempuModel::STATUS_QC_PM_PASSED,
+                'QC_PM_RELEASE',
+                'QC_PM_PASSED',
+                'QC PM Release',
+                'QC PM Passed',
+                'QC PM Lolos',
+                'QC PM Lolos (Release)',
+                'QC_PM_INCOMING_BULK_LOLOS_RELEASE',
+            ];
+            foreach ($qcPmReleaseStatuses as $st) {
+                if (strcasecmp($currentStatus, $st) === 0) {
+                    $isBypassWpm = true;
+                    break;
+                }
+            }
+        }
 
         // Logika khusus per Card
         if ($cardKey === 'prod-force') {
@@ -1123,6 +1145,45 @@ class KempuProduksiController extends Controller
             if ($cardKey === 'scan-1-filling-kempu') {
                 $trackingMetadata['no_po'] = $noPo;
                 $trackingMetadata['photos'] = $uploadedPhotos;
+            }
+
+            // Auto-insert step "Transfer Out To Produksi" di WPM jika kempu bypass langsung dari QC PM Release
+            if ($isBypassWpm) {
+                $wpmUserId = 98;
+                if (!User::where('id', $wpmUserId)->exists()) {
+                    DB::table('users')->insert([
+                        'id'           => 98,
+                        'username'     => 'wpm_system',
+                        'nama_lengkap' => 'WPM System Auto',
+                        'email'        => 'wpm_system@pt-bas.co.id',
+                        'password'     => bcrypt('wpm_auto_system_98'),
+                        'created_at'   => now(),
+                        'updated_at'   => now(),
+                    ]);
+                }
+
+                KempuTrackingHistoryModel::create([
+                    'kempu_master_id' => $kempu->id,
+                    'id_kempu'        => $kempu->id_kempu,
+                    'stage'           => 'WPM',
+                    'action'          => 'Transfer Out To Produksi',
+                    'action_result'   => 'SUCCESS',
+                    'from_location'   => MasterKempuModel::LOC_WPM,
+                    'to_location'     => MasterKempuModel::LOC_PRODUKSI,
+                    'reused_count'    => $currentReused,
+                    'condition'       => $condition,
+                    'notes'           => '[Auto Generated - Bypass Transfer In Produksi]',
+                    'metadata'        => [
+                        'app_source'      => 'production',
+                        'is_auto_step'    => true,
+                        'auto_reason'     => 'Bypass Transfer In from WPM (QC PM Released)',
+                        'previous_status' => $currentStatus,
+                        'triggered_by'    => $operatorName,
+                    ],
+                    'created_by'      => $wpmUserId,
+                ]);
+
+                $trackingMetadata['is_wpm_bypassed'] = true;
             }
 
             KempuTrackingHistoryModel::create([

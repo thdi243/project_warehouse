@@ -127,8 +127,11 @@ class KempuQcController extends Controller
                     MasterKempuModel::STATUS_GR_COMPLETED,
                     MasterKempuModel::STATUS_REGISTERED,
                     MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS,
+                    MasterKempuModel::STATUS_ENG_REPAIR,
                     'REGISTERED',
                     'Transfer In From PAS',
+                    'ENG_REPAIR',
+                    'REPAIR',
                 ],
             ],
             'qc-pre-cuci' => [
@@ -936,6 +939,104 @@ class KempuQcController extends Controller
             }
         }
 
+        // 2b. ATURAN STATUS PAS PADA QC PM (DILARANG KERAS DI-BYPASS WALAUPUN FORCE SCAN):
+        // Kempu dari alur PAS (Transfer Out to PAS, di PAS, Transfer Out dari PAS, atau In Transit WPM)
+        // WAJIB sudah di-scan Transfer In From PAS oleh Tim WPM (status WPM_TRANSFER_IN_FROM_PAS).
+        // Tidak boleh di-bypass ke QC PM maupun di-force scan jika belum berstatus WPM_TRANSFER_IN_FROM_PAS.
+        $isQcPmContext = in_array($qcType, ['qc-pm', 'qc-pm-force', 'qc-force']);
+        if ($isQcPmContext) {
+            $pasStatuses = [
+                MasterKempuModel::STATUS_WFG_TRANSFER_OUT_PAS,
+                MasterKempuModel::STATUS_IN_TRANSIT_PAS,
+                MasterKempuModel::STATUS_PAS_TRANSFER_IN_BAS,
+                MasterKempuModel::STATUS_PAS_RECEIVED,
+                MasterKempuModel::STATUS_PAS_TRANSFER_OUT_BAS,
+                MasterKempuModel::STATUS_IN_TRANSIT_WPM,
+                'WFG_TRANSFER_OUT_TO_PAS',
+                'IN_TRANSIT_PAS',
+                'TRANSFER_OUT_TO_PAS',
+                'PAS_TRANSFER_IN_FROM_BAS',
+                'PAS_RECEIVED',
+                'TRANSFER_IN_FROM_BAS',
+                'PAS_TRANSFER_OUT_TO_BAS',
+                'IN_TRANSIT_WPM',
+                'TRANSFER_OUT_TO_BAS',
+                'PAS_RETUR_TO_WFG',
+                'PAS_RETUR_TO_BAS_ISI',
+            ];
+
+            $isStillInPas = false;
+            foreach ($pasStatuses as $st) {
+                if (strcasecmp($currentStatus, $st) === 0) {
+                    $isStillInPas = true;
+                    break;
+                }
+            }
+
+            if (
+                !$isStillInPas &&
+                (strcasecmp($currentLocation, MasterKempuModel::LOC_PAS) === 0 ||
+                 strcasecmp($currentLocation, 'PAS') === 0 ||
+                 strcasecmp($currentLocation, 'WAREHOUSE_PAS') === 0)
+            ) {
+                $isStillInPas = true;
+            }
+
+            if ($isStillInPas) {
+                return [
+                    'valid'          => false,
+                    'is_pas_blocked' => true,
+                    'message'        => "Flow Salah! Kempu belum scan Transfer In From PAS oleh Tim WPM (Status saat ini: '{$currentStatus}'). Kempu yang masih di PAS tidak boleh di-bypass.",
+                ];
+            }
+
+            // Jika kempu pernah melewati alur WFG/PAS (siklus retur/reused), pastikan sudah benar-benar WPM_TRANSFER_IN_FROM_PAS atau ENG_REPAIR
+            if ($kempu->hasPassedWfg()) {
+                $validPrevStatuses = [
+                    MasterKempuModel::STATUS_WPM_TRANSFER_IN_PAS,
+                    'WPM_TRANSFER_IN_FROM_PAS',
+                    'WPM_TRANSFER_IN_PAS',
+                    'Transfer In From PAS',
+                    MasterKempuModel::STATUS_ENG_REPAIR,
+                    'ENG_REPAIR',
+                    'REPAIR',
+                ];
+
+                $hasValidPrev = false;
+                foreach ($validPrevStatuses as $st) {
+                    if (strcasecmp($currentStatus, $st) === 0) {
+                        $hasValidPrev = true;
+                        break;
+                    }
+                }
+
+                if (!$hasValidPrev) {
+                    // Kecualikan jika status adalah status internal QC PM yang sedang berjalan (QC_PM_PENDING / QC_PM_HOLD)
+                    $qcPmInternalStatuses = [
+                        MasterKempuModel::STATUS_QC_PM_PENDING,
+                        MasterKempuModel::STATUS_QC_PM_HOLD,
+                        'QC_PM_PENDING',
+                        'QC_PM_HOLD',
+                    ];
+                    $isInternalQcPm = false;
+                    foreach ($qcPmInternalStatuses as $st) {
+                        if (strcasecmp($currentStatus, $st) === 0) {
+                            $isInternalQcPm = true;
+                            break;
+                        }
+                    }
+
+                    if (!$isInternalQcPm) {
+                        return [
+                            'valid'          => false,
+                            'is_pas_blocked' => true,
+                            'message'        => "Flow Salah! Kempu retur dari PAS harus berstatus 'WPM_TRANSFER_IN_FROM_PAS' (harus sudah di-Transfer In di WPM). Status kempu saat ini: '{$currentStatus}'. Kempu tidak boleh di-bypass.",
+                        ];
+                    }
+                }
+            }
+        }
+
         // 3. Batas Maksimal Reused untuk QC
         $reused = (int)($kempu->main?->reused_count ?? 0);
 
@@ -1292,6 +1393,7 @@ class KempuQcController extends Controller
                 'qc_stage_context' => $qcStageContext,
                 'is_max_reused'    => ((int)($kempu->main->reused_count ?? 0) >= 21),
                 'is_flow_valid'    => $flowValidation['valid'],
+                'is_pas_blocked'   => $flowValidation['is_pas_blocked'] ?? false,
                 'flow_error'       => $flowValidation['message'],
             ],
         ]);

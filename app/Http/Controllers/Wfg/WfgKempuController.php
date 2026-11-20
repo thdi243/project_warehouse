@@ -88,7 +88,7 @@ class WfgKempuController extends Controller
 
         $totalWfg = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_WFG)
-              ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         return view('wfg.kempu.index', compact('cards', 'totalWfg'));
@@ -270,7 +270,7 @@ class WfgKempuController extends Controller
             return [
                 'valid'     => false,
                 'is_bypass' => false,
-                'message'   => "Flow Salah! Kempu berstatus SCRAP / Afkir dan tidak dapat diproses.",
+                'message'   => "Flow Salah! Kempu berstatus SCRAP dan tidak dapat diproses.",
             ];
         }
 
@@ -279,7 +279,7 @@ class WfgKempuController extends Controller
             return [
                 'valid'     => false,
                 'is_bypass' => false,
-                'message'   => "Flow Salah! Kempu sedang berstatus REPAIR di Workshop Engineering.",
+                'message'   => "Flow Salah! Kempu sedang berstatus REPAIR di Workshop Engineering, Harus scan oleh tim QC PM dahulu.",
             ];
         }
 
@@ -293,7 +293,7 @@ class WfgKempuController extends Controller
             return [
                 'valid'     => false,
                 'is_bypass' => false,
-                'message'   => "Flow Salah! Kempu sedang berstatus REPRO di Produksi.",
+                'message'   => "Flow Salah! Kempu sedang berstatus REPRO di Produksi. Harus scan oleh tim QC After Filling dahulu.",
             ];
         }
 
@@ -307,7 +307,7 @@ class WfgKempuController extends Controller
             return [
                 'valid'     => false,
                 'is_bypass' => false,
-                'message'   => "Flow Salah! Kempu sedang ditahan (HOLD) oleh Tim QC.",
+                'message'   => "Flow Salah! Kempu sedang ditahan (HOLD) oleh Tim QC. Harus scan oleh Tim QC dahulu.",
             ];
         }
 
@@ -339,7 +339,7 @@ class WfgKempuController extends Controller
 
                 $currentStatusClean = strtolower(str_replace(['-', ' '], '_', $currentStatus));
                 $isNormalValid = in_array(strtolower($currentStatus), $allowedPrev, true) ||
-                                 in_array($currentStatusClean, $allowedPrev, true);
+                    in_array($currentStatusClean, $allowedPrev, true);
 
                 if (!$isNormalValid) {
                     // Status bukan PROD_TRANSFER_OUT_TO_WFG -> Memerlukan wfg-kempu-supervisi untuk bypass
@@ -386,7 +386,7 @@ class WfgKempuController extends Controller
 
                 $currentStatusClean = strtolower(str_replace(['-', ' '], '_', $currentStatus));
                 $isNormalValid = in_array(strtolower($currentStatus), $allowedPrev, true) ||
-                                 in_array($currentStatusClean, $allowedPrev, true);
+                    in_array($currentStatusClean, $allowedPrev, true);
 
                 if (!$isNormalValid) {
                     // Status bukan STATUS_WFG_TRANSFER_IN_PROD -> Memerlukan wfg-kempu-supervisi untuk bypass
@@ -394,7 +394,7 @@ class WfgKempuController extends Controller
                         return [
                             'valid'     => false,
                             'is_bypass' => false,
-                            'message'   => "Flow Salah! Kempu harus berstatus 'WFG_TRANSFER_IN_FROM_PROD' (harus transfer in dulu di WFG). Status kempu saat ini: '{$currentStatus}'. Anda tidak memiliki permission 'wfg-kempu-supervisi' untuk melakukan bypass step.",
+                            'message'   => "Flow Salah! Kempu belum scan transfer in dari Produksi. Harus scan transfer in terlebih dahulu.",
                         ];
                     }
 
@@ -402,7 +402,7 @@ class WfgKempuController extends Controller
                     return [
                         'valid'     => true,
                         'is_bypass' => true,
-                        'message'   => "Mode Supervisi: Kempu diproses dengan Bypass Alur (Kempu belum transfer in di WFG, status sebelumnya: {$currentStatus}).",
+                        'message'   => "Mode Supervisi: Kempu diproses dengan Bypass Alur.",
                     ];
                 }
                 break;
@@ -550,8 +550,8 @@ class WfgKempuController extends Controller
 
         $cycleNoPo = $cycleFilling?->no_po
             ?: ($kempu->main?->no_po
-            ?: ($latestFilledCycle?->no_po
-            ?: ($kempu->no_spb ?? '')));
+                ?: ($latestFilledCycle?->no_po
+                    ?: ($kempu->no_spb ?? '')));
 
         if (empty($cycleNoPo)) {
             $lastTracking = KempuTrackingHistoryModel::where('kempu_master_id', $kempu->id)
@@ -966,7 +966,7 @@ class WfgKempuController extends Controller
 
         $totalCurrentWfg = MasterKempuModel::whereHas('main', function ($q) {
             $q->where('current_location', MasterKempuModel::LOC_WFG)
-              ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+                ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
         })->count();
 
         $totalTransferInToday = KempuTrackingHistoryModel::where('stage', 'WFG')
@@ -1015,7 +1015,7 @@ class WfgKempuController extends Controller
             // Data kempu yang saat ini berada di lokasi WFG
             $query = MasterKempuModel::whereHas('main', function ($q) {
                 $q->where('current_location', MasterKempuModel::LOC_WFG)
-                  ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
+                    ->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
             })->with(['main', 'createdBy:id,username,nama_lengkap']);
 
             if ($request->filled('search')) {
@@ -1089,7 +1089,7 @@ class WfgKempuController extends Controller
         // Default: Log Riwayat Scan WFG (Hanya scan yang berasal dari stasiun WFG)
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'WFG')
-              ->orWhere('stage', 'like', 'WFG%');
+                ->orWhere('stage', 'like', 'WFG%');
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',
@@ -1114,11 +1114,11 @@ class WfgKempuController extends Controller
                     ->orWhere('notes', 'like', "%{$s}%")
                     ->orWhereHas('masterKempu', function ($mq) use ($s) {
                         $mq->where('rfid', 'like', "%{$s}%")
-                           ->orWhere('no_spb', 'like', "%{$s}%");
+                            ->orWhere('no_spb', 'like', "%{$s}%");
                     })
                     ->orWhereHas('createdBy', function ($uq) use ($s) {
                         $uq->where('username', 'like', "%{$s}%")
-                           ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                            ->orWhere('nama_lengkap', 'like', "%{$s}%");
                     });
             });
         }
@@ -1156,7 +1156,7 @@ class WfgKempuController extends Controller
     {
         $query = KempuTrackingHistoryModel::where(function ($q) {
             $q->where('stage', 'WFG')
-              ->orWhere('stage', 'like', 'WFG%');
+                ->orWhere('stage', 'like', 'WFG%');
         })->with([
             'createdBy:id,username,nama_lengkap',
             'masterKempu:id,id_kempu,rfid,no_spb,status',
@@ -1181,11 +1181,11 @@ class WfgKempuController extends Controller
                     ->orWhere('notes', 'like', "%{$s}%")
                     ->orWhereHas('masterKempu', function ($mq) use ($s) {
                         $mq->where('rfid', 'like', "%{$s}%")
-                           ->orWhere('no_spb', 'like', "%{$s}%");
+                            ->orWhere('no_spb', 'like', "%{$s}%");
                     })
                     ->orWhereHas('createdBy', function ($uq) use ($s) {
                         $uq->where('username', 'like', "%{$s}%")
-                           ->orWhere('nama_lengkap', 'like', "%{$s}%");
+                            ->orWhere('nama_lengkap', 'like', "%{$s}%");
                     });
             });
         }
