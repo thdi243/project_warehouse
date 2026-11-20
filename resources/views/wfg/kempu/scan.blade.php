@@ -774,6 +774,25 @@
                                 'color': '#ffffff'
                             })
                             .html(`<i class="ri-forbid-line me-1"></i> Alur Tidak Sesuai`);
+                    } else if (k.is_bypass) {
+                        $('#alertFlowErrorBox').html(`
+                            <div class="alert alert-warning border border-warning-subtle d-flex align-items-start gap-2 mb-3 py-2 px-3">
+                                <i class="ri-shield-keyhole-line fs-20 text-warning flex-shrink-0 mt-1"></i>
+                                <div>
+                                    <div class="fw-bold fs-13 text-dark">Mode Supervisi (Bypass Step)</div>
+                                    <div class="fs-12 text-muted">${k.bypass_message || 'Kempu diproses dengan wewenang supervisi (melewati alur standar).'}</div>
+                                </div>
+                            </div>
+                        `).show();
+
+                        $('#btnModalConfirm')
+                            .prop('disabled', false)
+                            .css({
+                                'background-color': '#f59e0b',
+                                'border-color': '#d97706',
+                                'color': '#ffffff'
+                            })
+                            .html(`<i class="ri-shield-check-line me-1"></i> Konfirmasi (Bypass Supervisi)`);
                     } else {
                         $('#btnModalConfirm')
                             .prop('disabled', false)

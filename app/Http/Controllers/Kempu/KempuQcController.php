@@ -2042,7 +2042,7 @@ class KempuQcController extends Controller
                 }
 
                 $q->where('current_status', '!=', MasterKempuModel::STATUS_SCRAPPED);
-            })->with(['main', 'createdBy:id,username,nama_lengkap']);
+            })->with(['main', 'latestCycleFilling', 'createdBy:id,username,nama_lengkap']);
 
             if ($request->filled('search')) {
                 $s = trim($request->search);
@@ -2064,6 +2064,36 @@ class KempuQcController extends Controller
                         $q->where('reused_count', '<', 18);
                     }
                 });
+            }
+
+            if ($request->filled('has_photo') && $request->has_photo !== 'all') {
+                if ($request->has_photo === 'yes') {
+                    $query->where(function ($q) {
+                        $q->whereHas('latestCycleFilling', function ($fq) {
+                            $fq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        })->orWhereHas('main', function ($mq) {
+                            $mq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        });
+                    });
+                } elseif ($request->has_photo === 'no') {
+                    $query->whereDoesntHave('latestCycleFilling', function ($fq) {
+                        $fq->whereNotNull('foto_1')
+                            ->orWhereNotNull('foto_2')
+                            ->orWhereNotNull('foto_3')
+                            ->orWhereNotNull('foto_4');
+                    })->whereDoesntHave('main', function ($mq) {
+                        $mq->whereNotNull('foto_1')
+                            ->orWhereNotNull('foto_2')
+                            ->orWhereNotNull('foto_3')
+                            ->orWhereNotNull('foto_4');
+                    });
+                }
             }
 
             $paginated = $query->orderBy(
@@ -2092,6 +2122,8 @@ class KempuQcController extends Controller
             ->with([
                 'createdBy:id,username,nama_lengkap',
                 'masterKempu:id,id_kempu,rfid,no_spb,status',
+                'masterKempu.main',
+                'masterKempu.latestCycleFilling',
             ]);
 
         // Klasifikasi QC
@@ -2137,15 +2169,59 @@ class KempuQcController extends Controller
                     ->orWhere('notes', 'like', "%{$s}%")
                     ->orWhere('action', 'like', "%{$s}%")
                     ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"])
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.no_po')) LIKE ?", ["%{$s}%"])
                     ->orWhereHas('masterKempu', function ($mq) use ($s) {
                         $mq->where('rfid', 'like', "%{$s}%")
-                            ->orWhere('no_spb', 'like', "%{$s}%");
+                            ->orWhere('no_spb', 'like', "%{$s}%")
+                            ->orWhereHas('latestCycleFilling', function ($fq) use ($s) {
+                                $fq->where('no_po', 'like', "%{$s}%");
+                            });
                     })
                     ->orWhereHas('createdBy', function ($uq) use ($s) {
                         $uq->where('username', 'like', "%{$s}%")
                             ->orWhere('nama_lengkap', 'like', "%{$s}%");
                     });
             });
+        }
+
+        // Filter Foto Filling
+        if ($request->filled('has_photo') && $request->has_photo !== 'all') {
+            if ($request->has_photo === 'yes') {
+                $query->where(function ($q) {
+                    $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos.foto_1')) IS NOT NULL")
+                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos.foto_2')) IS NOT NULL")
+                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos.foto_3')) IS NOT NULL")
+                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos.foto_4')) IS NOT NULL")
+                        ->orWhereHas('masterKempu.latestCycleFilling', function ($fq) {
+                            $fq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        })
+                        ->orWhereHas('masterKempu.main', function ($mq) {
+                            $mq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        });
+                });
+            } elseif ($request->has_photo === 'no') {
+                $query->where(function ($q) {
+                    $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos')) IS NULL")
+                        ->whereDoesntHave('masterKempu.latestCycleFilling', function ($fq) {
+                            $fq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        })
+                        ->whereDoesntHave('masterKempu.main', function ($mq) {
+                            $mq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        });
+                });
+            }
         }
 
         $paginated = $query->latest('id')->paginate($perPage);
@@ -2213,15 +2289,46 @@ class KempuQcController extends Controller
                     ->orWhere('notes', 'like', "%{$s}%")
                     ->orWhere('action', 'like', "%{$s}%")
                     ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.operator_name')) LIKE ?", ["%{$s}%"])
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.no_po')) LIKE ?", ["%{$s}%"])
                     ->orWhereHas('masterKempu', function ($mq) use ($s) {
                         $mq->where('rfid', 'like', "%{$s}%")
-                            ->orWhere('no_spb', 'like', "%{$s}%");
+                            ->orWhere('no_spb', 'like', "%{$s}%")
+                            ->orWhereHas('latestCycleFilling', function ($fq) use ($s) {
+                                $fq->where('no_po', 'like', "%{$s}%");
+                            });
                     })
                     ->orWhereHas('createdBy', function ($uq) use ($s) {
                         $uq->where('username', 'like', "%{$s}%")
                             ->orWhere('nama_lengkap', 'like', "%{$s}%");
                     });
             });
+        }
+
+        if ($request->filled('has_photo') && $request->has_photo !== 'all') {
+            if ($request->has_photo === 'yes') {
+                $query->where(function ($q) {
+                    $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos.foto_1')) IS NOT NULL")
+                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos.foto_2')) IS NOT NULL")
+                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos.foto_3')) IS NOT NULL")
+                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos.foto_4')) IS NOT NULL")
+                        ->orWhereHas('masterKempu.latestCycleFilling', function ($fq) {
+                            $fq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        });
+                });
+            } elseif ($request->has_photo === 'no') {
+                $query->where(function ($q) {
+                    $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.photos')) IS NULL")
+                        ->whereDoesntHave('masterKempu.latestCycleFilling', function ($fq) {
+                            $fq->whereNotNull('foto_1')
+                                ->orWhereNotNull('foto_2')
+                                ->orWhereNotNull('foto_3')
+                                ->orWhereNotNull('foto_4');
+                        });
+                });
+            }
         }
 
         $records = $query->latest('id')->get();

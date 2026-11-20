@@ -130,6 +130,21 @@ class WfgKempuController extends Controller
     }
 
     /**
+     * Cek apakah user saat ini memiliki wewenang supervisi untuk bypass alur proses di WFG Kempu.
+     */
+    public static function canSupervisi($user = null): bool
+    {
+        $user = $user ?? Auth::user();
+        if (!$user) {
+            return false;
+        }
+
+        return $user->hasAnyPermission(['super-admin', 'wfg-kempu-supervisi'])
+            || (method_exists($user, 'hasRole') && $user->hasRole('super-admin'))
+            || ($user->is_admin ?? false);
+    }
+
+    /**
      * Cek apakah status kempu saat ini adalah status yang belum melalui Scan 1 Filling di Produksi
      * (misal datang langsung dari WPM, QC PM, atau tahap awal Produksi) sehingga perlu +1 reused saat tiba di WFG.
      */
@@ -244,24 +259,27 @@ class WfgKempuController extends Controller
     /**
      * Validasi alur urutan status dan pencegahan duplikat scan di WFG
      */
-    public static function validateStatusFlow($kempu, string $cardKey): array
+    public static function validateStatusFlow($kempu, string $cardKey, $user = null): array
     {
+        $user = $user ?? Auth::user();
         $currentStatus = trim($kempu->main?->current_status ?? $kempu->current_status ?? '');
         $idKempu = $kempu->id_kempu;
 
         // 1. Cek jika kempu berstatus SCRAP
         if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0) {
             return [
-                'valid'   => false,
-                'message' => "Flow Salah! Kempu berstatus SCRAP / Afkir dan tidak dapat diproses.",
+                'valid'     => false,
+                'is_bypass' => false,
+                'message'   => "Flow Salah! Kempu berstatus SCRAP / Afkir dan tidak dapat diproses.",
             ];
         }
 
         // 2. Cek jika kempu berstatus REPAIR di Workshop Engineering
         if (strcasecmp($currentStatus, MasterKempuModel::STATUS_ENG_REPAIR) === 0 || strcasecmp($currentStatus, 'ENG_REPAIR') === 0) {
             return [
-                'valid'   => false,
-                'message' => "Flow Salah! Kempu sedang berstatus REPAIR di Workshop Engineering.",
+                'valid'     => false,
+                'is_bypass' => false,
+                'message'   => "Flow Salah! Kempu sedang berstatus REPAIR di Workshop Engineering.",
             ];
         }
 
@@ -273,8 +291,9 @@ class WfgKempuController extends Controller
             str_contains(strtoupper($currentStatus), 'REPRO')
         ) {
             return [
-                'valid'   => false,
-                'message' => "Flow Salah! Kempu sedang berstatus REPRO di Produksi.",
+                'valid'     => false,
+                'is_bypass' => false,
+                'message'   => "Flow Salah! Kempu sedang berstatus REPRO di Produksi.",
             ];
         }
 
@@ -286,8 +305,9 @@ class WfgKempuController extends Controller
             str_contains(strtoupper($currentStatus), '_HOLD')
         ) {
             return [
-                'valid'   => false,
-                'message' => "Flow Salah! Kempu sedang ditahan (HOLD) oleh Tim QC.",
+                'valid'     => false,
+                'is_bypass' => false,
+                'message'   => "Flow Salah! Kempu sedang ditahan (HOLD) oleh Tim QC.",
             ];
         }
 
@@ -300,22 +320,42 @@ class WfgKempuController extends Controller
                     strcasecmp($currentStatus, MasterKempuModel::STATUS_WFG_RECEIVED) === 0
                 ) {
                     return [
-                        'valid'   => false,
-                        'message' => "Flow Salah! Kempu sudah scan Transfer in From Produksi.",
+                        'valid'     => false,
+                        'is_bypass' => false,
+                        'message'   => "Flow Salah! Kempu sudah scan Transfer in From Produksi.",
                     ];
                 }
 
-                // 2. Wajib berasal dari Transfer Out to WFG oleh Produksi atau Alur Bypass (Pre-Produksi / WPM)
+                // 2. Wajib berstatus PROD_TRANSFER_OUT_TO_WFG (sudah ditransfer out oleh Produksi)
                 $allowedPrev = [
                     'transfer out to wfg',
+                    'transfer_out_to_wfg',
+                    'prod_transfer_out_to_wfg',
+                    'prod_transfer_out_wfg',
+                    'in_transit_wfg',
                     strtolower(MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG),
                     strtolower(MasterKempuModel::STATUS_IN_TRANSIT_WFG),
                 ];
-                if (!in_array(strtolower($currentStatus), $allowedPrev) && !self::isPreScan1Status($currentStatus)) {
-                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
+
+                $currentStatusClean = strtolower(str_replace(['-', ' '], '_', $currentStatus));
+                $isNormalValid = in_array(strtolower($currentStatus), $allowedPrev, true) ||
+                                 in_array($currentStatusClean, $allowedPrev, true);
+
+                if (!$isNormalValid) {
+                    // Status bukan PROD_TRANSFER_OUT_TO_WFG -> Memerlukan wfg-kempu-supervisi untuk bypass
+                    if (!self::canSupervisi($user)) {
+                        return [
+                            'valid'     => false,
+                            'is_bypass' => false,
+                            'message'   => "Flow Salah! Kempu harus berstatus 'PROD_TRANSFER_OUT_TO_WFG' (sudah ditransfer out oleh Tim Produksi). Status kempu saat ini: '{$currentStatus}'. Anda tidak memiliki permission 'wfg-kempu-supervisi' untuk melakukan bypass step.",
+                        ];
+                    }
+
+                    // User memiliki permission supervisi, diizinkan bypass
                     return [
-                        'valid'   => false,
-                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer Out to WFG oleh Tim Produksi.",
+                        'valid'     => true,
+                        'is_bypass' => true,
+                        'message'   => "Mode Supervisi: Kempu diproses dengan Bypass Alur (Status sebelumnya: {$currentStatus}).",
                     ];
                 }
                 break;
@@ -328,22 +368,41 @@ class WfgKempuController extends Controller
                     strcasecmp($currentStatus, MasterKempuModel::STATUS_IN_TRANSIT_PAS) === 0
                 ) {
                     return [
-                        'valid'   => false,
-                        'message' => "Flow Salah! Kempu sudah scan Transfer Out to PAS.",
+                        'valid'     => false,
+                        'is_bypass' => false,
+                        'message'   => "Flow Salah! Kempu sudah scan Transfer Out to PAS.",
                     ];
                 }
 
-                // 2. Wajib dari Transfer in From Produksi
+                // 2. Wajib berstatus STATUS_WFG_TRANSFER_IN_PROD (harus transfer in dulu di WFG)
                 $allowedPrev = [
                     'transfer in from produksi',
+                    'wfg_transfer_in_from_prod',
+                    'wfg_transfer_in_prod',
+                    'wfg_received',
                     strtolower(MasterKempuModel::STATUS_WFG_TRANSFER_IN_PROD),
                     strtolower(MasterKempuModel::STATUS_WFG_RECEIVED),
                 ];
-                if (!in_array(strtolower($currentStatus), $allowedPrev)) {
-                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
+
+                $currentStatusClean = strtolower(str_replace(['-', ' '], '_', $currentStatus));
+                $isNormalValid = in_array(strtolower($currentStatus), $allowedPrev, true) ||
+                                 in_array($currentStatusClean, $allowedPrev, true);
+
+                if (!$isNormalValid) {
+                    // Status bukan STATUS_WFG_TRANSFER_IN_PROD -> Memerlukan wfg-kempu-supervisi untuk bypass
+                    if (!self::canSupervisi($user)) {
+                        return [
+                            'valid'     => false,
+                            'is_bypass' => false,
+                            'message'   => "Flow Salah! Kempu harus berstatus 'WFG_TRANSFER_IN_FROM_PROD' (harus transfer in dulu di WFG). Status kempu saat ini: '{$currentStatus}'. Anda tidak memiliki permission 'wfg-kempu-supervisi' untuk melakukan bypass step.",
+                        ];
+                    }
+
+                    // User memiliki permission supervisi, diizinkan bypass
                     return [
-                        'valid'   => false,
-                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer in From Produksi oleh Tim WFG.",
+                        'valid'     => true,
+                        'is_bypass' => true,
+                        'message'   => "Mode Supervisi: Kempu diproses dengan Bypass Alur (Kempu belum transfer in di WFG, status sebelumnya: {$currentStatus}).",
                     ];
                 }
                 break;
@@ -356,8 +415,9 @@ class WfgKempuController extends Controller
                     strcasecmp($currentStatus, 'Retur From PAS') === 0
                 ) {
                     return [
-                        'valid'   => false,
-                        'message' => "Flow Salah! Kempu sudah scan Retur From PAS oleh Tim WFG.",
+                        'valid'     => false,
+                        'is_bypass' => false,
+                        'message'   => "Flow Salah! Kempu sudah scan Retur From PAS oleh Tim WFG.",
                     ];
                 }
 
@@ -372,14 +432,15 @@ class WfgKempuController extends Controller
                 if (!in_array(strtolower($currentStatus), $allowedPrev)) {
                     $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
                     return [
-                        'valid'   => false,
-                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer Out to BAS oleh Tim PAS.",
+                        'valid'     => false,
+                        'is_bypass' => false,
+                        'message'   => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer Out to BAS oleh Tim PAS.",
                     ];
                 }
                 break;
         }
 
-        return ['valid' => true, 'message' => null];
+        return ['valid' => true, 'is_bypass' => false, 'message' => null];
     }
 
     /**
@@ -528,6 +589,9 @@ class WfgKempuController extends Controller
                 'target_status'          => $card['status_name'],
                 'card_title'             => $card['title'],
                 'is_flow_valid'          => $flowValidation['valid'],
+                'is_bypass'              => $flowValidation['is_bypass'] ?? false,
+                'bypass_message'         => ($flowValidation['is_bypass'] ?? false) ? $flowValidation['message'] : null,
+                'can_supervisi'          => self::canSupervisi(),
                 'flow_error'             => $flowValidation['message'],
             ],
         ]);
@@ -584,6 +648,14 @@ class WfgKempuController extends Controller
                 'status'  => false,
                 'message' => $flowValidation['message'],
             ], 422);
+        }
+
+        $isBypass = $flowValidation['is_bypass'] ?? false;
+        if ($isBypass && !self::canSupervisi()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Akses ditolak: Anda tidak memiliki permission wfg-kempu-supervisi untuk melakukan bypass step.',
+            ], 403);
         }
 
         $currentStatus = trim($kempu->main?->current_status ?? $kempu->current_status ?? '');
@@ -662,15 +734,8 @@ class WfgKempuController extends Controller
             $finalNotes .= ' [Input Manual]';
         }
 
-        $isBypass = ($cardKey === 'transfer-in-from-produksi') &&
-            self::isPreScan1Status($currentStatus) &&
-            !in_array(strtolower($currentStatus), [
-                'transfer out to wfg',
-                strtolower(MasterKempuModel::STATUS_PROD_TRANSFER_OUT_WFG),
-                strtolower(MasterKempuModel::STATUS_IN_TRANSIT_WFG),
-            ]);
         if ($isBypass) {
-            $finalNotes .= ' [Bypass Alur Produksi]';
+            $finalNotes .= ' [Bypass Alur - Supervisi]';
         }
 
         $targetStatus   = $card['status_name'];
