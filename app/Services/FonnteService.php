@@ -41,20 +41,33 @@ class FonnteService
                 'countryCode' => '62',
             ], $extraParams);
 
-            $response = Http::withHeaders([
-                'Authorization' => $this->token,
-            ])
-            ->withOptions([
+            $options = [
                 'curl' => [
-                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                    CURLOPT_IPRESOLVE   => CURL_IPRESOLVE_V4,
                     CURLOPT_TCP_NODELAY => 1,
                 ],
                 'verify' => false,
+            ];
+
+            $proxySetting = config('services.fonnte.proxy');
+            if (!empty($proxySetting) && $proxySetting !== 'none') {
+                $options['proxy'] = $proxySetting;
+            } else {
+                // Default: abaikan HTTP_PROXY / HTTPS_PROXY bawaan Docker environment agar request langsung ke api.fonnte.com
+                $options['proxy'] = false;
+            }
+
+            $timeout = (int)config('services.fonnte.timeout', 25);
+            $connectTimeout = (int)config('services.fonnte.connect_timeout', 10);
+
+            $response = Http::withHeaders([
+                'Authorization' => $this->token,
             ])
-            ->timeout(15)
-            ->connectTimeout(5)
-            ->asForm()
-            ->post($this->url, $payload);
+                ->withOptions($options)
+                ->timeout($timeout)
+                ->connectTimeout($connectTimeout)
+                ->asForm()
+                ->post($this->url, $payload);
 
             $data = $response->json();
 
@@ -112,18 +125,27 @@ class FonnteService
         }
 
         try {
-            $response = Http::withHeaders([
-                'Authorization' => $this->token,
-            ])
-            ->withOptions([
+            $options = [
                 'curl' => [
                     CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
                 ],
                 'verify' => false,
+            ];
+
+            $proxySetting = config('services.fonnte.proxy');
+            if (!empty($proxySetting) && $proxySetting !== 'none') {
+                $options['proxy'] = $proxySetting;
+            } else {
+                $options['proxy'] = false;
+            }
+
+            $response = Http::withHeaders([
+                'Authorization' => $this->token,
             ])
-            ->timeout(10)
-            ->connectTimeout(5)
-            ->post('https://api.fonnte.com/device');
+                ->withOptions($options)
+                ->timeout(10)
+                ->connectTimeout(5)
+                ->post('https://api.fonnte.com/device');
 
             return $response->json() ?? ['status' => false, 'message' => 'Gagal membaca status device Fonnte.'];
         } catch (\Throwable $e) {

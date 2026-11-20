@@ -39,6 +39,9 @@ return [
         'token' => env('FONNTE_TOKEN'),
         'url' => env('FONNTE_URL', 'https://api.fonnte.com/send'),
         'driver_group' => env('FONNTE_DRIVER_GROUP', '120363412725093520@g.us'),
+        'proxy' => env('FONNTE_PROXY', null),
+        'timeout' => (int)env('FONNTE_TIMEOUT', 25),
+        'connect_timeout' => (int)env('FONNTE_CONNECT_TIMEOUT', 10),
     ],
 
 ];
