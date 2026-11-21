@@ -16,7 +16,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('vehicle.queue_display') }}" target="_blank"
+                    <a href="{{ route('api.vehicle.dashboard_antrian') }}" target="_blank"
                         class="nav-link menu-link">
                         <i class="ri-tv-line fs-12 text-warning"></i> <span class="text-warning fw-semibold">Display Antrian (TV)</span>
                     </a>

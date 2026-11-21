@@ -3,7 +3,7 @@
 
     <head>
         <meta charset="UTF-8">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="csrf-token" content="{{ function_exists('csrf_token') && request()->hasSession() ? csrf_token() : '' }}">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <title>Display Antrian Kendaraan & Loading Dock — PT BAS</title>
@@ -883,10 +883,11 @@
                 fetchQueueData();
             }
 
-            // Fetch Queue Data via AJAX
+            // Fetch Queue Data via AJAX (Stateless API)
             async function fetchQueueData() {
                 try {
-                    const response = await fetch(`{{ route('vehicle.queue_display.data') }}?area=${currentArea}`);
+                    const dataUrl = `{{ route('api.vehicle.dashboard_antrian.data') }}?area=${currentArea}`;
+                    const response = await fetch(dataUrl);
                     if (!response.ok) throw new Error('Network response not ok');
                     const data = await response.json();
 

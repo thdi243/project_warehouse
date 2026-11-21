@@ -74,8 +74,11 @@ Route::get('/temp-login', function () {
     return redirect('/wrm/inventory/draft-outbound/15/assign-driver');
 });
 
-// Tampilan Antrian Kendaraan & Loading Dock (Publik untuk Supir & TV Monitor Pos / Gudang)
-Route::get('/antrian', [VehicleTrackingController::class, 'queueDisplayIndex'])->name('vehicle.queue_display');
+// Tampilan Antrian Kendaraan & Loading Dock (Redirect ke Stateless API TV Display)
+Route::get('/antrian', function (\Illuminate\Http\Request $request) {
+    $area = $request->get('area', 'wfg');
+    return redirect()->route('api.vehicle.dashboard_antrian', ['area' => $area]);
+})->name('vehicle.queue_display');
 Route::get('/antrian/data', [VehicleTrackingController::class, 'queueDisplayData'])->name('vehicle.queue_display.data');
 
 // Auth
@@ -995,8 +998,11 @@ Route::middleware('auth')->group(function () {
 
     // Vehicle Monitoring & Tracking
     Route::prefix('vehicle-monitoring')->name('vehicle.monitoring.')->middleware(['auth', 'permission:vehicle-monitoring-menu'])->group(function () {
-        // Display Antrian Layar TV & Supir
-        Route::get('/antrian-display', [VehicleTrackingController::class, 'queueDisplayIndex'])->name('queue_display');
+        // Display Antrian Layar TV & Supir (Redirect ke Stateless API TV Display)
+        Route::get('/antrian-display', function (\Illuminate\Http\Request $request) {
+            $area = $request->get('area', 'wfg');
+            return redirect()->route('api.vehicle.dashboard_antrian', ['area' => $area]);
+        })->name('queue_display');
 
         // Laporan History Page
         Route::get('/history', [VehicleTrackingController::class, 'historyIndex'])->name('history');

@@ -25,6 +25,7 @@ use App\Http\Controllers\Wsp\WspRakController;
 use App\Http\Controllers\Api\ApiWpmContoller;
 use App\Http\Controllers\Api\ApiVehicleController;
 use App\Http\Controllers\Api\ApiP2HController;
+use App\Http\Controllers\Vehicle\VehicleTrackingController;
 use App\Http\Controllers\Kempu\KempuQcController;
 use App\Http\Controllers\Kempu\KempuProduksiController;
 use App\Http\Controllers\Kempu\KempuEngController;
@@ -209,6 +210,10 @@ Route::prefix('vehicle')->group(function () {
     Route::get('/transactions', [ApiVehicleController::class, 'index']);
     Route::post('/transactions/batch', [ApiVehicleController::class, 'batch']);
     Route::get('/transaction/{nopol}', [ApiVehicleController::class, 'showByNopol']);
+
+    // Display Antrian Layar TV & Supir (Stateless API, tanpa session / login)
+    Route::get('/dashboard-antrian', [VehicleTrackingController::class, 'queueDisplayIndex'])->name('api.vehicle.dashboard_antrian');
+    Route::get('/dashboard-antrian/data', [VehicleTrackingController::class, 'queueDisplayData'])->name('api.vehicle.dashboard_antrian.data');
 });
 
 /*
@@ -275,4 +280,12 @@ Route::prefix('kempu')->name('api.kempu.')->group(function () {
         Route::get('/history/{id}', [\App\Http\Controllers\Kempu\KempuTraceabilityController::class, 'history'])->name('history');
     });
 });
+
+/*
+|--------------------------------------------------------------------------
+| Webhook Fonnte (Auto-Reply saat supir / user membalas WA)
+|--------------------------------------------------------------------------
+*/
+Route::match(['get', 'post'], '/fonnte/webhook', [\App\Http\Controllers\Api\FonnteWebhookController::class, 'handleWebhook'])->name('api.fonnte.webhook');
+
 
