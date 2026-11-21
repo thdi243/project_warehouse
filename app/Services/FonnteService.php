@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,22 +19,96 @@ class FonnteService
     }
 
     /**
-     * Lempar pengiriman WhatsApp ke Laravel Queue (asynchronous) dengan delay bertingkat
-     * agar tidak memblokir HTTP request dan aman dari deteksi spam WhatsApp.
+     * Lempar pengiriman WhatsApp ke Laravel Queue (asynchronous) dengan Global Sequential Pacing.
+     * Mengatur jeda otomatis antar pesan sekitar 2 menit (120 detik) di seluruh sistem secara terkoordinasi
+     * sehingga tidak ada dua pesan yang terkirim berdekatan apalagi pada menit yang sama, meniru perilaku manusia.
      *
      * @param string $target Nomor penerima
      * @param string $message Isi pesan
-     * @param int $delaySeconds Jeda detik sebelum job dieksekusi oleh queue worker
+     * @param int $minGapSeconds Jeda minimal antar pesan (default 120 detik / 2 menit)
      * @param array $extraParams Parameter Fonnte tambahan
      * @param string|null $logContext Keterangan untuk log
-     * @return void
+     * @param int $maxGapSeconds Jeda maksimal antar pesan (default 140 detik / ~2 menit)
+     * @return array
      */
-    public function queueMessage(string $target, string $message, int $delaySeconds = 0, array $extraParams = [], ?string $logContext = null): void
+    public function queueMessage(string $target, string $message, int $minGapSeconds = 120, array $extraParams = [], ?string $logContext = null, int $maxGapSeconds = 140): array
     {
-        $delay = $delaySeconds > 0 ? $delaySeconds : rand(15, 45);
-        $job = (new \App\Jobs\SendWhatsAppNotificationJob($target, $message, $extraParams, $logContext))
-            ->delay(now()->addSeconds($delay));
-        dispatch($job);
+        $cleanTarget = preg_replace('/[^0-9]/', '', $target);
+        if (empty($cleanTarget)) {
+            Log::warning("[FonnteService] Target nomor telepon kosong, pengiriman dibatalkan.");
+            return ['status' => false, 'message' => 'Nomor telepon tujuan tidak valid.'];
+        }
+
+        $now = now();
+        $cacheKey = 'fonnte_last_scheduled_dispatch_at';
+        $lastScheduledStr = null;
+
+        try {
+            $lastScheduledStr = Cache::get($cacheKey);
+        } catch (\Throwable $e) {
+            Log::warning("[FonnteService] Gagal membaca cache antrian: " . $e->getMessage());
+        }
+
+        // Jeda acak manusiawi sekitar 2 menit (120 detik) antar pesan agar sangat aman dari deteksi spam WhatsApp
+        $minGap = max(90, $minGapSeconds);
+        $maxGap = max($minGap, $maxGapSeconds);
+        $randomGap = rand($minGap, $maxGap); // Sekitar 2 menit (120 detik)
+
+        if ($lastScheduledStr) {
+            try {
+                $lastScheduled = Carbon::parse($lastScheduledStr);
+                if ($lastScheduled->gt($now)) {
+                    // Masih ada antrian pesan di depan, jadwalkan ~2 menit (120s) setelah pesan terakhir
+                    $scheduledTime = $lastScheduled->copy()->addSeconds($randomGap);
+                } else {
+                    // Antrian kosong / pesan sebelumnya sudah lewat, beri jeda awal 10 s/d 20 detik
+                    $scheduledTime = $now->copy()->addSeconds(rand(10, 20));
+                }
+            } catch (\Throwable $e) {
+                $scheduledTime = $now->copy()->addSeconds(rand(10, 20));
+            }
+        } else {
+            $scheduledTime = $now->copy()->addSeconds(rand(10, 20));
+        }
+
+        // Simpan timestamp pengiriman terjadwal terakhir di cache (berlaku 2 jam)
+        try {
+            Cache::put($cacheKey, $scheduledTime->toDateTimeString(), 7200);
+        } catch (\Throwable $e) {
+            Log::warning("[FonnteService] Gagal menyimpan cache antrian: " . $e->getMessage());
+        }
+
+        // Fonnte typing delay: 8-15 detik (meniru durasi supir/admin mengetik di WhatsApp)
+        if (!isset($extraParams['delay'])) {
+            $extraParams['delay'] = rand(8, 15);
+        }
+
+        try {
+            $job = (new \App\Jobs\SendWhatsAppNotificationJob($cleanTarget, $message, $extraParams, $logContext))
+                ->delay($scheduledTime);
+            dispatch($job);
+
+            $delaySeconds = $now->diffInSeconds($scheduledTime);
+            $delayMinutes = round($delaySeconds / 60, 1);
+
+            Log::info("[FonnteService] Pesan WA dijadwalkan ke queue (Jeda: {$delaySeconds}s / ~{$delayMinutes}m)", [
+                'target' => $cleanTarget,
+                'scheduled_at' => $scheduledTime->format('H:i:s'),
+                'delay_seconds' => $delaySeconds,
+                'context' => $logContext,
+            ]);
+
+            return [
+                'status' => true,
+                'queued' => true,
+                'scheduled_at' => $scheduledTime->toDateTimeString(),
+                'delay_seconds' => $delaySeconds,
+                'message' => "Pesan berhasil dijadwalkan ke antrian (jeda ~{$delayMinutes} menit)."
+            ];
+        } catch (\Throwable $e) {
+            Log::warning("[FonnteService] Queue dispatch gagal, fallback ke pengiriman langsung (direct): " . $e->getMessage());
+            return $this->sendMessage($cleanTarget, $message, $extraParams);
+        }
     }
 
     /**
@@ -54,10 +130,10 @@ class FonnteService
         }
 
         try {
-            // Berikan natural typing delay acak (2 menit s/d 5 menit detik) jika belum ditentukan
+            // Berikan natural typing delay acak (8 s/d 15 detik) jika belum ditentukan
             // Parameter 'delay' pada Fonnte API berguna untuk meniru jeda mengetik manusia agar tidak terdeteksi bot spam
             if (!isset($extraParams['delay'])) {
-                $extraParams['delay'] = rand(120, 300);
+                $extraParams['delay'] = rand(8, 15);
             }
 
             $payload = array_merge([

@@ -4172,7 +4172,7 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "Info Antrian #{$antrian} Truk {$noPol}");
 
             if (!empty($res['status'])) {
                 $updateData = ['notif_queue_taken_at' => Carbon::now()];
@@ -4180,7 +4180,7 @@ class VehicleTrackingController extends Controller
                     $updateData['notif_prepare_at'] = Carbon::now();
                 }
                 $transaction->update($updateData);
-                Log::info("[VehicleTracking] Info antrian #{$antrian} (" . ($isDockAvailable ? "Langsung Masuk Dock" : "Standby Parkir") . ") berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Info antrian #{$antrian} (" . ($isDockAvailable ? "Langsung Masuk Dock" : "Standby Parkir") . ") berhasil dijadwalkan ke supir {$noPol} ({$cleanPhone})");
 
                 event(new VehicleStatusUpdated([
                     'type' => $isDockAvailable ? 'dock_call' : 'queue_assigned',
@@ -4301,11 +4301,11 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $nextDriver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "Siap-siap Truk {$nextNoPol}");
 
             if (!empty($res['status'])) {
                 $nextTx->update(['notif_prepare_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Notif siap-siap berhasil dikirim ke supir berikutnya {$nextNoPol} ({$cleanPhone}) untuk antrian {$areaUpper}{$jenisLabel}");
+                Log::info("[VehicleTracking] Notif siap-siap berhasil dijadwalkan ke supir berikutnya {$nextNoPol} ({$cleanPhone}) untuk antrian {$areaUpper}{$jenisLabel}");
             }
 
             return $res;
@@ -4366,11 +4366,11 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "Selesai Muat/Bongkar Truk {$noPol}");
 
             if (!empty($res['status'])) {
                 $transaction->update(['notif_completed_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Notif selesai proses berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Notif selesai proses berhasil dijadwalkan ke supir {$noPol} ({$cleanPhone})");
             }
 
             return $res;
@@ -4484,11 +4484,11 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "Panggilan Masuk Dock Truk {$nextNoPol}");
 
             if (!empty($res['status'])) {
                 $nextTx->update(['notif_prepare_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Panggilan otomatis ke dock {$areaUpper} berhasil dikirim ke supir {$nextNoPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Panggilan otomatis ke dock {$areaUpper} berhasil dijadwalkan ke supir {$nextNoPol} ({$cleanPhone})");
             }
 
             return $res;
@@ -4614,11 +4614,11 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "Panggilan Masuk Dock {$targetAreaUpper} Truk {$nextNoPol}");
 
             if (!empty($res['status'])) {
                 $nextTx->update(['notif_prepare_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Panggilan otomatis masuk dock {$targetAreaUpper} ({$category}) berhasil dikirim ke supir {$nextNoPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Panggilan otomatis masuk dock {$targetAreaUpper} ({$category}) berhasil dijadwalkan ke supir {$nextNoPol} ({$cleanPhone})");
 
                 event(new VehicleStatusUpdated([
                     'type' => 'dock_call',
@@ -4722,11 +4722,11 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "Serahkan Dokumen QC Truk {$noPol}");
 
             if (!empty($res['status'])) {
                 $transaction->update(['notif_qc_doc_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Notif serahkan dokumen QC berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Notif serahkan dokumen QC berhasil dijadwalkan ke supir {$noPol} ({$cleanPhone})");
             }
 
             return $res;
@@ -4785,11 +4785,11 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "Serahkan Dokumen WFG Truk {$noPol}");
 
             if (!empty($res['status'])) {
                 $transaction->update(['notif_wfg_doc_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Notif urus dokumen WFG berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Notif urus dokumen WFG berhasil dijadwalkan ke supir {$noPol} ({$cleanPhone})");
             }
 
             return $res;
@@ -4849,11 +4849,11 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "Retur Langsung ke Dock Truk {$noPol}");
 
             if (!empty($res['status'])) {
                 $transaction->update(['notif_qc_dock_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Notif retur langsung ke dock {$areaUpper} berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Notif retur langsung ke dock {$areaUpper} berhasil dijadwalkan ke supir {$noPol} ({$cleanPhone})");
             }
 
             return $res;
@@ -4924,11 +4924,11 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "Langsung ke Dock {$area} Truk {$noPol}");
 
             if (!empty($res['status'])) {
                 $transaction->update(['notif_qc_dock_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Notif langsung ke dock {$area} berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Notif langsung ke dock {$area} berhasil dijadwalkan ke supir {$noPol} ({$cleanPhone})");
             }
 
             return $res;
@@ -5009,11 +5009,11 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
             $fonnte = app(FonnteService::class);
-            $res = $fonnte->sendMessage($cleanPhone, $message);
+            $res = $fonnte->queueMessage($cleanPhone, $message, 120, [], "QC Released Truk {$noPol}");
 
             if (!empty($res['status'])) {
                 $transaction->update(['notif_qc_release_at' => Carbon::now()]);
-                Log::info("[VehicleTracking] Notif QC released berhasil dikirim ke supir {$noPol} ({$cleanPhone})");
+                Log::info("[VehicleTracking] Notif QC released berhasil dijadwalkan ke supir {$noPol} ({$cleanPhone})");
             }
 
             return $res;
@@ -5079,9 +5079,8 @@ class VehicleTrackingController extends Controller
 
             $cleanPhone = preg_replace('/[^0-9]/', '', $driver['phone']);
 
-            // Lempar ke Queue Job dengan natural typing delay (~10 s/d 15 detik) agar aman dari deteksi spam
-            SendWhatsAppNotificationJob::dispatch($cleanPhone, $message, [], "Panggilan Manual Truk {$noPol}")
-                ->delay(now()->addSeconds(rand(15, 45)));
+            // Lempar ke Queue dengan Global Sequential Pacing (jeda 1 - 5 menit antar pesan di seluruh sistem)
+            app(FonnteService::class)->queueMessage($cleanPhone, $message, 120, [], "Panggilan Manual Truk {$noPol}");
 
             $currentUser = Auth::user();
             $userName = $currentUser ? ($currentUser->nama_lengkap ?: $currentUser->username) : 'Pengawas';
@@ -5230,12 +5229,9 @@ class VehicleTrackingController extends Controller
                     $message = $this->parseSpintax($rawMessage);
                     $cleanPhone = preg_replace('/[^0-9]/', '', $u->no_hp);
 
-                    // Lempar ke Laravel Queue Job dengan delay bertingkat (15-30 detik antar penerima)
-                    SendWhatsAppNotificationJob::dispatch($cleanPhone, $message, [], "Alert Overdue 2H - {$recipientName}")
-                        ->delay(now()->addSeconds($delayAccumulative));
-
+                    // Lempar ke Laravel Queue dengan Global Sequential Pacing (jeda 1 - 5 menit antar pesan)
+                    $fonnte->queueMessage($cleanPhone, $message, 120, [], "Alert Overdue 2H - {$recipientName}");
                     $sentCount++;
-                    $delayAccumulative += rand(15, 30);
                 }
             }
 
@@ -5391,12 +5387,9 @@ class VehicleTrackingController extends Controller
                 $message = $this->parseSpintax($rawMessage);
                 $cleanPhone = preg_replace('/[^0-9]/', '', $dh->no_hp);
 
-                // Dispatch via Queue Job dengan delay bertingkat akumulatif antar Dept Head
-                SendWhatsAppNotificationJob::dispatch($cleanPhone, $message, [], "Daily Report Dept Head - {$dhName}")
-                    ->delay(now()->addSeconds($delayAccumulative));
-
+                // Dispatch via Global Queue Pacing (jeda 1 - 5 menit antar pesan)
+                $fonnte->queueMessage($cleanPhone, $message, 120, [], "Daily Report Dept Head - {$dhName}");
                 $sentCount++;
-                $delayAccumulative += rand(15, 30);
             }
         }
 
@@ -5489,12 +5482,9 @@ class VehicleTrackingController extends Controller
                     $message = $this->parseSpintax($rawMessage);
                     $cleanPhone = preg_replace('/[^0-9]/', '', $f->no_hp);
 
-                    // Lempar ke Laravel Queue Job dengan delay bertingkat akumulatif antar Foreman
-                    SendWhatsAppNotificationJob::dispatch($cleanPhone, $message, [], "Follow Up Timbangan - {$foremanName}")
-                        ->delay(now()->addSeconds($delayAccumulative));
-
+                    // Lempar ke Laravel Queue dengan Global Sequential Pacing (jeda 1 - 5 menit antar pesan)
+                    $fonnte->queueMessage($cleanPhone, $message, 120, [], "Follow Up Timbangan - {$foremanName}");
                     $sentCount++;
-                    $delayAccumulative += rand(15, 30);
                 }
             }
 
