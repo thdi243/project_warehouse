@@ -126,13 +126,23 @@
                 box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
             }
 
-            /* Calling Banner (High Impact Bright Alert) */
+            /* Calling Banner (Compact Sleek Bar) */
             .calling-banner {
                 background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
                 border: 2px solid #10b981;
-                border-radius: 16px;
-                box-shadow: 0 6px 20px rgba(16, 185, 129, 0.18);
+                border-radius: 12px;
+                box-shadow: 0 4px 14px rgba(16, 185, 129, 0.16);
                 animation: pulse-border 2.5s infinite;
+            }
+
+            .calling-pill {
+                background: #ffffff;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .calling-pill:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2) !important;
             }
 
             @keyframes pulse-border {
@@ -406,8 +416,8 @@
         <!-- Main Container -->
         <main class="container-fluid py-4 px-lg-4">
 
-            <!-- 📢 ACTIVE CALLING BANNER (PANGGILAN TERKINI MASUK DOCK) -->
-            <div id="calling-banner-container" class="mb-4" style="display: none;">
+            <!-- 📢 ACTIVE CALLING BANNER (PANGGILAN TERKINI MASUK DOCK - COMPACT BAR) -->
+            <div id="calling-banner-container" class="mb-3" style="display: none;">
                 <!-- Injected dynamically via JS -->
             </div>
 
@@ -920,17 +930,16 @@
                 let newCallDetected = false;
 
                 let html = `
-                <div class="calling-banner p-3 p-lg-4">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-2">
-                        <div class="d-flex align-items-center gap-3">
-                            <span class="badge bg-danger fs-5 px-3 py-2 animate-bounce shadow-sm">
-                                <i class="ri-notification-3-fill"></i> PANGGILAN SEGERA MASUK DOCK
-                            </span>
-                            <span class="text-success-emphasis fw-semibold small">Panggilan terbaru via WhatsApp Gateway & Monitor</span>
-                        </div>
-                        <span class="badge bg-success fs-6">DOCK TERSEDIA</span>
+                <div class="calling-banner py-2 px-3 mb-3 shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-danger fs-6 px-3 py-2 animate-bounce shadow-sm">
+                            <i class="ri-notification-3-fill"></i> PANGGILAN DOCK
+                        </span>
+                        <span class="text-success-emphasis fw-bold small d-none d-lg-inline" style="font-size: 13px;">
+                            <i class="ri-whatsapp-fill text-success fs-5 align-middle me-1"></i>Panggilan WhatsApp Terkirim
+                        </span>
                     </div>
-                    <div class="row g-3 mt-1">
+                    <div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1 justify-content-lg-end">
             `;
 
                 callingList.forEach(item => {
@@ -940,17 +949,16 @@
                     }
 
                     html += `
-                    <div class="col-md-6 col-lg-4">
-                        <div class="p-3 rounded-3 bg-white shadow-sm border border-success border-2">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge-queue-no">#${item.no_antrian}</span>
-                                <span class="badge-plat fs-4">${item.no_pol}</span>
-                            </div>
-                            <div class="text-dark fw-bold fs-6 mb-1">${item.nama_driver} • <span class="text-secondary">${item.vendor}</span></div>
-                            <div class="text-primary fw-bold small"><i class="ri-arrow-right-circle-fill text-warning"></i> Segera Masuk: <strong>${item.category_label || item.jenis || 'Loading Dock'}</strong></div>
+                        <div class="calling-pill d-flex align-items-center gap-2 px-3 py-1 bg-white rounded-pill border border-success border-2 shadow-sm">
+                            <span class="badge-queue-no" style="font-size: 13px; padding: 2px 8px;">#${item.no_antrian}</span>
+                            <span class="badge-plat fs-5 fw-bold px-2 py-0">${item.no_pol}</span>
+                            <span class="text-dark fw-bold" style="font-size: 13px;">${item.nama_driver}</span>
+                            <span class="text-secondary small d-none d-xl-inline">(${item.vendor})</span>
+                            <span class="badge bg-success text-white small px-2 py-1">
+                                <i class="ri-arrow-right-circle-fill text-warning me-1"></i>Masuk: <strong>${item.category_label || item.jenis || 'Dock'}</strong>
+                            </span>
                         </div>
-                    </div>
-                `;
+                    `;
                 });
 
                 html += `
