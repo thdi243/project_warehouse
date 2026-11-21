@@ -2652,7 +2652,10 @@ class VehicleTrackingController extends Controller
             $operatorName = Auth::user()->name ?? 'Operator Timbangan';
             $targetSloc = $transaction->targetLocation ? $transaction->targetLocation->s_loc : '';
 
-            // Broadcast Event for Realtime Alert
+            // Cek apakah WhatsApp follow up sudah pernah dikirim sebelumnya untuk transaksi ini
+            $alreadyFollowedUp = !empty($transaction->follow_up_time) || Cache::has("fu_timbangan_wa_sent_{$transaction->id}");
+
+            // Broadcast Event for Realtime Alert (tetap dikirim setiap klik untuk notifikasi web real-time)
             event(new VehicleStatusUpdated([
                 'type' => 'follow_up',
                 'action' => 'follow_up',
@@ -2672,11 +2675,19 @@ class VehicleTrackingController extends Controller
             DB::commit();
 
             // Kirim notifikasi WhatsApp ke Foreman Area terkait (SMU/WFG -> Foreman WFG, WRM/WPM -> Foreman WRM)
-            $this->sendFollowUpForemanAlert($transaction, $targetArea, $notes);
+            // WhatsApp HANYA dikirim sekali saja per transaksi (tidak di-spam per klik)
+            if (!$alreadyFollowedUp) {
+                $this->sendFollowUpForemanAlert($transaction, $targetArea, $notes);
+                Cache::put("fu_timbangan_wa_sent_{$transaction->id}", true, 86400 * 3);
+                $responseMsg = "Notifikasi follow up berhasil dikirim ke area {$targetArea} dan WhatsApp Foreman untuk Truk {$noPol}.";
+            } else {
+                Log::info("[VehicleTracking] Skip duplicate WA follow-up timbangan untuk truk {$noPol} (ID: {$transaction->id}) karena sudah pernah dikirim sebelumnya. Notifikasi real-time web tetap terkirim.");
+                $responseMsg = "Notifikasi follow up real-time berhasil dikirim ke area {$targetArea} untuk Truk {$noPol}. (WhatsApp Foreman sudah pernah dikirim sebelumnya).";
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => "Notifikasi follow up berhasil dikirim ke area {$targetArea} dan WhatsApp Foreman untuk Truk {$noPol}."
+                'message' => $responseMsg
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -5412,6 +5423,12 @@ class VehicleTrackingController extends Controller
     public function sendFollowUpForemanAlert(VehicleTransaction $transaction, string $targetArea, ?string $notes = null): array
     {
         try {
+            $cacheKey = "fu_timbangan_wa_sent_{$transaction->id}";
+            if (Cache::has($cacheKey)) {
+                Log::info("[VehicleTracking] Skip duplicate WA follow-up timbangan for Truk ID {$transaction->id}: sudah pernah dikirim.");
+                return ['status' => false, 'message' => 'WhatsApp follow-up sudah pernah dikirim untuk transaksi ini.'];
+            }
+
             $areaUpper = strtoupper(trim($targetArea));
 
             // Jika 'ALL', tentukan area berdasarkan target lokasi atau status transaksi
@@ -5486,6 +5503,10 @@ class VehicleTrackingController extends Controller
                     $fonnte->queueMessage($cleanPhone, $message, 120, [], "Follow Up Timbangan - {$foremanName}");
                     $sentCount++;
                 }
+            }
+
+            if ($sentCount > 0) {
+                Cache::put($cacheKey, true, 86400 * 3);
             }
 
             Log::info("[VehicleTracking] Follow up dari Timbangan untuk {$noPol} berhasil dikirim ke {$sentCount} Foreman ({$targetBagianName})");
