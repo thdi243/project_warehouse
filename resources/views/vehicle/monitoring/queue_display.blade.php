@@ -60,14 +60,14 @@
                 background: #ffffff;
                 border-bottom: 1px solid var(--border-subtle);
                 box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-                padding: 8px 20px;
+                padding: 4px 16px;
                 position: sticky;
                 top: 0;
                 z-index: 100;
             }
 
             .brand-logo {
-                height: 36px;
+                height: 24px;
                 width: auto;
                 object-fit: contain;
             }
@@ -75,17 +75,17 @@
             /* Area Switch Tabs */
             .area-pill-group {
                 background: #e2e8f0;
-                border-radius: 9999px;
-                padding: 3px;
+                border-radius: 20px;
+                padding: 2px;
                 display: inline-flex;
-                gap: 4px;
+                gap: 2px;
             }
 
             .area-pill-btn {
-                padding: 6px 18px;
-                border-radius: 9999px;
+                padding: 3px 12px;
+                border-radius: 20px;
                 font-weight: 700;
-                font-size: 13px;
+                font-size: 11px;
                 color: #475569;
                 border: none;
                 background: transparent;
@@ -93,7 +93,7 @@
                 text-decoration: none;
                 display: inline-flex;
                 align-items: center;
-                gap: 6px;
+                gap: 5px;
                 cursor: pointer;
             }
 
@@ -274,13 +274,13 @@
                 background: #f1f5f9;
                 border: 1px solid var(--border-subtle);
                 color: #334155;
-                padding: 8px 16px;
-                border-radius: 8px;
-                font-size: 13px;
+                padding: 4px 10px;
+                border-radius: 6px;
+                font-size: 11px;
                 font-weight: 600;
                 display: inline-flex;
                 align-items: center;
-                gap: 6px;
+                gap: 5px;
                 transition: all 0.2s ease;
                 cursor: pointer;
             }
@@ -316,19 +316,13 @@
     <body>
         <!-- Top Navigation -->
         <header class="top-navbar">
-            <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <!-- Brand & Title -->
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-2">
                     <img src="{{ asset('assets/images/logo/kecap.png') }}" alt="PT BAS" class="brand-logo">
-                    <div>
-                        <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2"
-                            style="letter-spacing: 0.5px;">
-                            MONITOR ANTRIAN GUDANG
-                            <span class="badge bg-primary text-uppercase" style="font-size: 11px; padding: 4px 8px;">TV
-                                & Supir</span>
-                        </h5>
-                        <small class="text-secondary" style="font-size: 12px;">PT Bumi Alam Segar — Loading Yard
-                            Real-Time Queue System</small>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold text-dark" style="font-size: 13px; letter-spacing: 0.3px;">MONITOR ANTRIAN GUDANG</span>
+                        <span class="badge bg-primary text-uppercase" style="font-size: 9px; padding: 2px 6px;">TV & Supir</span>
                     </div>
                 </div>
 
@@ -337,43 +331,43 @@
                     <button type="button" class="area-pill-btn {{ $area === 'wfg' ? 'active' : '' }}"
                         onclick="switchArea('wfg')">
                         <i class="ri-truck-line"></i>
-                        <span>WFG & SMU <small class="opacity-75">(Finish Goods)</small></span>
+                        <span>WFG & SMU</span>
                     </button>
                     <button type="button" class="area-pill-btn area-wrm {{ $area === 'wrm' ? 'active area-wrm' : '' }}"
                         onclick="switchArea('wrm')">
                         <i class="ri-archive-line"></i>
-                        <span>WRM & WPM <small class="opacity-75">(Bahan & Kemasan)</small></span>
+                        <span>WRM & WPM</span>
                     </button>
                 </div>
 
                 <!-- Clock, Status, & TV Fullscreen Actions -->
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-2">
                     <!-- Live status -->
-                    <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill"
+                    <div class="d-flex align-items-center gap-1 px-2 py-0.5 rounded-pill"
                         style="background: #f0fdf4; border: 1px solid #bbf7d0;">
-                        <span class="live-dot"></span>
+                        <span class="live-dot" style="width: 8px; height: 8px;"></span>
                         <span class="fw-bold text-success" id="ws-status-text"
-                            style="font-size: 12px; letter-spacing: 0.5px;">LIVE</span>
-                        <span class="text-secondary" style="font-size: 11px;">• <span
+                            style="font-size: 11px; letter-spacing: 0.3px;">LIVE</span>
+                        <span class="text-secondary" style="font-size: 10px;">• <span
                                 id="refresh-timer">10</span>s</span>
                     </div>
 
                     <!-- Clock & Date -->
-                    <div class="text-end hide-mobile">
-                        <div id="live-clock" class="mono fw-bold text-dark fs-5 lh-1">--:--:--</div>
+                    <div class="text-end hide-mobile d-flex align-items-baseline gap-2">
+                        <span id="live-clock" class="mono fw-bold text-dark fs-6 lh-1">--:--:--</span>
                         <small id="live-date" class="text-secondary" style="font-size: 11px;">--</small>
                     </div>
 
                     <!-- Chime Audio Toggle -->
                     <button type="button" class="btn-ctrl" id="btn-audio-toggle" onclick="toggleAudio()"
                         title="Suara Panggilan">
-                        <i class="ri-volume-up-line fs-6 text-primary" id="audio-icon"></i>
+                        <i class="ri-volume-up-line text-primary" id="audio-icon" style="font-size: 13px;"></i>
                         <span class="hide-mobile" id="audio-text">Suara: ON</span>
                     </button>
 
                     <!-- Fullscreen Toggle -->
                     <button type="button" class="btn-ctrl" onclick="toggleFullscreen()" title="Fullscreen Mode (TV)">
-                        <i class="ri-fullscreen-line fs-6"></i>
+                        <i class="ri-fullscreen-line" style="font-size: 13px;"></i>
                         <span class="hide-mobile">Layar Penuh</span>
                     </button>
                 </div>
@@ -381,7 +375,7 @@
         </header>
 
         <!-- Main Container -->
-        <main class="container-fluid py-2 py-lg-3 px-lg-4">
+        <main class="container-fluid py-1 px-lg-3">
 
             <!-- ======================================================== -->
             <!-- VIEW 1: WFG & SMU (FINISH GOODS & SMU) -->
@@ -491,7 +485,7 @@
                                     <span class="badge bg-primary-subtle text-primary fw-bold" style="font-size: 11px;" id="badge-col-queue-slipsheet">0 Truk</span>
                                 </div>
                                 <div id="col-queue-slipsheet" class="d-flex flex-column gap-1"
-                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
+                                    style="max-height: calc(100vh - 290px); min-height: 250px; overflow-y: auto;">
                                     <div class="text-center py-4 text-secondary small">Memuat antrian slipsheet...</div>
                                 </div>
                             </div>
@@ -508,7 +502,7 @@
                                     <span class="badge bg-warning-subtle text-warning fw-bold" style="font-size: 11px;" id="badge-col-queue-curah">0 Truk</span>
                                 </div>
                                 <div id="col-queue-curah" class="d-flex flex-column gap-1"
-                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
+                                    style="max-height: calc(100vh - 290px); min-height: 250px; overflow-y: auto;">
                                     <div class="text-center py-4 text-secondary small">Memuat antrian curah...</div>
                                 </div>
                             </div>
@@ -525,7 +519,7 @@
                                     <span class="badge fw-bold" style="background: #ede9fe; color: #6d28d9; font-size: 11px;" id="badge-col-queue-bongkaran">0 Truk</span>
                                 </div>
                                 <div id="col-queue-bongkaran" class="d-flex flex-column gap-1"
-                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
+                                    style="max-height: calc(100vh - 290px); min-height: 250px; overflow-y: auto;">
                                     <div class="text-center py-4 text-secondary small">Memuat antrian bongkaran...</div>
                                 </div>
                             </div>
@@ -613,7 +607,7 @@
                                     <span class="badge bg-success-subtle text-success fw-bold" style="font-size: 11px;" id="badge-col-queue-wrm">0 Truk</span>
                                 </div>
                                 <div id="col-queue-wrm" class="d-flex flex-column gap-1"
-                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
+                                    style="max-height: calc(100vh - 290px); min-height: 250px; overflow-y: auto;">
                                     <div class="text-center py-4 text-secondary small">Memuat antrian WRM...</div>
                                 </div>
                             </div>
@@ -630,7 +624,7 @@
                                     <span class="badge bg-info-subtle text-info fw-bold" style="font-size: 11px;" id="badge-col-queue-wpm">0 Truk</span>
                                 </div>
                                 <div id="col-queue-wpm" class="d-flex flex-column gap-1"
-                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
+                                    style="max-height: calc(100vh - 290px); min-height: 250px; overflow-y: auto;">
                                     <div class="text-center py-4 text-secondary small">Memuat antrian WPM...</div>
                                 </div>
                             </div>
