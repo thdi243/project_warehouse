@@ -59,15 +59,20 @@
             .top-navbar {
                 background: #ffffff;
                 border-bottom: 1px solid var(--border-subtle);
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-                padding: 4px 16px;
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+                padding: 0 14px;
+                height: 38px;
+                max-height: 38px;
+                display: flex;
+                align-items: center;
                 position: sticky;
                 top: 0;
                 z-index: 100;
+                overflow: hidden;
             }
 
             .brand-logo {
-                height: 24px;
+                height: 20px;
                 width: auto;
                 object-fit: contain;
             }
@@ -82,7 +87,7 @@
             }
 
             .area-pill-btn {
-                padding: 3px 12px;
+                padding: 2px 10px;
                 border-radius: 20px;
                 font-weight: 700;
                 font-size: 11px;
@@ -93,8 +98,9 @@
                 text-decoration: none;
                 display: inline-flex;
                 align-items: center;
-                gap: 5px;
+                gap: 4px;
                 cursor: pointer;
+                white-space: nowrap;
             }
 
             .area-pill-btn:hover {
@@ -105,12 +111,12 @@
             .area-pill-btn.active {
                 color: #ffffff;
                 background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+                box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
             }
 
             .area-pill-btn.active.area-wrm {
                 background: linear-gradient(135deg, #059669 0%, #047857 100%);
-                box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
+                box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);
             }
 
             /* Clean White Cards */
@@ -274,15 +280,16 @@
                 background: #f1f5f9;
                 border: 1px solid var(--border-subtle);
                 color: #334155;
-                padding: 4px 10px;
+                padding: 2px 8px;
                 border-radius: 6px;
                 font-size: 11px;
                 font-weight: 600;
                 display: inline-flex;
                 align-items: center;
-                gap: 5px;
+                gap: 4px;
                 transition: all 0.2s ease;
                 cursor: pointer;
+                white-space: nowrap;
             }
 
             .btn-ctrl:hover {
@@ -293,7 +300,8 @@
             /* Mobile Adjustments */
             @media (max-width: 768px) {
                 .top-navbar {
-                    padding: 10px 14px;
+                    padding: 0 8px;
+                    height: 38px;
                 }
 
                 .badge-plat {
@@ -316,18 +324,16 @@
     <body>
         <!-- Top Navigation -->
         <header class="top-navbar">
-            <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="container-fluid d-flex flex-nowrap align-items-center justify-content-between p-0 gap-2">
                 <!-- Brand & Title -->
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
                     <img src="{{ asset('assets/images/logo/kecap.png') }}" alt="PT BAS" class="brand-logo">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="fw-bold text-dark" style="font-size: 13px; letter-spacing: 0.3px;">MONITOR ANTRIAN GUDANG</span>
-                        <span class="badge bg-primary text-uppercase" style="font-size: 9px; padding: 2px 6px;">TV & Supir</span>
-                    </div>
+                    <span class="fw-bold text-dark text-nowrap" style="font-size: 12px; letter-spacing: 0.3px;">ANTRIAN GUDANG</span>
+                    <span class="badge bg-primary text-uppercase" style="font-size: 9px; padding: 2px 5px;">TV</span>
                 </div>
 
                 <!-- Area Switch Selector (WFG&SMU vs WRM&WPM) -->
-                <div class="area-pill-group">
+                <div class="area-pill-group flex-shrink-0">
                     <button type="button" class="area-pill-btn {{ $area === 'wfg' ? 'active' : '' }}"
                         onclick="switchArea('wfg')">
                         <i class="ri-truck-line"></i>
@@ -341,34 +347,34 @@
                 </div>
 
                 <!-- Clock, Status, & TV Fullscreen Actions -->
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 flex-shrink-0 text-nowrap">
                     <!-- Live status -->
                     <div class="d-flex align-items-center gap-1 px-2 py-0.5 rounded-pill"
                         style="background: #f0fdf4; border: 1px solid #bbf7d0;">
-                        <span class="live-dot" style="width: 8px; height: 8px;"></span>
+                        <span class="live-dot" style="width: 7px; height: 7px;"></span>
                         <span class="fw-bold text-success" id="ws-status-text"
-                            style="font-size: 11px; letter-spacing: 0.3px;">LIVE</span>
+                            style="font-size: 10px; letter-spacing: 0.3px;">LIVE</span>
                         <span class="text-secondary" style="font-size: 10px;">• <span
                                 id="refresh-timer">10</span>s</span>
                     </div>
 
                     <!-- Clock & Date -->
-                    <div class="text-end hide-mobile d-flex align-items-baseline gap-2">
-                        <span id="live-clock" class="mono fw-bold text-dark fs-6 lh-1">--:--:--</span>
-                        <small id="live-date" class="text-secondary" style="font-size: 11px;">--</small>
+                    <div class="text-end d-flex align-items-baseline gap-1">
+                        <span id="live-clock" class="mono fw-bold text-dark lh-1" style="font-size: 12px;">--:--:--</span>
+                        <small id="live-date" class="text-secondary d-none d-xl-inline" style="font-size: 10px;">--</small>
                     </div>
 
                     <!-- Chime Audio Toggle -->
                     <button type="button" class="btn-ctrl" id="btn-audio-toggle" onclick="toggleAudio()"
                         title="Suara Panggilan">
-                        <i class="ri-volume-up-line text-primary" id="audio-icon" style="font-size: 13px;"></i>
-                        <span class="hide-mobile" id="audio-text">Suara: ON</span>
+                        <i class="ri-volume-up-line text-primary" id="audio-icon" style="font-size: 12px;"></i>
+                        <span id="audio-text">Suara: ON</span>
                     </button>
 
                     <!-- Fullscreen Toggle -->
                     <button type="button" class="btn-ctrl" onclick="toggleFullscreen()" title="Fullscreen Mode (TV)">
-                        <i class="ri-fullscreen-line" style="font-size: 13px;"></i>
-                        <span class="hide-mobile">Layar Penuh</span>
+                        <i class="ri-fullscreen-line" style="font-size: 12px;"></i>
+                        <span>Layar Penuh</span>
                     </button>
                 </div>
             </div>
