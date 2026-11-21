@@ -4282,10 +4282,16 @@ class VehicleTrackingController extends Controller
             $currentNoPol = $currentTx->vehicle ? $currentTx->vehicle->no_pol : 'N/A';
             $nextNoPol = $nextTx->vehicle ? $nextTx->vehicle->no_pol : 'N/A';
 
-            // Anti-spam / Duplicate Lock via Database: jangan panggil supir yang sama jika sudah dinotif dalam 30 menit
-            if (!empty($nextTx->notif_prepare_at) && $nextTx->notif_prepare_at->gt(now()->subMinutes(30))) {
-                Log::info("[VehicleTracking] Notif siap-siap untuk truk {$nextNoPol} sudah pernah tercatat pada {$nextTx->notif_prepare_at}. Skip duplicate WA.");
-                return ['status' => false, 'message' => "Notif siap-siap untuk truk {$nextNoPol} sudah dikirim sebelumnya."];
+            // Anti-spam / Duplicate Lock: Jika truk antrian berikutnya sudah pernah dikirimi pesan siap-siap,
+            // JANGAN kirim ulang ke truk ini, dan JANGAN loncat broadcast ke antrian nomor berikutnya (misal #5).
+            // Langsung hentikan proses (notifikasi persiapan cukup sekali saja per transaksi antrian).
+            $hasBeenPrepared = !empty($nextTx->notif_prepare_at) || Cache::has("driver_prepare_notif_{$nextTx->id}");
+            if ($hasBeenPrepared) {
+                Log::info("[VehicleTracking] Truk antrian berikutnya {$nextNoPol} (#{$nextTx->no_antrian}) sudah pernah mendapatkan notif siap-siap sebelumnya (DB: {$nextTx->notif_prepare_at}). Skip (tidak kirim ulang dan tidak broadcast ke antrian berikutnya).");
+                return [
+                    'status' => false,
+                    'message' => "Truk {$nextNoPol} (#{$nextTx->no_antrian}) sudah pernah mendapatkan notifikasi siap-siap sebelumnya."
+                ];
             }
 
             $nextDriver = $this->resolveDriverInfo($nextTx->nama_driver, $nextTx->no_hp_driver);
@@ -4316,6 +4322,7 @@ class VehicleTrackingController extends Controller
 
             if (!empty($res['status'])) {
                 $nextTx->update(['notif_prepare_at' => Carbon::now()]);
+                Cache::put("driver_prepare_notif_{$nextTx->id}", true, 86400 * 2);
                 Log::info("[VehicleTracking] Notif siap-siap berhasil dijadwalkan ke supir berikutnya {$nextNoPol} ({$cleanPhone}) untuk antrian {$areaUpper}{$jenisLabel}");
             }
 
@@ -4469,9 +4476,9 @@ class VehicleTrackingController extends Controller
 
             $nextNoPol = $nextTx->vehicle ? $nextTx->vehicle->no_pol : 'N/A';
 
-            // Anti-spam / Duplicate Lock: jangan panggil supir yang sama berkali-kali jika baru saja dipanggil dalam 15 menit
-            if (!empty($nextTx->notif_prepare_at) && $nextTx->notif_prepare_at->gt(now()->subMinutes(15))) {
-                Log::info("[VehicleTracking] Truk {$nextNoPol} sudah dipanggil {$nextTx->notif_prepare_at->diffForHumans()}. Skip duplicate WA.");
+            // Anti-spam / Duplicate Lock: jangan panggil supir yang sama jika sudah pernah dipanggil masuk dock
+            if (Cache::has("driver_dock_called_{$nextTx->id}")) {
+                Log::info("[VehicleTracking] Truk {$nextNoPol} sudah pernah dipanggil masuk dock sebelumnya. Skip duplicate WA.");
                 return ['status' => false, 'message' => "Truk {$nextNoPol} baru saja dipanggil sebelumnya."];
             }
 
@@ -4499,6 +4506,7 @@ class VehicleTrackingController extends Controller
 
             if (!empty($res['status'])) {
                 $nextTx->update(['notif_prepare_at' => Carbon::now()]);
+                Cache::put("driver_dock_called_{$nextTx->id}", true, 86400 * 2);
                 Log::info("[VehicleTracking] Panggilan otomatis ke dock {$areaUpper} berhasil dijadwalkan ke supir {$nextNoPol} ({$cleanPhone})");
             }
 
@@ -4586,9 +4594,9 @@ class VehicleTrackingController extends Controller
 
             $nextNoPol = $nextTx->vehicle ? $nextTx->vehicle->no_pol : 'N/A';
 
-            // Anti-spam / Duplicate Lock: jangan panggil supir yang sama berkali-kali jika baru saja dipanggil dalam 15 menit
-            if (!empty($nextTx->notif_prepare_at) && $nextTx->notif_prepare_at->gt(now()->subMinutes(15))) {
-                Log::info("[VehicleTracking] Truk {$nextNoPol} sudah dipanggil {$nextTx->notif_prepare_at->diffForHumans()}. Skip duplicate WA.");
+            // Anti-spam / Duplicate Lock: jangan panggil supir yang sama jika sudah pernah dipanggil masuk dock
+            if (Cache::has("driver_dock_called_{$nextTx->id}")) {
+                Log::info("[VehicleTracking] Truk {$nextNoPol} sudah pernah dipanggil masuk dock sebelumnya. Skip duplicate WA.");
                 return ['status' => false, 'message' => "Truk {$nextNoPol} baru saja dipanggil sebelumnya."];
             }
 
@@ -4629,6 +4637,7 @@ class VehicleTrackingController extends Controller
 
             if (!empty($res['status'])) {
                 $nextTx->update(['notif_prepare_at' => Carbon::now()]);
+                Cache::put("driver_dock_called_{$nextTx->id}", true, 86400 * 2);
                 Log::info("[VehicleTracking] Panggilan otomatis masuk dock {$targetAreaUpper} ({$category}) berhasil dijadwalkan ke supir {$nextNoPol} ({$cleanPhone})");
 
                 event(new VehicleStatusUpdated([
