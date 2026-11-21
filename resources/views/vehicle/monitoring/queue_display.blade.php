@@ -126,44 +126,11 @@
                 box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
             }
 
-            /* Calling Banner (Compact Sleek Bar) */
-            .calling-banner {
-                background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-                border: 2px solid #10b981;
-                border-radius: 12px;
-                box-shadow: 0 4px 14px rgba(16, 185, 129, 0.16);
-                animation: pulse-border 2.5s infinite;
-            }
-
-            .calling-pill {
-                background: #ffffff;
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-
-            .calling-pill:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2) !important;
-            }
-
-            @keyframes pulse-border {
-
-                0%,
-                100% {
-                    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
-                    border-color: #10b981;
-                }
-
-                50% {
-                    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.35);
-                    border-color: #059669;
-                }
-            }
-
             /* Slot Boxes inside Dock */
             .slot-box {
                 border-radius: 12px;
-                padding: 16px;
-                min-height: 120px;
+                padding: 10px 14px;
+                min-height: 85px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -414,19 +381,14 @@
         </header>
 
         <!-- Main Container -->
-        <main class="container-fluid py-4 px-lg-4">
-
-            <!-- 📢 ACTIVE CALLING BANNER (PANGGILAN TERKINI MASUK DOCK - COMPACT BAR) -->
-            <div id="calling-banner-container" class="mb-3" style="display: none;">
-                <!-- Injected dynamically via JS -->
-            </div>
+        <main class="container-fluid py-2 py-lg-3 px-lg-4">
 
             <!-- ======================================================== -->
             <!-- VIEW 1: WFG & SMU (FINISH GOODS & SMU) -->
             <!-- ======================================================== -->
             <div id="view-wfg" style="{{ $area === 'wfg' ? '' : 'display: none;' }}">
                 <!-- Dock Quota & Slot Status (3 Columns) -->
-                <div class="row g-3 mb-4">
+                <div class="row g-3 mb-3">
                     <!-- 1. Dock Slipsheet (Kuota: 2 Mobil) -->
                     <div class="col-lg-4 col-md-6">
                         <div class="content-card p-3 h-100">
@@ -915,58 +877,17 @@
                 }
             }
 
-            // Check calling alerts and sound
+            // Check calling alerts and sound chime (tanpa card banner agar tampilan dock & antrian muat 1 layar)
             function handleCallingAlerts(callingList) {
-                const container = document.getElementById('calling-banner-container');
-                if (!container) return;
+                if (!callingList || callingList.length === 0) return;
 
-                if (!callingList || callingList.length === 0) {
-                    container.style.display = 'none';
-                    container.innerHTML = '';
-                    return;
-                }
-
-                container.style.display = 'block';
                 let newCallDetected = false;
-
-                let html = `
-                <div class="calling-banner py-2 px-3 mb-3 shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-danger fs-6 px-3 py-2 animate-bounce shadow-sm">
-                            <i class="ri-notification-3-fill"></i> PANGGILAN DOCK
-                        </span>
-                        <span class="text-success-emphasis fw-bold small d-none d-lg-inline" style="font-size: 13px;">
-                            <i class="ri-whatsapp-fill text-success fs-5 align-middle me-1"></i>Panggilan WhatsApp Terkirim
-                        </span>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1 justify-content-lg-end">
-            `;
-
                 callingList.forEach(item => {
                     if (!previousCalledIds.has(item.id)) {
                         newCallDetected = true;
                         previousCalledIds.add(item.id);
                     }
-
-                    html += `
-                        <div class="calling-pill d-flex align-items-center gap-2 px-3 py-1 bg-white rounded-pill border border-success border-2 shadow-sm">
-                            <span class="badge-queue-no" style="font-size: 13px; padding: 2px 8px;">#${item.no_antrian}</span>
-                            <span class="badge-plat fs-5 fw-bold px-2 py-0">${item.no_pol}</span>
-                            <span class="text-dark fw-bold" style="font-size: 13px;">${item.nama_driver}</span>
-                            <span class="text-secondary small d-none d-xl-inline">(${item.vendor})</span>
-                            <span class="badge bg-success text-white small px-2 py-1">
-                                <i class="ri-arrow-right-circle-fill text-warning me-1"></i>Masuk: <strong>${item.category_label || item.jenis || 'Dock'}</strong>
-                            </span>
-                        </div>
-                    `;
                 });
-
-                html += `
-                    </div>
-                </div>
-            `;
-
-                container.innerHTML = html;
 
                 if (newCallDetected) {
                     playChime();
