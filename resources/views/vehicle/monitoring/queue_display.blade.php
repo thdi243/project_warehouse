@@ -60,14 +60,14 @@
                 background: #ffffff;
                 border-bottom: 1px solid var(--border-subtle);
                 box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-                padding: 12px 24px;
+                padding: 8px 20px;
                 position: sticky;
                 top: 0;
                 z-index: 100;
             }
 
             .brand-logo {
-                height: 42px;
+                height: 36px;
                 width: auto;
                 object-fit: contain;
             }
@@ -76,16 +76,16 @@
             .area-pill-group {
                 background: #e2e8f0;
                 border-radius: 9999px;
-                padding: 4px;
+                padding: 3px;
                 display: inline-flex;
                 gap: 4px;
             }
 
             .area-pill-btn {
-                padding: 8px 22px;
+                padding: 6px 18px;
                 border-radius: 9999px;
                 font-weight: 700;
-                font-size: 14px;
+                font-size: 13px;
                 color: #475569;
                 border: none;
                 background: transparent;
@@ -93,7 +93,7 @@
                 text-decoration: none;
                 display: inline-flex;
                 align-items: center;
-                gap: 8px;
+                gap: 6px;
                 cursor: pointer;
             }
 
@@ -117,8 +117,8 @@
             .content-card {
                 background: #ffffff;
                 border: 1px solid var(--border-subtle);
-                border-radius: 16px;
-                box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+                border-radius: 12px;
+                box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
                 transition: all 0.25s ease;
             }
 
@@ -128,9 +128,9 @@
 
             /* Slot Boxes inside Dock */
             .slot-box {
-                border-radius: 12px;
-                padding: 10px 14px;
-                min-height: 85px;
+                border-radius: 8px;
+                padding: 6px 10px;
+                min-height: 52px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -388,174 +388,127 @@
             <!-- ======================================================== -->
             <div id="view-wfg" style="{{ $area === 'wfg' ? '' : 'display: none;' }}">
                 <!-- Dock Quota & Slot Status (3 Columns) -->
-                <div class="row g-3 mb-3">
+                <div class="row g-2 mb-2">
                     <!-- 1. Dock Slipsheet (Kuota: 2 Mobil) -->
                     <div class="col-lg-4 col-md-6">
-                        <div class="content-card p-3 h-100">
-                            <div
-                                class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-10">
+                        <div class="content-card p-2 px-3 h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-secondary border-opacity-10">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-primary fs-6 p-2"><i class="ri-truck-fill"></i></span>
+                                    <span class="badge bg-primary p-1 fs-6"><i class="ri-truck-fill"></i></span>
                                     <div>
-                                        <h6 class="mb-0 fw-bold text-dark">Dock Slipsheet</h6>
-                                        <small class="text-secondary">WFG Muat • Kuota: 2 Truk</small>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 14px;">Dock Slipsheet</h6>
+                                        <small class="text-secondary" style="font-size: 11px;">Kuota: 2 • <span class="text-warning fw-bold">Antrian: <span id="count-queue-slipsheet">0</span></span></small>
                                     </div>
                                 </div>
-                                <span id="badge-slipsheet-status"
-                                    class="badge bg-success-subtle text-success fs-6 px-3 py-2 fw-bold">
+                                <span id="badge-slipsheet-status" class="badge bg-success-subtle text-success fs-7 px-2 py-1 fw-bold">
                                     Terisi: <span id="slipsheet-occupied">0</span>/2
                                 </span>
                             </div>
 
-                            <!-- 2 Slots Slipsheet -->
-                            <div class="d-flex flex-column gap-2" id="slots-slipsheet">
-                                <div class="slot-box available text-center">
-                                    <span class="text-secondary">Memuat data slot...</span>
+                            <!-- 2 Slots Slipsheet (Side by Side) -->
+                            <div class="row g-2" id="slots-slipsheet">
+                                <div class="col-12 slot-box available text-center py-2">
+                                    <span class="text-secondary small">Memuat data slot...</span>
                                 </div>
-                            </div>
-
-                            <div
-                                class="mt-3 pt-2 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
-                                <small class="text-secondary fw-semibold">Antrian Menunggu Slipsheet:</small>
-                                <span id="count-queue-slipsheet" class="fw-bold text-warning mono fs-6">0 Truk</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- 2. Dock Curah (Kuota: 4 Mobil) -->
                     <div class="col-lg-4 col-md-6">
-                        <div class="content-card p-3 h-100">
-                            <div
-                                class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-10">
+                        <div class="content-card p-2 px-3 h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-secondary border-opacity-10">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-warning fs-6 p-2 text-dark"><i
-                                            class="ri-stack-fill"></i></span>
+                                    <span class="badge bg-warning p-1 fs-6 text-dark"><i class="ri-stack-fill"></i></span>
                                     <div>
-                                        <h6 class="mb-0 fw-bold text-dark">Dock Curah</h6>
-                                        <small class="text-secondary">WFG Muat • Kuota: 4 Truk</small>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 14px;">Dock Curah</h6>
+                                        <small class="text-secondary" style="font-size: 11px;">Kuota: 4 • <span class="text-warning fw-bold">Antrian: <span id="count-queue-curah">0</span></span></small>
                                     </div>
                                 </div>
-                                <span id="badge-curah-status"
-                                    class="badge bg-success-subtle text-success fs-6 px-3 py-2 fw-bold">
+                                <span id="badge-curah-status" class="badge bg-success-subtle text-success fs-7 px-2 py-1 fw-bold">
                                     Terisi: <span id="curah-occupied">0</span>/4
                                 </span>
                             </div>
 
-                            <!-- 4 Slots Curah -->
+                            <!-- 4 Slots Curah (2x2 Grid) -->
                             <div class="row g-2" id="slots-curah">
-                                <div class="col-12 slot-box available text-center">
-                                    <span class="text-secondary">Memuat data slot...</span>
+                                <div class="col-12 slot-box available text-center py-2">
+                                    <span class="text-secondary small">Memuat data slot...</span>
                                 </div>
-                            </div>
-
-                            <div
-                                class="mt-3 pt-2 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
-                                <small class="text-secondary fw-semibold">Antrian Menunggu Curah:</small>
-                                <span id="count-queue-curah" class="fw-bold text-warning mono fs-6">0 Truk</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- 3. Dock Bongkaran & SMU (Kuota: 2 Mobil) -->
                     <div class="col-lg-4 col-md-12">
-                        <div class="content-card p-3 h-100">
-                            <div
-                                class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-10">
+                        <div class="content-card p-2 px-3 h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-secondary border-opacity-10">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="badge fs-6 p-2 text-white" style="background: #7c3aed;"><i
-                                            class="ri-inbox-unarchive-fill"></i></span>
+                                    <span class="badge p-1 fs-6 text-white" style="background: #7c3aed;"><i class="ri-inbox-unarchive-fill"></i></span>
                                     <div>
-                                        <h6 class="mb-0 fw-bold text-dark">Dock Bongkaran & SMU</h6>
-                                        <small class="text-secondary">WFG Bongkar + SMU • Kuota: 2 Truk</small>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 14px;">Dock Bongkaran & SMU</h6>
+                                        <small class="text-secondary" style="font-size: 11px;">Kuota: 2 • <span class="text-warning fw-bold">Antrian: <span id="count-queue-bongkaran">0</span></span></small>
                                     </div>
                                 </div>
-                                <span id="badge-bongkaran-status"
-                                    class="badge bg-success-subtle text-success fs-6 px-3 py-2 fw-bold">
+                                <span id="badge-bongkaran-status" class="badge bg-success-subtle text-success fs-7 px-2 py-1 fw-bold">
                                     Terisi: <span id="bongkaran-occupied">0</span>/2
                                 </span>
                             </div>
 
-                            <!-- 2 Slots Bongkaran & SMU -->
-                            <div class="d-flex flex-column gap-2" id="slots-bongkaran">
-                                <div class="slot-box available text-center">
-                                    <span class="text-secondary">Memuat data slot...</span>
+                            <!-- 2 Slots Bongkaran & SMU (Side by Side) -->
+                            <div class="row g-2" id="slots-bongkaran">
+                                <div class="col-12 slot-box available text-center py-2">
+                                    <span class="text-secondary small">Memuat data slot...</span>
                                 </div>
-                            </div>
-
-                            <div
-                                class="mt-3 pt-2 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
-                                <small class="text-secondary fw-semibold">Antrian Menunggu Bongkaran/SMU:</small>
-                                <span id="count-queue-bongkaran" class="fw-bold text-warning mono fs-6">0 Truk</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Daftar Antrian Menunggu (Standby Parkir) -->
-                <div class="content-card p-3 p-lg-4">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                <div class="content-card p-2 px-3 mt-1">
+                    <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-secondary border-opacity-10">
                         <div class="d-flex align-items-center gap-2">
-                            <i class="ri-parking-box-line fs-3 text-warning"></i>
-                            <div>
-                                <h5 class="mb-0 fw-bold text-dark">Antrian Menunggu di Kantong Parkir (WFG & SMU)</h5>
-                                <small class="text-secondary">Supir harap standby di kendaraan / ruang tunggu. Anda
-                                    akan dipanggil otomatis via WhatsApp dan layar monitor ini.</small>
-                            </div>
+                            <i class="ri-parking-box-line fs-5 text-warning"></i>
+                            <h6 class="mb-0 fw-bold text-dark" style="font-size: 13px;">Antrian Menunggu di Kantong Parkir (WFG & SMU)</h6>
                         </div>
 
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-light border border-secondary border-opacity-25 text-dark px-3 py-2">
-                                Total Menunggu: <strong id="total-wfg-waiting"
-                                    class="text-primary mono fs-6">0</strong> Truk
-                            </span>
-                        </div>
+                        <span class="badge bg-light border border-secondary border-opacity-25 text-dark px-2 py-1" style="font-size: 11px;">
+                            Total Menunggu: <strong id="total-wfg-waiting" class="text-primary mono">0</strong> Truk
+                        </span>
                     </div>
 
                     <!-- 3 Kolom Antrian Sesuai Jenis (Slipsheet | Curah | Bongkaran) -->
-                    <div class="row g-3">
+                    <div class="row g-2">
                         <!-- Kolom 1: Slipsheet -->
                         <div class="col-lg-4 col-md-6">
-                            <div class="p-3 rounded-3 border bg-light h-100 shadow-sm">
-                                <div
-                                    class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-10">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-primary p-2"><i class="ri-truck-fill"></i></span>
-                                        <div>
-                                            <h6 class="mb-0 fw-bold text-dark">Slipsheet</h6>
-                                            <small class="text-secondary" style="font-size: 11px;">Antrian Muat
-                                                Slipsheet</small>
-                                        </div>
+                            <div class="p-2 rounded-2 border bg-light h-100 shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-secondary border-opacity-10">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="badge bg-primary p-1"><i class="ri-truck-fill"></i></span>
+                                        <span class="fw-bold text-dark" style="font-size: 13px;">Slipsheet</span>
                                     </div>
-                                    <span class="badge bg-primary-subtle text-primary fw-bold fs-6"
-                                        id="badge-col-queue-slipsheet">0 Truk</span>
+                                    <span class="badge bg-primary-subtle text-primary fw-bold" style="font-size: 11px;" id="badge-col-queue-slipsheet">0 Truk</span>
                                 </div>
-                                <div id="col-queue-slipsheet" class="d-flex flex-column gap-2"
-                                    style="max-height: 520px; overflow-y: auto;">
-                                    <div class="text-center py-4 text-secondary small">Memuat antrian slipsheet...
-                                    </div>
+                                <div id="col-queue-slipsheet" class="d-flex flex-column gap-1"
+                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
+                                    <div class="text-center py-4 text-secondary small">Memuat antrian slipsheet...</div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Kolom 2: Curah -->
                         <div class="col-lg-4 col-md-6">
-                            <div class="p-3 rounded-3 border bg-light h-100 shadow-sm">
-                                <div
-                                    class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-10">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-warning text-dark p-2"><i
-                                                class="ri-stack-fill"></i></span>
-                                        <div>
-                                            <h6 class="mb-0 fw-bold text-dark">Curah</h6>
-                                            <small class="text-secondary" style="font-size: 11px;">Antrian Muat
-                                                Curah</small>
-                                        </div>
+                            <div class="p-2 rounded-2 border bg-light h-100 shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-secondary border-opacity-10">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="badge bg-warning text-dark p-1"><i class="ri-stack-fill"></i></span>
+                                        <span class="fw-bold text-dark" style="font-size: 13px;">Curah</span>
                                     </div>
-                                    <span class="badge bg-warning-subtle text-warning fw-bold fs-6"
-                                        id="badge-col-queue-curah">0 Truk</span>
+                                    <span class="badge bg-warning-subtle text-warning fw-bold" style="font-size: 11px;" id="badge-col-queue-curah">0 Truk</span>
                                 </div>
-                                <div id="col-queue-curah" class="d-flex flex-column gap-2"
-                                    style="max-height: 520px; overflow-y: auto;">
+                                <div id="col-queue-curah" class="d-flex flex-column gap-1"
+                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
                                     <div class="text-center py-4 text-secondary small">Memuat antrian curah...</div>
                                 </div>
                             </div>
@@ -563,25 +516,17 @@
 
                         <!-- Kolom 3: Bongkaran & SMU -->
                         <div class="col-lg-4 col-md-12">
-                            <div class="p-3 rounded-3 border bg-light h-100 shadow-sm">
-                                <div
-                                    class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-10">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge text-white p-2" style="background: #7c3aed;"><i
-                                                class="ri-inbox-unarchive-fill"></i></span>
-                                        <div>
-                                            <h6 class="mb-0 fw-bold text-dark">Bongkaran (& SMU)</h6>
-                                            <small class="text-secondary" style="font-size: 11px;">Antrian WFG Bongkar
-                                                + SMU</small>
-                                        </div>
+                            <div class="p-2 rounded-2 border bg-light h-100 shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-secondary border-opacity-10">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="badge text-white p-1" style="background: #7c3aed;"><i class="ri-inbox-unarchive-fill"></i></span>
+                                        <span class="fw-bold text-dark" style="font-size: 13px;">Bongkaran (& SMU)</span>
                                     </div>
-                                    <span class="badge fw-bold fs-6" style="background: #ede9fe; color: #6d28d9;"
-                                        id="badge-col-queue-bongkaran">0 Truk</span>
+                                    <span class="badge fw-bold" style="background: #ede9fe; color: #6d28d9; font-size: 11px;" id="badge-col-queue-bongkaran">0 Truk</span>
                                 </div>
-                                <div id="col-queue-bongkaran" class="d-flex flex-column gap-2"
-                                    style="max-height: 520px; overflow-y: auto;">
-                                    <div class="text-center py-4 text-secondary small">Memuat antrian bongkaran...
-                                    </div>
+                                <div id="col-queue-bongkaran" class="d-flex flex-column gap-1"
+                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
+                                    <div class="text-center py-4 text-secondary small">Memuat antrian bongkaran...</div>
                                 </div>
                             </div>
                         </div>
@@ -593,53 +538,49 @@
             <!-- VIEW 2: WRM & WPM (RAW MATERIAL & PACKAGING) -->
             <!-- ======================================================== -->
             <div id="view-wrm" style="{{ $area === 'wrm' ? '' : 'display: none;' }}">
-                <div class="row g-3 mb-4">
+                <div class="row g-2 mb-2">
                     <!-- 1. Active Docks in WRM & WPM -->
                     <div class="col-lg-6">
-                        <div class="content-card p-3 h-100">
-                            <div
-                                class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-10">
+                        <div class="content-card p-2 px-3 h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-secondary border-opacity-10">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-success fs-6 p-2"><i
-                                            class="ri-inbox-archive-fill"></i></span>
+                                    <span class="badge bg-success p-1 fs-6"><i class="ri-inbox-archive-fill"></i></span>
                                     <div>
-                                        <h6 class="mb-0 fw-bold text-dark">Dock WRM (Bahan Baku)</h6>
-                                        <small class="text-secondary">Truk Sedang Proses Bongkar</small>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 14px;">Dock WRM (Bahan Baku)</h6>
+                                        <small class="text-secondary" style="font-size: 11px;">Truk Sedang Proses Bongkar</small>
                                     </div>
                                 </div>
-                                <span id="badge-wrm-active-count" class="badge bg-primary fs-6 px-3 py-2 fw-bold">
+                                <span id="badge-wrm-active-count" class="badge bg-primary fs-7 px-2 py-1 fw-bold">
                                     Aktif: <span id="wrm-active-count">0</span> Truk
                                 </span>
                             </div>
 
-                            <div id="wrm-active-container" class="d-flex flex-column gap-2">
-                                <div class="slot-box available text-center">
-                                    <span class="text-secondary">Memuat data aktif WRM...</span>
+                            <div id="wrm-active-container" class="d-flex flex-column gap-1">
+                                <div class="slot-box available text-center py-2">
+                                    <span class="text-secondary small">Memuat data aktif WRM...</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="col-lg-6">
-                        <div class="content-card p-3 h-100">
-                            <div
-                                class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-10">
+                        <div class="content-card p-2 px-3 h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-secondary border-opacity-10">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-info fs-6 p-2 text-white"><i
-                                            class="ri-archive-stack-fill"></i></span>
+                                    <span class="badge bg-info p-1 fs-6 text-white"><i class="ri-archive-stack-fill"></i></span>
                                     <div>
-                                        <h6 class="mb-0 fw-bold text-dark">Dock WPM (Bahan Kemasan)</h6>
-                                        <small class="text-secondary">Truk Sedang Proses Muat / Bongkar</small>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 14px;">Dock WPM (Bahan Kemasan)</h6>
+                                        <small class="text-secondary" style="font-size: 11px;">Truk Sedang Proses Muat / Bongkar</small>
                                     </div>
                                 </div>
-                                <span id="badge-wpm-active-count" class="badge bg-primary fs-6 px-3 py-2 fw-bold">
+                                <span id="badge-wpm-active-count" class="badge bg-primary fs-7 px-2 py-1 fw-bold">
                                     Aktif: <span id="wpm-active-count">0</span> Truk
                                 </span>
                             </div>
 
-                            <div id="wpm-active-container" class="d-flex flex-column gap-2">
-                                <div class="slot-box available text-center">
-                                    <span class="text-secondary">Memuat data aktif WPM...</span>
+                            <div id="wpm-active-container" class="d-flex flex-column gap-1">
+                                <div class="slot-box available text-center py-2">
+                                    <span class="text-secondary small">Memuat data aktif WPM...</span>
                                 </div>
                             </div>
                         </div>
@@ -647,46 +588,32 @@
                 </div>
 
                 <!-- Row 2: Antrian Menunggu di Kantong Parkir (WRM & WPM) per Kolom -->
-                <div class="content-card p-3 p-lg-4">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                <div class="content-card p-2 px-3 mt-1">
+                    <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom border-secondary border-opacity-10">
                         <div class="d-flex align-items-center gap-2">
-                            <i class="ri-parking-box-line fs-3 text-warning"></i>
-                            <div>
-                                <h5 class="mb-0 fw-bold text-dark">Antrian Menunggu di Kantong Parkir (WRM & WPM)</h5>
-                                <small class="text-secondary">Supir harap standby di kendaraan / ruang tunggu.
-                                    Panggilan masuk via WhatsApp & layar monitor.</small>
-                            </div>
+                            <i class="ri-parking-box-line fs-5 text-warning"></i>
+                            <h6 class="mb-0 fw-bold text-dark" style="font-size: 13px;">Antrian Menunggu di Kantong Parkir (WRM & WPM)</h6>
                         </div>
 
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-light border border-secondary border-opacity-25 text-dark px-3 py-2">
-                                Total Menunggu: <strong id="total-wrm-wpm-waiting"
-                                    class="text-primary mono fs-6">0</strong> Truk
-                            </span>
-                        </div>
+                        <span class="badge bg-light border border-secondary border-opacity-25 text-dark px-2 py-1" style="font-size: 11px;">
+                            Total Menunggu: <strong id="total-wrm-wpm-waiting" class="text-primary mono">0</strong> Truk
+                        </span>
                     </div>
 
                     <!-- 2 Kolom Antrian Sesuai Jenis (WRM | WPM) -->
-                    <div class="row g-3">
+                    <div class="row g-2">
                         <!-- Kolom 1: WRM (Bahan Baku) -->
                         <div class="col-lg-6">
-                            <div class="p-3 rounded-3 border bg-light h-100 shadow-sm">
-                                <div
-                                    class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-10">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-success p-2"><i
-                                                class="ri-inbox-archive-fill"></i></span>
-                                        <div>
-                                            <h6 class="mb-0 fw-bold text-dark">Antrian WRM (Bahan Baku)</h6>
-                                            <small class="text-secondary" style="font-size: 11px;">Kendaraan menunggu
-                                                bongkar bahan baku</small>
-                                        </div>
+                            <div class="p-2 rounded-2 border bg-light h-100 shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-secondary border-opacity-10">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="badge bg-success p-1"><i class="ri-inbox-archive-fill"></i></span>
+                                        <span class="fw-bold text-dark" style="font-size: 13px;">Antrian WRM (Bahan Baku)</span>
                                     </div>
-                                    <span class="badge bg-success-subtle text-success fw-bold fs-6"
-                                        id="badge-col-queue-wrm">0 Truk</span>
+                                    <span class="badge bg-success-subtle text-success fw-bold" style="font-size: 11px;" id="badge-col-queue-wrm">0 Truk</span>
                                 </div>
-                                <div id="col-queue-wrm" class="d-flex flex-column gap-2"
-                                    style="max-height: 520px; overflow-y: auto;">
+                                <div id="col-queue-wrm" class="d-flex flex-column gap-1"
+                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
                                     <div class="text-center py-4 text-secondary small">Memuat antrian WRM...</div>
                                 </div>
                             </div>
@@ -694,23 +621,16 @@
 
                         <!-- Kolom 2: WPM (Bahan Kemasan) -->
                         <div class="col-lg-6">
-                            <div class="p-3 rounded-3 border bg-light h-100 shadow-sm">
-                                <div
-                                    class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-10">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-info p-2 text-white"><i
-                                                class="ri-archive-stack-fill"></i></span>
-                                        <div>
-                                            <h6 class="mb-0 fw-bold text-dark">Antrian WPM (Bahan Kemasan)</h6>
-                                            <small class="text-secondary" style="font-size: 11px;">Kendaraan menunggu
-                                                muat / bongkar kemasan</small>
-                                        </div>
+                            <div class="p-2 rounded-2 border bg-light h-100 shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom border-secondary border-opacity-10">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="badge bg-info p-1 text-white"><i class="ri-archive-stack-fill"></i></span>
+                                        <span class="fw-bold text-dark" style="font-size: 13px;">Antrian WPM (Bahan Kemasan)</span>
                                     </div>
-                                    <span class="badge bg-info-subtle text-info fw-bold fs-6"
-                                        id="badge-col-queue-wpm">0 Truk</span>
+                                    <span class="badge bg-info-subtle text-info fw-bold" style="font-size: 11px;" id="badge-col-queue-wpm">0 Truk</span>
                                 </div>
-                                <div id="col-queue-wpm" class="d-flex flex-column gap-2"
-                                    style="max-height: 520px; overflow-y: auto;">
+                                <div id="col-queue-wpm" class="d-flex flex-column gap-1"
+                                    style="max-height: calc(100vh - 340px); min-height: 250px; overflow-y: auto;">
                                     <div class="text-center py-4 text-secondary small">Memuat antrian WPM...</div>
                                 </div>
                             </div>
@@ -722,17 +642,15 @@
         </main>
 
         <!-- Footer Info / Instruksi Supir -->
-        <footer class="py-3 px-4 border-top mt-3" stylpe="background: #ffffff;">
-            <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-3 text-secondary"
-                style="font-size: 13px;">
+        <footer class="py-1 px-4 border-top mt-1" style="background: #ffffff;">
+            <div class="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-2 text-secondary"
+                style="font-size: 11px;">
                 <div class="d-flex align-items-center gap-2">
-                    <i class="ri-information-line text-warning fs-5"></i>
-                    <span><strong>Perhatian Supir:</strong> Pastikan Anda telah <strong>menyimpan nomor WhatsApp
-                            Gateway</strong> dan <strong>membalas dengan OKE</strong> agar notifikasi panggilan dock
-                        terkirim lancar ke HP Anda.</span>
+                    <i class="ri-information-line text-warning fs-6"></i>
+                    <span><strong>Perhatian Supir:</strong> Pastikan nomor WhatsApp selalu aktif untuk menerima informasi giliran masuk loading dock.</span>
                 </div>
                 <div>
-                    <span>Sistem Antrian Terintegrasi &copy; {{ date('Y') }} PT BAS Warehouse Monitoring</span>
+                    <span>PT BAS Warehouse Queue System &copy; {{ date('Y') }}</span>
                 </div>
             </div>
         </footer>
@@ -913,27 +831,30 @@
                 slip.slots.forEach((slot, idx) => {
                     if (slot) {
                         slipSlotsHtml += `
-                        <div class="slot-box occupied">
-                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                <span class="badge bg-primary text-uppercase" style="font-size: 11px;">Slot ${idx + 1} • PROSES</span>
-                                <span class="badge bg-light text-dark border mono" style="font-size: 11px;">⏱ ${slot.duration}</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center my-1">
-                                <span class="badge-plat">${slot.no_pol}</span>
-                                <span class="badge-queue-no" style="font-size: 14px; padding: 2px 8px;">#${slot.no_antrian}</span>
-                            </div>
-                            <div class="text-truncate text-dark small mt-1">
-                                <strong>${slot.nama_driver}</strong> <span class="text-secondary">(${slot.vendor})</span>
+                        <div class="col-6">
+                            <div class="slot-box occupied h-100 p-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-primary text-uppercase" style="font-size: 9px; padding: 1px 4px;">Slot ${idx + 1}</span>
+                                    <span class="text-secondary mono" style="font-size: 10px;">⏱ ${slot.duration}</span>
+                                </div>
+                                <div class="text-center my-0">
+                                    <span class="badge-plat fs-6 fw-bold">${slot.no_pol}</span>
+                                </div>
+                                <div class="text-truncate text-dark text-center" style="font-size: 11px;">
+                                    #${slot.no_antrian} • ${slot.nama_driver}
+                                </div>
                             </div>
                         </div>
                     `;
                     } else {
                         slipSlotsHtml += `
-                        <div class="slot-box available text-center">
-                            <div class="fw-bold text-success mb-1" style="font-size: 15px;">
-                                <i class="ri-checkbox-circle-fill"></i> SLOT ${idx + 1} TERSEDIA
+                        <div class="col-6">
+                            <div class="slot-box available text-center h-100 py-2 px-1">
+                                <div class="fw-bold text-success mb-1" style="font-size: 12px;">
+                                    <i class="ri-checkbox-circle-fill"></i> SLOT ${idx + 1}
+                                </div>
+                                <small class="text-secondary" style="font-size: 10px;">TERSEDIA</small>
                             </div>
-                            <small class="text-secondary">Dock Siap Digunakan</small>
                         </div>
                     `;
                     }
@@ -957,14 +878,14 @@
                         curahSlotsHtml += `
                         <div class="col-6">
                             <div class="slot-box occupied h-100 p-2">
-                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                    <span class="badge bg-warning text-dark text-uppercase" style="font-size: 10px;">Slot ${idx + 1}</span>
-                                    <span class="text-secondary mono" style="font-size: 10px;">${slot.duration}</span>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-warning text-dark text-uppercase" style="font-size: 9px; padding: 1px 4px;">Slot ${idx + 1}</span>
+                                    <span class="text-secondary mono" style="font-size: 10px;">⏱ ${slot.duration}</span>
                                 </div>
-                                <div class="text-center my-1">
-                                    <span class="badge-plat" style="font-size: 18px;">${slot.no_pol}</span>
+                                <div class="text-center my-0">
+                                    <span class="badge-plat fs-6 fw-bold">${slot.no_pol}</span>
                                 </div>
-                                <div class="text-truncate text-dark small text-center" style="font-size: 11px;">
+                                <div class="text-truncate text-dark text-center" style="font-size: 11px;">
                                     #${slot.no_antrian} • ${slot.nama_driver}
                                 </div>
                             </div>
@@ -973,11 +894,11 @@
                     } else {
                         curahSlotsHtml += `
                         <div class="col-6">
-                            <div class="slot-box available text-center h-100 p-2">
-                                <div class="fw-bold text-success" style="font-size: 13px;">
+                            <div class="slot-box available text-center h-100 py-2 px-1">
+                                <div class="fw-bold text-success mb-1" style="font-size: 12px;">
                                     <i class="ri-check-line"></i> SLOT ${idx + 1}
                                 </div>
-                                <small class="text-secondary small">KOSONG</small>
+                                <small class="text-secondary" style="font-size: 10px;">KOSONG</small>
                             </div>
                         </div>
                     `;
@@ -1000,27 +921,30 @@
                 bongkar.slots.forEach((slot, idx) => {
                     if (slot) {
                         bongkarSlotsHtml += `
-                        <div class="slot-box occupied">
-                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                <span class="badge text-uppercase text-white" style="font-size: 11px; background: #7c3aed;">Slot ${idx + 1} • BONGKAR/SMU</span>
-                                <span class="badge bg-light text-dark border mono" style="font-size: 11px;">⏱ ${slot.duration}</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center my-1">
-                                <span class="badge-plat">${slot.no_pol}</span>
-                                <span class="badge-queue-no" style="font-size: 14px; padding: 2px 8px;">#${slot.no_antrian}</span>
-                            </div>
-                            <div class="text-truncate text-dark small mt-1">
-                                <strong>${slot.nama_driver}</strong> <span class="text-secondary">(${slot.vendor})</span>
+                        <div class="col-6">
+                            <div class="slot-box occupied h-100 p-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge text-uppercase text-white" style="font-size: 9px; padding: 1px 4px; background: #7c3aed;">Slot ${idx + 1}</span>
+                                    <span class="badge bg-light text-dark border mono" style="font-size: 10px;">⏱ ${slot.duration}</span>
+                                </div>
+                                <div class="text-center my-0">
+                                    <span class="badge-plat fs-6 fw-bold">${slot.no_pol}</span>
+                                </div>
+                                <div class="text-truncate text-dark text-center" style="font-size: 11px;">
+                                    #${slot.no_antrian} • ${slot.nama_driver}
+                                </div>
                             </div>
                         </div>
                     `;
                     } else {
                         bongkarSlotsHtml += `
-                        <div class="slot-box available text-center">
-                            <div class="fw-bold text-success mb-1" style="font-size: 15px;">
-                                <i class="ri-checkbox-circle-fill"></i> SLOT ${idx + 1} TERSEDIA
+                        <div class="col-6">
+                            <div class="slot-box available text-center h-100 py-2 px-1">
+                                <div class="fw-bold text-success mb-1" style="font-size: 12px;">
+                                    <i class="ri-checkbox-circle-fill"></i> SLOT ${idx + 1}
+                                </div>
+                                <small class="text-secondary" style="font-size: 10px;">TERSEDIA</small>
                             </div>
-                            <small class="text-secondary">Dock Siap Digunakan</small>
                         </div>
                     `;
                     }
@@ -1044,9 +968,9 @@
             function renderQueueColumnCards(items) {
                 if (!items || items.length === 0) {
                     return `
-                    <div class="text-center py-4 px-2 text-secondary bg-white rounded-3 border border-dashed">
-                        <i class="ri-checkbox-circle-line fs-3 text-success d-block mb-1"></i>
-                        <span class="small fw-semibold">Tidak ada antrian menunggu</span>
+                    <div class="text-center py-3 px-2 text-secondary bg-white rounded-2 border border-dashed">
+                        <i class="ri-checkbox-circle-line fs-4 text-success d-block mb-1"></i>
+                        <span class="small fw-semibold" style="font-size: 11px;">Tidak ada antrian menunggu</span>
                     </div>
                 `;
                 }
@@ -1054,29 +978,28 @@
                 let html = '';
                 items.forEach(q => {
                     let overnightBadge = q.is_overnight ?
-                        '<span class="badge bg-danger ms-1" style="font-size: 10px;">Menginap</span>' : '';
+                        '<span class="badge bg-danger ms-1" style="font-size: 9px; padding: 1px 4px;">Menginap</span>' : '';
                     let statusBadge = q.is_called ?
-                        '<span class="badge bg-success text-white small animate-pulse shadow-sm"><i class="ri-notification-3-fill"></i> DIPANGGIL</span>' :
-                        '<span class="badge bg-light border text-secondary small">Standby</span>';
+                        '<span class="badge bg-success text-white animate-pulse shadow-sm" style="font-size: 10px; padding: 2px 6px;"><i class="ri-notification-3-fill"></i> DIPANGGIL</span>' :
+                        '<span class="badge bg-light border text-secondary" style="font-size: 10px; padding: 2px 5px;">Standby</span>';
 
                     html += `
-                    <div class="p-2 rounded-3 bg-white border shadow-sm ${q.is_called ? 'border-success border-2' : ''}">
+                    <div class="p-2 rounded-2 bg-white border shadow-sm ${q.is_called ? 'border-success border-2 bg-success-subtle bg-opacity-25' : ''}">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div>
-                                <span class="badge-queue-no" style="font-size: 14px; padding: 2px 9px;">#${q.no_antrian}</span>
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="badge-queue-no" style="font-size: 12px; padding: 1px 6px;">#${q.no_antrian}</span>
+                                <span class="badge-plat fs-6 fw-bold">${q.no_pol}</span>
                                 ${overnightBadge}
                             </div>
-                            <span class="badge-plat fs-5">${q.no_pol}</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mt-2 pt-1 border-top border-light-subtle">
-                            <div class="text-truncate me-2" style="max-width: 65%;">
-                                <div class="fw-bold text-dark text-truncate" style="font-size: 13px;">${q.nama_driver}</div>
-                                <small class="text-secondary text-truncate d-block" style="font-size: 11px;">${q.vendor}</small>
-                            </div>
-                            <div class="text-end">
+                            <div>
                                 ${statusBadge}
-                                <small class="text-secondary mono d-block mt-1" style="font-size: 11px;">⏱ ${q.queue_time}</small>
                             </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top border-light-subtle" style="font-size: 11px;">
+                            <span class="text-dark fw-semibold text-truncate me-2" style="max-width: 68%;">
+                                ${q.nama_driver} <span class="text-secondary fw-normal">(${q.vendor})</span>
+                            </span>
+                            <span class="text-secondary mono">⏱ ${q.queue_time}</span>
                         </div>
                     </div>
                 `;
@@ -1093,16 +1016,16 @@
                     let html = '';
                     data.wrm.active.forEach(item => {
                         html += `
-                        <div class="slot-box occupied">
+                        <div class="slot-box occupied p-2">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="badge bg-success">BONGKAR WRM</span>
-                                <span class="text-dark mono small">⏱ ${item.duration}</span>
+                                <span class="badge bg-success" style="font-size: 9px; padding: 1px 4px;">BONGKAR WRM</span>
+                                <span class="text-dark mono" style="font-size: 10px;">⏱ ${item.duration}</span>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center my-1">
-                                <span class="badge-plat">${item.no_pol}</span>
-                                <span class="badge-queue-no" style="font-size: 14px; padding: 2px 8px;">#${item.no_antrian}</span>
+                            <div class="d-flex justify-content-between align-items-center my-0">
+                                <span class="badge-plat fs-6 fw-bold">${item.no_pol}</span>
+                                <span class="badge-queue-no" style="font-size: 12px; padding: 1px 6px;">#${item.no_antrian}</span>
                             </div>
-                            <div class="text-dark small mt-1">
+                            <div class="text-dark small text-truncate" style="font-size: 11px;">
                                 <strong>${item.nama_driver}</strong> (${item.vendor}) • <span class="text-primary">${item.item_name}</span>
                             </div>
                         </div>
@@ -1111,9 +1034,9 @@
                     wrmActiveContainer.innerHTML = html;
                 } else {
                     wrmActiveContainer.innerHTML = `
-                    <div class="slot-box available text-center">
-                        <div class="text-success fw-bold"><i class="ri-check-circle-line"></i> DOCK WRM TERSEDIA</div>
-                        <small class="text-secondary">Tidak ada proses bongkar aktif</small>
+                    <div class="slot-box available text-center py-2 px-1">
+                        <div class="text-success fw-bold" style="font-size: 12px;"><i class="ri-check-circle-line"></i> DOCK WRM TERSEDIA</div>
+                        <small class="text-secondary" style="font-size: 10px;">Tidak ada proses bongkar aktif</small>
                     </div>
                 `;
                 }
@@ -1125,16 +1048,16 @@
                     let html = '';
                     data.wpm.active.forEach(item => {
                         html += `
-                        <div class="slot-box occupied">
+                        <div class="slot-box occupied p-2">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="badge bg-info">PROSES WPM</span>
-                                <span class="text-dark mono small">⏱ ${item.duration}</span>
+                                <span class="badge bg-info" style="font-size: 9px; padding: 1px 4px;">PROSES WPM</span>
+                                <span class="text-dark mono" style="font-size: 10px;">⏱ ${item.duration}</span>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center my-1">
-                                <span class="badge-plat">${item.no_pol}</span>
-                                <span class="badge-queue-no" style="font-size: 14px; padding: 2px 8px;">#${item.no_antrian}</span>
+                            <div class="d-flex justify-content-between align-items-center my-0">
+                                <span class="badge-plat fs-6 fw-bold">${item.no_pol}</span>
+                                <span class="badge-queue-no" style="font-size: 12px; padding: 1px 6px;">#${item.no_antrian}</span>
                             </div>
-                            <div class="text-dark small mt-1">
+                            <div class="text-dark small text-truncate" style="font-size: 11px;">
                                 <strong>${item.nama_driver}</strong> (${item.vendor}) • <span class="text-primary">${item.item_name}</span>
                             </div>
                         </div>
@@ -1143,9 +1066,9 @@
                     wpmActiveContainer.innerHTML = html;
                 } else {
                     wpmActiveContainer.innerHTML = `
-                    <div class="slot-box available text-center">
-                        <div class="text-success fw-bold"><i class="ri-check-circle-line"></i> DOCK WPM TERSEDIA</div>
-                        <small class="text-secondary">Tidak ada proses aktif</small>
+                    <div class="slot-box available text-center py-2 px-1">
+                        <div class="text-success fw-bold" style="font-size: 12px;"><i class="ri-check-circle-line"></i> DOCK WPM TERSEDIA</div>
+                        <small class="text-secondary" style="font-size: 10px;">Tidak ada proses aktif</small>
                     </div>
                 `;
                 }
