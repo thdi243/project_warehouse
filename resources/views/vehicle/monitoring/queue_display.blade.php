@@ -134,9 +134,9 @@
 
             /* Slot Boxes inside Dock */
             .slot-box {
-                border-radius: 8px;
-                padding: 6px 10px;
-                min-height: 52px;
+                border-radius: 10px;
+                padding: 10px 14px;
+                min-height: 64px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -831,29 +831,30 @@
                 slip.slots.forEach((slot, idx) => {
                     if (slot) {
                         slipSlotsHtml += `
-                        <div class="col-6">
-                            <div class="slot-box occupied h-100 p-2">
+                        <div class="col-12">
+                            <div class="slot-box occupied h-100 p-2 px-3">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="badge bg-primary text-uppercase" style="font-size: 9px; padding: 1px 4px;">Slot ${idx + 1}</span>
-                                    <span class="text-secondary mono" style="font-size: 10px;">⏱ ${slot.duration}</span>
+                                    <span class="badge bg-primary text-uppercase" style="font-size: 11px; padding: 2px 6px;">Slot ${idx + 1}</span>
+                                    <span class="badge bg-light text-dark border mono" style="font-size: 11px;">⏱ ${slot.duration}</span>
                                 </div>
-                                <div class="text-center my-0">
-                                    <span class="badge-plat fs-6 fw-bold">${slot.no_pol}</span>
-                                </div>
-                                <div class="text-truncate text-dark text-center" style="font-size: 11px;">
-                                    #${slot.no_antrian} • ${slot.nama_driver}
+                                <div class="d-flex align-items-center justify-content-between my-1">
+                                    <span class="badge-plat fs-4 fw-bold text-dark">${slot.no_pol}</span>
+                                    <div class="text-end text-truncate ms-2" style="max-width: 55%;">
+                                        <div class="fw-bold text-primary" style="font-size: 14px;">#${slot.no_antrian}</div>
+                                        <div class="text-truncate text-secondary" style="font-size: 12px;">${slot.nama_driver || '-'}</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     `;
                     } else {
                         slipSlotsHtml += `
-                        <div class="col-6">
-                            <div class="slot-box available text-center h-100 py-2 px-1">
-                                <div class="fw-bold text-success mb-1" style="font-size: 12px;">
-                                    <i class="ri-checkbox-circle-fill"></i> SLOT ${idx + 1}
+                        <div class="col-12">
+                            <div class="slot-box available text-center h-100 py-3">
+                                <div class="fw-bold text-success mb-1" style="font-size: 14px;">
+                                    <i class="ri-checkbox-circle-fill"></i> SLOT ${idx + 1} TERSEDIA
                                 </div>
-                                <small class="text-secondary" style="font-size: 10px;">TERSEDIA</small>
+                                <small class="text-secondary" style="font-size: 11px;">Dock Siap Digunakan</small>
                             </div>
                         </div>
                     `;
@@ -879,14 +880,14 @@
                         <div class="col-6">
                             <div class="slot-box occupied h-100 p-2">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="badge bg-warning text-dark text-uppercase" style="font-size: 9px; padding: 1px 4px;">Slot ${idx + 1}</span>
+                                    <span class="badge bg-warning text-dark text-uppercase" style="font-size: 10px; padding: 2px 5px;">Slot ${idx + 1}</span>
                                     <span class="text-secondary mono" style="font-size: 10px;">⏱ ${slot.duration}</span>
                                 </div>
-                                <div class="text-center my-0">
-                                    <span class="badge-plat fs-6 fw-bold">${slot.no_pol}</span>
+                                <div class="text-center my-1">
+                                    <span class="badge-plat fs-5 fw-bold text-dark">${slot.no_pol}</span>
                                 </div>
-                                <div class="text-truncate text-dark text-center" style="font-size: 11px;">
-                                    #${slot.no_antrian} • ${slot.nama_driver}
+                                <div class="text-truncate text-dark text-center fw-medium" style="font-size: 12px;">
+                                    <span class="text-warning-emphasis fw-bold">#${slot.no_antrian}</span> • ${slot.nama_driver || '-'}
                                 </div>
                             </div>
                         </div>
@@ -894,11 +895,11 @@
                     } else {
                         curahSlotsHtml += `
                         <div class="col-6">
-                            <div class="slot-box available text-center h-100 py-2 px-1">
-                                <div class="fw-bold text-success mb-1" style="font-size: 12px;">
+                            <div class="slot-box available text-center h-100 py-3 px-1">
+                                <div class="fw-bold text-success mb-1" style="font-size: 13px;">
                                     <i class="ri-check-line"></i> SLOT ${idx + 1}
                                 </div>
-                                <small class="text-secondary" style="font-size: 10px;">KOSONG</small>
+                                <small class="text-secondary fw-semibold" style="font-size: 11px;">KOSONG</small>
                             </div>
                         </div>
                     `;
@@ -921,29 +922,30 @@
                 bongkar.slots.forEach((slot, idx) => {
                     if (slot) {
                         bongkarSlotsHtml += `
-                        <div class="col-6">
-                            <div class="slot-box occupied h-100 p-2">
+                        <div class="col-12">
+                            <div class="slot-box occupied h-100 p-2 px-3">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="badge text-uppercase text-white" style="font-size: 9px; padding: 1px 4px; background: #7c3aed;">Slot ${idx + 1}</span>
-                                    <span class="badge bg-light text-dark border mono" style="font-size: 10px;">⏱ ${slot.duration}</span>
+                                    <span class="badge text-uppercase text-white" style="font-size: 11px; padding: 2px 6px; background: #7c3aed;">Slot ${idx + 1}</span>
+                                    <span class="badge bg-light text-dark border mono" style="font-size: 11px;">⏱ ${slot.duration}</span>
                                 </div>
-                                <div class="text-center my-0">
-                                    <span class="badge-plat fs-6 fw-bold">${slot.no_pol}</span>
-                                </div>
-                                <div class="text-truncate text-dark text-center" style="font-size: 11px;">
-                                    #${slot.no_antrian} • ${slot.nama_driver}
+                                <div class="d-flex align-items-center justify-content-between my-1">
+                                    <span class="badge-plat fs-4 fw-bold text-dark">${slot.no_pol}</span>
+                                    <div class="text-end text-truncate ms-2" style="max-width: 55%;">
+                                        <div class="fw-bold" style="color: #7c3aed; font-size: 14px;">#${slot.no_antrian}</div>
+                                        <div class="text-truncate text-secondary" style="font-size: 12px;">${slot.nama_driver || '-'}</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     `;
                     } else {
                         bongkarSlotsHtml += `
-                        <div class="col-6">
-                            <div class="slot-box available text-center h-100 py-2 px-1">
-                                <div class="fw-bold text-success mb-1" style="font-size: 12px;">
-                                    <i class="ri-checkbox-circle-fill"></i> SLOT ${idx + 1}
+                        <div class="col-12">
+                            <div class="slot-box available text-center h-100 py-3">
+                                <div class="fw-bold text-success mb-1" style="font-size: 14px;">
+                                    <i class="ri-checkbox-circle-fill"></i> SLOT ${idx + 1} TERSEDIA
                                 </div>
-                                <small class="text-secondary" style="font-size: 10px;">TERSEDIA</small>
+                                <small class="text-secondary" style="font-size: 11px;">Dock Siap Digunakan</small>
                             </div>
                         </div>
                     `;
@@ -1016,17 +1018,17 @@
                     let html = '';
                     data.wrm.active.forEach(item => {
                         html += `
-                        <div class="slot-box occupied p-2">
+                        <div class="slot-box occupied p-2 px-3">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="badge bg-success" style="font-size: 9px; padding: 1px 4px;">BONGKAR WRM</span>
-                                <span class="text-dark mono" style="font-size: 10px;">⏱ ${item.duration}</span>
+                                <span class="badge bg-success" style="font-size: 11px; padding: 2px 6px;">BONGKAR WRM</span>
+                                <span class="badge bg-light text-dark border mono" style="font-size: 11px;">⏱ ${item.duration}</span>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center my-0">
-                                <span class="badge-plat fs-6 fw-bold">${item.no_pol}</span>
-                                <span class="badge-queue-no" style="font-size: 12px; padding: 1px 6px;">#${item.no_antrian}</span>
+                            <div class="d-flex justify-content-between align-items-center my-1">
+                                <span class="badge-plat fs-4 fw-bold text-dark">${item.no_pol}</span>
+                                <span class="badge-queue-no" style="font-size: 14px; padding: 2px 8px;">#${item.no_antrian}</span>
                             </div>
-                            <div class="text-dark small text-truncate" style="font-size: 11px;">
-                                <strong>${item.nama_driver}</strong> (${item.vendor}) • <span class="text-primary">${item.item_name}</span>
+                            <div class="text-dark small text-truncate" style="font-size: 12px;">
+                                <strong>${item.nama_driver}</strong> (${item.vendor}) • <span class="text-primary fw-medium">${item.item_name}</span>
                             </div>
                         </div>
                     `;
@@ -1034,9 +1036,9 @@
                     wrmActiveContainer.innerHTML = html;
                 } else {
                     wrmActiveContainer.innerHTML = `
-                    <div class="slot-box available text-center py-2 px-1">
-                        <div class="text-success fw-bold" style="font-size: 12px;"><i class="ri-check-circle-line"></i> DOCK WRM TERSEDIA</div>
-                        <small class="text-secondary" style="font-size: 10px;">Tidak ada proses bongkar aktif</small>
+                    <div class="slot-box available text-center py-3 px-2">
+                        <div class="text-success fw-bold mb-1" style="font-size: 14px;"><i class="ri-check-circle-line"></i> DOCK WRM TERSEDIA</div>
+                        <small class="text-secondary" style="font-size: 11px;">Tidak ada proses bongkar aktif</small>
                     </div>
                 `;
                 }
@@ -1048,17 +1050,17 @@
                     let html = '';
                     data.wpm.active.forEach(item => {
                         html += `
-                        <div class="slot-box occupied p-2">
+                        <div class="slot-box occupied p-2 px-3">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="badge bg-info" style="font-size: 9px; padding: 1px 4px;">PROSES WPM</span>
-                                <span class="text-dark mono" style="font-size: 10px;">⏱ ${item.duration}</span>
+                                <span class="badge bg-info" style="font-size: 11px; padding: 2px 6px;">PROSES WPM</span>
+                                <span class="badge bg-light text-dark border mono" style="font-size: 11px;">⏱ ${item.duration}</span>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center my-0">
-                                <span class="badge-plat fs-6 fw-bold">${item.no_pol}</span>
-                                <span class="badge-queue-no" style="font-size: 12px; padding: 1px 6px;">#${item.no_antrian}</span>
+                            <div class="d-flex justify-content-between align-items-center my-1">
+                                <span class="badge-plat fs-4 fw-bold text-dark">${item.no_pol}</span>
+                                <span class="badge-queue-no" style="font-size: 14px; padding: 2px 8px;">#${item.no_antrian}</span>
                             </div>
-                            <div class="text-dark small text-truncate" style="font-size: 11px;">
-                                <strong>${item.nama_driver}</strong> (${item.vendor}) • <span class="text-primary">${item.item_name}</span>
+                            <div class="text-dark small text-truncate" style="font-size: 12px;">
+                                <strong>${item.nama_driver}</strong> (${item.vendor}) • <span class="text-primary fw-medium">${item.item_name}</span>
                             </div>
                         </div>
                     `;
@@ -1066,9 +1068,9 @@
                     wpmActiveContainer.innerHTML = html;
                 } else {
                     wpmActiveContainer.innerHTML = `
-                    <div class="slot-box available text-center py-2 px-1">
-                        <div class="text-success fw-bold" style="font-size: 12px;"><i class="ri-check-circle-line"></i> DOCK WPM TERSEDIA</div>
-                        <small class="text-secondary" style="font-size: 10px;">Tidak ada proses aktif</small>
+                    <div class="slot-box available text-center py-3 px-2">
+                        <div class="text-success fw-bold mb-1" style="font-size: 14px;"><i class="ri-check-circle-line"></i> DOCK WPM TERSEDIA</div>
+                        <small class="text-secondary" style="font-size: 11px;">Tidak ada proses aktif</small>
                     </div>
                 `;
                 }
