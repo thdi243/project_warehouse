@@ -2263,10 +2263,19 @@ class VehicleTrackingController extends Controller
                             });
                     })
                     ->where(function ($q) {
+                        $q->where(function ($smuQ) {
+                            $smuQ->where('status', 'smu')
+                                ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                        })->orWhere(function ($wfgQ) {
+                            $wfgQ->where(function ($w) {
+                                $w->where('status', 'wfg')
+                                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                            })->where('jenis', 'bongkaran');
+                        });
+                    })->where(function ($q) {
                         $q->where('status', 'smu')
-                            ->orWhereHas('targetLocation', function ($tl) {
-                                $tl->whereIn('s_loc', ['A002', 'SMU']);
-                            });
+                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
+                            ->orWhere('jenis', 'bongkaran');
                     })
                     ->where('id', '!=', $transaction->id)
                     ->get()
@@ -2840,18 +2849,32 @@ class VehicleTrackingController extends Controller
                 $query->whereNull('finish_loading_time')
                     ->where(function ($q) {
                         $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                    })->where('jenis', 'slipsheet');
+                    })->where('jenis', 'slipsheet')
+                    ->where('status', '!=', 'smu')
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
             } elseif ($cat === 'curah') {
                 $query->whereNull('finish_loading_time')
                     ->where(function ($q) {
                         $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                    })->where('jenis', 'curah');
-            } elseif ($cat === 'bongkaran') { // bongkaran di WFG & SMU
+                    })->where('jenis', 'curah')
+                    ->where('status', '!=', 'smu')
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+            } elseif ($cat === 'bongkaran') { // bongkaran di WFG & SMU tergabung dalam 1 pool
                 $query->whereNull('finish_loading_time')
                     ->where(function ($q) {
+                        $q->where(function ($smuQ) {
+                            $smuQ->where('status', 'smu')
+                                ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                        })->orWhere(function ($wfgQ) {
+                            $wfgQ->where(function ($w) {
+                                $w->where('status', 'wfg')
+                                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                            })->where('jenis', 'bongkaran');
+                        });
+                    })->where(function ($q) {
                         $q->where('status', 'smu')
-                            ->orWhere('jenis', 'bongkaran')
-                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
+                            ->orWhere('jenis', 'bongkaran');
                     });
             } else { // QC
                 $query->whereIn('qc_status', ['waiting_dokumen', 'waiting_sampling', 'on_check'])
@@ -2938,7 +2961,8 @@ class VehicleTrackingController extends Controller
             $this->syncAndResetDailyQueues();
 
             // Auto-assign queue number: Model Tiket RS (Auto-increment per hari, melanjutkan urutan setelah mobil kemarin)
-            $status = $transaction->status;
+            $category = $this->resolveDockCategory($transaction);
+            $status = strtolower(trim($transaction->status ?? ''));
             $jenis = strtolower(trim($transaction->jenis ?? ''));
             $today = Carbon::today();
 
@@ -2952,28 +2976,37 @@ class VehicleTrackingController extends Controller
                         });
                 });
 
-            // Pisahkan antrian berdasarkan area dan jenis (di WFG: bongkaran vs slipsheet vs curah)
-            if ($status === 'wfg') {
-                if ($jenis === 'slipsheet') {
-                    $query->where(function ($q) {
-                        $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                    })->where('jenis', 'slipsheet');
-                } elseif ($jenis === 'curah') {
-                    $query->where(function ($q) {
-                        $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                    })->where('jenis', 'curah');
-                } else { // bongkaran di WFG tergabung dengan SMU
-                    $query->where(function ($q) {
-                        $q->where('status', 'smu')
-                            ->orWhere('jenis', 'bongkaran')
-                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-                    });
-                }
-            } elseif ($status === 'smu') {
+            // Pisahkan antrian secara ketat berdasarkan pool dock:
+            // 1. Slipsheet (WFG Slipsheet saja)
+            // 2. Curah (WFG Curah saja)
+            // 3. Bongkaran & SMU (Antrian gabungan untuk WFG Bongkaran + semua truk di Area SMU)
+            if ($category === 'slipsheet') {
                 $query->where(function ($q) {
+                    $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                })->where('jenis', 'slipsheet')
+                  ->where('status', '!=', 'smu')
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+            } elseif ($category === 'curah') {
+                $query->where(function ($q) {
+                    $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                })->where('jenis', 'curah')
+                  ->where('status', '!=', 'smu')
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+            } else { // bongkaran di WFG tergabung dengan SMU
+                $query->where(function ($q) {
+                    $q->where(function ($smuQ) {
+                        $smuQ->where('status', 'smu')
+                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                    })->orWhere(function ($wfgQ) {
+                        $wfgQ->where(function ($w) {
+                            $w->where('status', 'wfg')
+                                ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                        })->where('jenis', 'bongkaran');
+                    });
+                })->where(function ($q) {
                     $q->where('status', 'smu')
-                        ->orWhere('jenis', 'bongkaran')
-                        ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                        ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
+                        ->orWhere('jenis', 'bongkaran');
                 });
             }
 
@@ -3170,8 +3203,8 @@ class VehicleTrackingController extends Controller
             $targetLoc = Location::findOrFail($request->target_location_id);
             $jenis = $request->jenis;
             if ($jenis === 'bongkaran') {
-                if ($targetLoc->s_loc === 'A001') {
-                    throw new \Exception('Untuk jenis bongkaran, tidak boleh memilih tujuan area WFG (A001).');
+                if (!in_array($targetLoc->s_loc, ['A001', 'A002', 'SMU', 'B006', 'C001'])) {
+                    throw new \Exception('Untuk jenis bongkaran, silakan pilih tujuan area WFG (A001), SMU, WRM (B006), atau WPM (C001).');
                 }
             } elseif (in_array($jenis, ['slipsheet', 'curah'])) {
                 if (!in_array($targetLoc->s_loc, ['A001', 'SMU', 'A002', 'B006'])) {
@@ -3953,16 +3986,16 @@ class VehicleTrackingController extends Controller
     {
         $hour = (int)Carbon::now()->format('H');
         if ($hour >= 5 && $hour < 11) {
-            $timeGreeting = '{Selamat pagi|Pagi|Halo}';
+            $timeGreeting = '{Selamat pagi|Pagi|Halo selamat pagi|Salam pagi|Halo|Semangat pagi|Selamat pagi menjelang siang}';
         } elseif ($hour >= 11 && $hour < 15) {
-            $timeGreeting = '{Selamat siang|Siang|Halo}';
+            $timeGreeting = '{Selamat siang|Siang|Halo selamat siang|Salam siang|Halo|Semangat siang}';
         } elseif ($hour >= 15 && $hour < 18) {
-            $timeGreeting = '{Selamat sore|Sore|Halo}';
+            $timeGreeting = '{Selamat sore|Sore|Halo selamat sore|Salam sore|Halo|Semangat sore}';
         } else {
-            $timeGreeting = '{Selamat malam|Malam|Halo}';
+            $timeGreeting = '{Selamat malam|Malam|Halo selamat malam|Salam malam|Halo}';
         }
 
-        return $this->parseSpintax("{$timeGreeting} {Pak|Bapak/Ibu|Bpk}");
+        return $this->parseSpintax("{$timeGreeting} {Pak|Bapak/Ibu|Bpk|Bapak}");
     }
 
     /**
@@ -4161,22 +4194,24 @@ class VehicleTrackingController extends Controller
             if ($isDockAvailable) {
                 // Dock masih ada slot kosong (belum terisi kuota), langsung panggil masuk dock!
                 $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                    . "Nomor antrian untuk kendaraan *{$noPol}* sudah terbit:\n"
+                    . "{Nomor antrian untuk kendaraan|Nomor antrian kendaraan Anda|Antrian untuk mobil|Informasi antrian kendaraan} *{$noPol}* {sudah terbit|sudah diterbitkan|telah dibuat|telah siap}:\n"
                     . "• No. Antrian : *#{$antrian}* ({$categoryLabel})\n"
-                    . "• Area Dock   : *{$areaUpper}*\n\n"
-                    . "👉 {Silakan|Dipersilakan|Bisa} *segera merapat dan masuk ke Loading Dock {$areaUpper}* untuk proses {$actionLabel} ya pak.\n\n"
-                    . "⚠️ *Perhatian:* {Harap segera merapat ke area dock yaa|Mohon segera memposisikan mobil}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi}, giliran slot dock akan dialihkan ke antrian kendaraan lain.\n\n"
-                    . "{Bisa tolong balas sebentar ya pak jika sudah siap merapat?|Tolong dikabari yaa pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau mobil sudah standby?} 🙏"
+                    . "• Area Dock   : *{$areaUpper}*\n"
+                    . "• Status Dock : *Tersedia Slot Kosong*\n\n"
+                    . "👉 {Silakan|Dipersilakan|Bisa|Mohon} *{segera|langsung|bisa segera} {merapat dan langsung masuk|menuju|merapat} ke Loading Dock {$areaUpper}* untuk {proses|melakukan proses|memulai proses} {$actionLabel} ya pak.\n\n"
+                    . "⚠️ *{Perhatian|Catatan|Info penting}:* {Harap segera merapat ke area dock yaa|Mohon segera memposisikan mobil|Pastikan segera standby di depan dock|Diharapkan langsung merapat ya pak}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi|Kalau berhalangan atau lambat merapat}, giliran slot dock {akan dialihkan ke antrian kendaraan lain|terpaksa digantikan truk berikutnya|akan digeser ke antrian lain}.\n\n"
+                    . "{Bisa tolong balas sebentar ya pak jika sudah siap merapat?|Tolong dikabari yaa pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau mobil sudah standby?|Mohon konfirmasinya ya pak jika sudah bersiap|Bisa balas chat ini sebentar kalau sudah siap?} 🙏"
                     . $footer;
                 $message = $this->parseSpintax($rawMessage);
             } else {
                 // Dock sedang penuh terisi sesuai kuota, infokan no antrian dan instruksi standby di parkir
                 $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                    . "Nomor antrian untuk kendaraan *{$noPol}* sudah terbit:\n"
+                    . "{Nomor antrian untuk kendaraan|Nomor antrian kendaraan Anda|Antrian untuk mobil|Informasi antrian kendaraan} *{$noPol}* {sudah terbit|sudah diterbitkan|telah dibuat|telah siap}:\n"
                     . "• No. Antrian : *#{$antrian}* ({$categoryLabel})\n"
-                    . "• Area Dock   : *{$areaUpper}*\n\n"
-                    . "Saat ini Loading Dock {$categoryLabel} sedang terisi penuh ({$activeOccupancy}/{$quota} truk). {Silakan|Mohon|Bisa} *istirahat atau standby di kantong parkir* terlebih dahulu ya pak. Nanti giliran masuk akan kami infokan via WhatsApp & layar monitor segera setelah dock siap.\n\n"
-                    . "{Kalau ada kendala atau butuh bantuan silakan balas chat ini ya pak|Bisa dibalas yaaa pak kalau ada pertanyaan|Terima kasih banyak atas kesabarannya menunggu}. 🙏"
+                    . "• Area Dock   : *{$areaUpper}*\n"
+                    . "• Status Dock : *Penuh ({$activeOccupancy}/{$quota} Terisi)*\n\n"
+                    . "{Saat ini|Untuk saat ini} Loading Dock {$categoryLabel} {sedang terisi penuh|masih penuh|sedang terisi semua} ({$activeOccupancy}/{$quota} truk). {Silakan|Mohon|Bisa|Dipersilakan} *{istirahat atau standby|standby|menunggu} di kantong parkir* terlebih dahulu ya pak. {Nanti giliran masuk akan kami infokan via WhatsApp & layar monitor segera setelah dock siap|Informasi giliran masuk dock akan kami kabari segera via WhatsApp setelah ada slot kosong|Begitu ada slot dock yang kosong, akan langsung kami panggil via pesan ini}.\n\n"
+                    . "{Kalau ada kendala atau butuh bantuan silakan balas chat ini ya pak|Bisa dibalas yaaa pak kalau ada pertanyaan|Terima kasih banyak atas kesabarannya menunggu|Mohon ditunggu sebentar ya pak, terima kasih atas kerja samanya}. 🙏"
                     . $footer;
                 $message = $this->parseSpintax($rawMessage);
             }
@@ -4231,12 +4266,11 @@ class VehicleTrackingController extends Controller
                 return ['status' => false, 'message' => 'Dilewati: Truk saat ini memiliki status follow up dari timbangan.'];
             }
 
+            $currentCategory = $this->resolveDockCategory($currentTx, $areaUpper);
             $currentJenis = strtolower(trim($currentTx->jenis ?? ''));
-            $status = strtolower($areaUpper);
 
             $nextQuery = VehicleTransaction::with(['vehicle', 'item', 'targetLocation'])
                 ->where('id', '!=', $currentTx->id)
-                ->where('status', $status)
                 ->whereNotNull('no_antrian')
                 ->where(function ($q) {
                     $q->whereNull('unloading_status')
@@ -4246,9 +4280,35 @@ class VehicleTrackingController extends Controller
                 ->whereNull('timbangan_out_time')
                 ->whereNull('follow_up_time'); // Point 6: Lewati jika truk berikutnya ada follow up timbangan
 
-            // 2. Di WFG, antrian dipisahkan berdasarkan jenis (bongkaran, slipsheet, curah), SMU tidak (Point 2)
-            if ($areaUpper === 'WFG' && !empty($currentJenis)) {
-                $nextQuery->where('jenis', $currentJenis);
+            // Pisahkan antrian secara ketat berdasarkan pool dock:
+            if ($currentCategory === 'slipsheet') {
+                $nextQuery->where(function ($q) {
+                    $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                })->where('jenis', 'slipsheet')
+                  ->where('status', '!=', 'smu')
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+            } elseif ($currentCategory === 'curah') {
+                $nextQuery->where(function ($q) {
+                    $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                })->where('jenis', 'curah')
+                  ->where('status', '!=', 'smu')
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+            } else { // bongkaran di WFG & SMU tergabung dalam 1 pool
+                $nextQuery->where(function ($q) {
+                    $q->where(function ($smuQ) {
+                        $smuQ->where('status', 'smu')
+                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                    })->orWhere(function ($wfgQ) {
+                        $wfgQ->where(function ($w) {
+                            $w->where('status', 'wfg')
+                                ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                        })->where('jenis', 'bongkaran');
+                    });
+                })->where(function ($q) {
+                    $q->where('status', 'smu')
+                        ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
+                        ->orWhere('jenis', 'bongkaran');
+                });
             }
 
             // Utamakan antrian hari sebelumnya yang belum selesai (Carry-Over), lalu urutan antrian berikutnya
@@ -4307,12 +4367,12 @@ class VehicleTrackingController extends Controller
             $footer = $this->dynamicMessageFooter('PERSIAPAN');
 
             $rawMessage = "{$greeting} *{$nextDriver['name']}*,\n\n"
-                . "Sekadar info, truk antrian sebelum Anda (*{$currentNoPol}*) saat ini sudah *mulai proses {$actionLabel}* di Loading Dock {$areaUpper}.\n\n"
+                . "{Sekadar info|Pemberitahuan antrian|Informasi antrian|Info persiapan}, truk antrian sebelum Anda (*{$currentNoPol}*) saat ini {sudah|telah} *mulai proses {$actionLabel}* di Loading Dock {$areaUpper}.\n\n"
                 . "• Truk Anda   : *{$nextNoPol}*\n"
                 . "• No. Antrian : *#{$nextTx->no_antrian}* ({$areaUpper}{$jenisLabel})\n\n"
-                . "👉 {Mohon|Dipersilakan|Bisa} *mulai bersiap-siap dan merapat ke dekat area dock* ya pak. Begitu truk di depan selesai, giliran Anda akan langsung dipanggil masuk.\n\n"
-                . "⚠️ *Perhatian:* {Jangan sampai terlambat ya pak|Pastikan mobil sudah siap}. {Kalau pas dipanggil belum siap, urutan dock terpaksa dialihkan ke antrian berikutnya|Jika terlambat merapat, slot dock akan digantikan truk lain}.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau sudah standby di dekat dock?|Tolong kabari ya pak kalau sudah posisi siap|Bisa konfirmasi balas pesan ini yaa kalau sudah bersiap?} 🙏"
+                . "👉 {Mohon|Dipersilakan|Bisa|Harap} *{mulai bersiap-siap dan merapat|bersiap-siap dan mendekat|mulai memposisikan mobil} ke dekat area dock* ya pak. {Begitu truk di depan selesai|Setelah proses truk sebelumnya rampung|Saat slot di depan sudah selesai}, giliran Anda akan {langsung dipanggil masuk|segera dipanggil|langsung masuk ke dock}.\n\n"
+                . "⚠️ *{Perhatian|Catatan penting|Penting}:* {Jangan sampai terlambat ya pak|Pastikan mobil sudah dalam posisi siap|Harap standby di sekitar area dock yaa}. {Kalau pas dipanggil belum siap, urutan dock terpaksa dialihkan ke antrian berikutnya|Jika terlambat merapat, slot dock akan digantikan truk lain|Apabila belum siap saat dipanggil, nomor antrian dapat digeser ke antrian setelahnya}.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau sudah standby di dekat dock?|Tolong kabari ya pak kalau sudah posisi siap|Bisa konfirmasi balas pesan ini yaa kalau sudah bersiap?|Mohon konfirmasi singkatnya ya pak jika sudah standby|Bisa kabari lewat pesan ini kalau sudah siap?} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4376,9 +4436,9 @@ class VehicleTrackingController extends Controller
             $footer = $this->dynamicMessageFooter('SELESAI');
 
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "Proses {$actionLabel} untuk truk *{$noPol}* di Dock *{$areaUpper}* telah *selesai* pada pukul {$now}.\n\n"
-                . "{Silakan|Dipersilakan|Bisa} menyelesaikan administrasi dokumen dan segera melanjutkan kendaraan ke *Timbangan Out* (Timbang Keluar) ya pak.\n\n"
-                . "{Terima kasih atas kerja samanya|Matur nuwun|Semoga perjalanan lancar dan selamat sampai tujuan}. 🙏"
+                . "{Proses|Pekerjaan|Aktivitas} {$actionLabel} untuk truk *{$noPol}* di Dock *{$areaUpper}* {telah selesai|sudah selesai|telah rampung} pada pukul {$now}.\n\n"
+                . "{Silakan|Dipersilakan|Bisa|Mohon} {menyelesaikan administrasi dokumen dan segera melanjutkan kendaraan|mengurus administrasi dokumen dan membawa kendaraan|melengkapi dokumen dan mengarahkan truk} ke *Timbangan Out* (Timbang Keluar) ya pak.\n\n"
+                . "{Terima kasih atas kerja samanya|Matur nuwun|Semoga perjalanan lancar dan selamat sampai tujuan|Terima kasih banyak dan hati-hati di jalan ya pak|Terima kasih atas kerjasamanya dan tetap utamakan keselamatan}. 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4494,9 +4554,9 @@ class VehicleTrackingController extends Controller
             $footer = $this->dynamicMessageFooter('DOCK');
 
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "Kendaraan *{$nextNoPol}* {dipersilakan|bisa} *segera masuk ke area Loading Dock {$areaUpper}* untuk proses {$actionLabel} sekarang ya pak.\n\n"
-                . "⚠️ *Perhatian:* {Harap segera merapat ke dock yaaa|Mohon segera meluncur ke dock}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi}, giliran dock akan dialihkan/digantikan ke antrian kendaraan lain.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke dock?|Tolong dikabari yaaa pak kalau sudah bergerak ke dock|Bisa konfirmasi balas chat ini ya pak kalau mobil sudah meluncur?} 🙏"
+                . "Kendaraan *{$nextNoPol}* {dipersilakan|silakan|bisa|mohon} *segera {masuk|merapat} ke area Loading Dock {$areaUpper}* untuk proses {$actionLabel} {sekarang ya pak|saat ini ya pak}.\n\n"
+                . "⚠️ *{Perhatian|Catatan penting|Info penting}:* {Harap segera merapat ke dock yaaa|Mohon segera meluncur ke dock|Pastikan kendaraan langsung menuju ke area dock}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi|Jika tidak segera merapat}, giliran dock {akan dialihkan/digantikan ke antrian kendaraan lain|akan digeser ke antrian berikutnya|terpaksa digantikan truk lain}.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke dock?|Tolong dikabari yaaa pak kalau sudah bergerak ke dock|Bisa konfirmasi balas chat ini ya pak kalau mobil sudah meluncur?|Mohon konfirmasinya ya pak jika sudah jalan} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4564,21 +4624,33 @@ class VehicleTrackingController extends Controller
                         ->orWhereHas('targetLocation', function ($tl) {
                             $tl->where('s_loc', 'A001');
                         });
-                })->where('jenis', 'slipsheet');
+                })->where('jenis', 'slipsheet')
+                  ->where('status', '!=', 'smu')
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
             } elseif ($category === 'curah') {
                 $query->where(function ($q) {
                     $q->where('status', 'wfg')
                         ->orWhereHas('targetLocation', function ($tl) {
                             $tl->where('s_loc', 'A001');
                         });
-                })->where('jenis', 'curah');
+                })->where('jenis', 'curah')
+                  ->where('status', '!=', 'smu')
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
             } elseif ($category === 'bongkaran') {
                 $query->where(function ($q) {
-                    $q->where('jenis', 'bongkaran')
-                        ->orWhere('status', 'smu')
-                        ->orWhereHas('targetLocation', function ($tl) {
-                            $tl->whereIn('s_loc', ['A002', 'SMU']);
-                        });
+                    $q->where(function ($smuQ) {
+                        $smuQ->where('status', 'smu')
+                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                    })->orWhere(function ($wfgQ) {
+                        $wfgQ->where(function ($w) {
+                            $w->where('status', 'wfg')
+                                ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                        })->where('jenis', 'bongkaran');
+                    });
+                })->where(function ($q) {
+                    $q->where('status', 'smu')
+                        ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
+                        ->orWhere('jenis', 'bongkaran');
                 });
             }
 
@@ -4621,13 +4693,13 @@ class VehicleTrackingController extends Controller
             $footer = $this->dynamicMessageFooter('DOCK');
 
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "Truk sebelumnya sudah selesai dan slot Loading Dock {$categoryLabel} saat ini sudah *siap*:\n"
+                . "{Truk sebelumnya sudah selesai dan|Proses muat truk di depan sudah rampung dan|Kabar baik,} slot Loading Dock {$categoryLabel} saat ini sudah *{siap|tersedia|kosong}*:\n"
                 . "• Truk Anda   : *{$nextNoPol}*\n"
                 . "• No. Antrian : *#{$nextTx->no_antrian}*\n"
                 . "• Area Dock   : *{$targetAreaUpper}*\n\n"
-                . "{Silakan|Dipersilakan|Bisa} *segera merapat dan masuk ke Loading Dock {$targetAreaUpper}* untuk proses {$actionLabel} ya pak.\n\n"
-                . "*Perhatian:* {Harap segera merapat ke area dock yaaa|Mohon segera memposisikan mobil}. {Jika datang terlambat atau tidak ada kabar|Apabila terlambat tanpa konfirmasi}, giliran dock akan digantikan dengan antrian kendaraan berikutnya.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau kendaraannya sudah mulai jalan?|Tolong dikabari yaaa pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau sudah bergerak ke dock?} 🙏"
+                . "{Silakan|Dipersilakan|Bisa|Mohon} *{segera merapat dan masuk|langsung menuju dan merapat|segera memposisikan truk} ke Loading Dock {$targetAreaUpper}* untuk proses {$actionLabel} ya pak.\n\n"
+                . "⚠️ *{Perhatian|Catatan penting|Info penting}:* {Harap segera merapat ke area dock yaaa|Mohon segera memposisikan mobil|Pastikan segera standby di posisi dock}. {Jika datang terlambat atau tidak ada kabar|Apabila terlambat tanpa konfirmasi|Kalau lambat atau tidak ada konfirmasi}, giliran dock {akan digantikan dengan antrian kendaraan berikutnya|terpaksa dialihkan ke antrian lain|akan digeser ke antrian setelahnya}.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau kendaraannya sudah mulai jalan?|Tolong dikabari yaaa pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau sudah bergerak ke dock?|Mohon konfirmasinya ya pak jika mobil sudah bergerak} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4734,9 +4806,9 @@ class VehicleTrackingController extends Controller
             $footer = $this->dynamicMessageFooter('QC-DOC');
 
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "Kendaraan *{$noPol}* (tujuan area *{$areaUpper}*) sudah selesai proses timbang masuk ya pak.\n\n"
-                . "{Silakan|Dipersilakan|Bisa} *segera menuju ke Lab QC* untuk menyerahkan kelengkapan dokumen guna pengambilan antrian sampling QC.\n\n"
-                . "{Tolong kabari yaaa pak kalau sudah di Lab QC|Bisa tolong balas chat ini ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya}. 🙏"
+                . "Kendaraan *{$noPol}* (tujuan area *{$areaUpper}*) {sudah|telah} selesai proses timbang masuk ya pak.\n\n"
+                . "{Silakan|Dipersilakan|Bisa|Mohon} *segera menuju ke Lab QC* untuk {menyerahkan kelengkapan dokumen|mengurus berkas dokumen} guna pengambilan antrian sampling QC.\n\n"
+                . "{Tolong kabari yaaa pak kalau sudah di Lab QC|Bisa tolong balas chat ini ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya|Mohon konfirmasi singkatnya ya pak jika sudah di Lab QC}. 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4797,9 +4869,9 @@ class VehicleTrackingController extends Controller
             $footer = $this->dynamicMessageFooter('WFG-DOC');
 
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "Kendaraan *{$noPol}* (tujuan *{$tujuanLabel}*) sudah selesai proses timbang masuk ya pak.\n\n"
-                . "{Silakan|Dipersilakan|Bisa} *segera menuju ke loket Admin WFG* untuk mengurus dan menyerahkan kelengkapan dokumen antrian.\n\n"
-                . "{Tolong kabari yaa pak kalau sudah di loket|Bisa tolong balas sebentar ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya}. 🙏"
+                . "Kendaraan *{$noPol}* (tujuan *{$tujuanLabel}*) {sudah|telah} selesai proses timbang masuk ya pak.\n\n"
+                . "{Silakan|Dipersilakan|Bisa|Mohon} *segera menuju ke loket Admin WFG* untuk {mengurus dan menyerahkan kelengkapan dokumen antrian|menyerahkan berkas dokumen antrian}.\n\n"
+                . "{Tolong kabari yaa pak kalau sudah di loket|Bisa tolong balas sebentar ya pak kalau sudah serahkan dokumen?|Terima kasih banyak atas kerja samanya|Mohon konfirmasinya ya pak jika sudah di loket Admin WFG}. 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4861,9 +4933,9 @@ class VehicleTrackingController extends Controller
             $footer = $this->dynamicMessageFooter('RETUR');
 
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "Kendaraan *{$noPol}* muatan *Retur* telah selesai proses timbang masuk.\n\n"
-                . "{Silakan|Dipersilakan|Bisa} *langsung menuju area {$areaUpper}* untuk proses bongkar ya pak (muatan retur tidak memerlukan sampling QC).\n\n"
-                . "{Terima kasih banyak|Terima kasih atas kerja samanya|Matur nuwun}. 🙏"
+                . "Kendaraan *{$noPol}* muatan *Retur* {telah|sudah} selesai proses timbang masuk.\n\n"
+                . "{Silakan|Dipersilakan|Bisa|Mohon} *langsung {menuju|merapat ke} area {$areaUpper}* untuk proses bongkar ya pak (muatan retur tidak memerlukan sampling QC).\n\n"
+                . "{Terima kasih banyak|Terima kasih atas kerja samanya|Matur nuwun|Tetap utamakan keselamatan ya pak}. 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4937,8 +5009,8 @@ class VehicleTrackingController extends Controller
 
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
                 . "Dokumen kendaraan *{$noPol}* telah diterima di QC (No. Antrian QC: *#{$antrian}*).\n\n"
-                . "Untuk muatan *{$itemName}*, {silakan|dipersilakan|Anda bisa} *langsung menuju area {$area}* untuk persiapan proses bongkar/muat tanpa perlu menunggu hasil sampling QC ya pak.\n\n"
-                . "{Terima kasih banyak|Matur nuwun|Terima kasih atas kerja samanya}. 🙏"
+                . "Untuk muatan *{$itemName}*, {silakan|dipersilakan|Anda bisa|bisa langsung} *langsung {menuju|merapat ke} area {$area}* untuk persiapan proses bongkar/muat tanpa perlu menunggu hasil sampling QC ya pak.\n\n"
+                . "{Terima kasih banyak|Matur nuwun|Terima kasih atas kerja samanya|Tetap semangat dan utamakan keselamatan}. 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -5020,10 +5092,10 @@ class VehicleTrackingController extends Controller
             $footer = $this->dynamicMessageFooter('QC-RELEASE');
 
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "Kabar baik, hasil sampling QC untuk kendaraan *{$noPol}* sudah selesai dan dinyatakan *lolos (released)*.\n\n"
-                . "{Silakan|Dipersilakan|Bisa} *segera merapat dan menuju ke area {$area}* untuk persiapan proses bongkar/muat ya pak.\n\n"
-                . "⚠️ *Perhatian:* {Mohon segera memposisikan truk ke area {$area} yaaa|Harap segera meluncur ke area {$area}}. {Kalau terlambat merapat, antrian bongkar/muat berisiko dialihkan ke kendaraan lain|Jika telat hadir, slotnya bisa digantikan antrian berikutnya}.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke {$area}?|Tolong dikabari yaaa pak kalau sudah meluncur ke area {$area}|Bisa konfirmasi balas pesan ini ya pak kalau mobil sudah meluncur?} 🙏"
+                . "{Kabar baik|Informasi hasil QC|Pemberitahuan}, hasil sampling QC untuk kendaraan *{$noPol}* {sudah selesai dan dinyatakan lolos (released)|telah lulus (released) dan siap dibongkar/muat|sudah dirilis (released)}.\n\n"
+                . "{Silakan|Dipersilakan|Bisa|Mohon} *segera merapat dan {menuju|masuk} ke area {$area}* untuk persiapan proses {bongkar/muat|pembongkaran} ya pak.\n\n"
+                . "⚠️ *{Perhatian|Catatan penting|Info penting}:* {Mohon segera memposisikan truk ke area {$area} yaaa|Harap segera meluncur ke area {$area}|Pastikan kendaraan langsung bergerak ke area {$area}}. {Kalau terlambat merapat, antrian bongkar/muat berisiko dialihkan ke kendaraan lain|Jika telat hadir, slotnya bisa digantikan antrian berikutnya|Apabila lambat merapat, slot dock dapat dialihkan ke antrian lain}.\n\n"
+                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke {$area}?|Tolong dikabari yaaa pak kalau sudah meluncur ke area {$area}|Bisa konfirmasi balas pesan ini ya pak kalau mobil sudah meluncur?|Mohon konfirmasinya ya pak jika sudah bergerak} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -5052,14 +5124,14 @@ class VehicleTrackingController extends Controller
         try {
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
-            // 1. Anti-spam / Cooldown Lock (5 menit per transaksi truk)
+            // 1. Anti-spam / Cooldown Lock (20 menit per transaksi truk)
             $cooldownKey = "wa_cooldown_manual_{$transaction->id}";
             if (Cache::has($cooldownKey)) {
                 $cooldownData = Cache::get($cooldownKey);
                 $sentBy = is_array($cooldownData) ? ($cooldownData['user_name'] ?? 'User lain') : 'Pengawas';
                 $sentTime = is_array($cooldownData) ? ($cooldownData['time'] ?? 'baru saja') : 'baru saja';
                 $sentTimestamp = is_array($cooldownData) ? ($cooldownData['timestamp'] ?? time()) : time();
-                $remainingSeconds = max(0, 300 - (time() - $sentTimestamp));
+                $remainingSeconds = max(0, 1200 - (time() - $sentTimestamp));
                 $remainingMinutes = ceil($remainingSeconds / 60);
 
                 Log::warning("[VehicleTracking] Anti-Spam: {$noPol} baru saja di-push WA oleh {$sentBy} pada {$sentTime}. Cooldown sisa {$remainingMinutes} menit.");
@@ -5082,11 +5154,11 @@ class VehicleTrackingController extends Controller
 
             // Format pesan pribadi ramah & humanis ke HP supir (dilengkapi spintax, natural reply trigger, & dynamic ref anti-spam)
             $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "Kendaraan *{$noPol}* {dipersilakan|bisa} *segera merapat dan masuk ke Loading Dock {$area}* untuk proses {$actionLabel} ya pak.\n\n"
-                . "⚠️ *Pemberitahuan Antrian:*\n"
-                . "• {Harap segera merapat ke area dock ya pak|Mohon segera memposisikan mobil ke dock}.\n"
-                . "• *{Jika datang terlambat atau berhalangan|Apabila terlambat hadir tanpa konfirmasi}, giliran slot dock akan dialihkan ke antrian kendaraan lain.*\n\n"
-                . "{Bisa tolong balas sebentar ya pak apakah mobilnyaa sudah siap masuk?|Tolong dikabari ya pak kalau sudah mulai jalan ke dock|Bisa konfirmasi balas chat ini yaaa pak kalau mobil sudah meluncur?} 🙏"
+                . "Kendaraan *{$noPol}* {dipersilakan|silakan|bisa|mohon} *segera {merapat dan masuk|menuju dan memposisikan mobil} ke Loading Dock {$area}* untuk proses {$actionLabel} ya pak.\n\n"
+                . "⚠️ *{Pemberitahuan Antrian|Catatan Penting|Info Antrian}:*\n"
+                . "• {Harap segera merapat ke area dock ya pak|Mohon segera memposisikan mobil ke dock|Pastikan kendaraan langsung standby di dock}.\n"
+                . "• *{Jika datang terlambat atau berhalangan|Apabila terlambat hadir tanpa konfirmasi|Kalau lambat atau tidak ada kabar}, giliran slot dock {akan dialihkan ke antrian kendaraan lain|terpaksa digantikan truk berikutnya|akan digeser ke antrian lain}.*\n\n"
+                . "{Bisa tolong balas sebentar ya pak apakah mobilnya sudah siap masuk?|Tolong dikabari ya pak kalau sudah mulai jalan ke dock|Bisa konfirmasi balas chat ini yaaa pak kalau mobil sudah meluncur?|Mohon konfirmasi singkatnya ya pak jika sudah siap} 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -5496,13 +5568,13 @@ class VehicleTrackingController extends Controller
                     $footer = $this->dynamicMessageFooter('FOLLOWUP-TIMBANGAN');
 
                     $rawMessage = "{$greeting} *{$foremanName}* (Foreman {$areaUpper}),\n\n"
-                        . "Ada titipan follow-up dari Timbangan ({$operatorName}) untuk mobil *{$noPol}*:\n"
+                        . "{Ada titipan follow-up|Mohon bantuannya untuk follow-up|Pemberitahuan follow-up} dari Timbangan ({$operatorName}) untuk mobil *{$noPol}*:\n"
                         . "• No. Polisi : *{$noPol}* ({$vendor})\n"
                         . "• Supir      : {$driver['display']}\n"
                         . "• Waktu      : " . $now->format('d/m/Y H:i')
                         . $notesText . "\n\n"
-                        . "Supir sudah bersiap di timbangan keluar ya pak. {Minta tolong bantuannya untuk segera close sistem transaksinya yaaa, supaya proses timbang out supir bisa dilanjutkan|Mohon bantuannya untuk dibantu close sistemnya ya pak agar truk bisa segera melanjutkan timbang out}.\n\n"
-                        . "{Tolong dikabari kalau sudah di-close ya pak, terima kasih banyak|Bisa tolong balas sebentar yaaa pak kalau sudah selesai di-close? Terima kasih banyak atas bantuannya}. 🙏"
+                        . "Supir sudah bersiap di timbangan keluar ya pak. {Minta tolong bantuannya untuk segera close sistem transaksinya yaaa, supaya proses timbang out supir bisa dilanjutkan|Mohon bantuannya untuk dibantu close sistemnya ya pak agar truk bisa segera melanjutkan timbang out|Bisa tolong dibantu close transaksi di sistem ya pak agar supir tidak menunggu lama di timbangan out}.\n\n"
+                        . "{Tolong dikabari kalau sudah di-close ya pak, terima kasih banyak|Bisa tolong balas sebentar yaaa pak kalau sudah selesai di-close? Terima kasih banyak atas bantuannya|Mohon konfirmasinya jika sudah di-close ya pak, terima kasih}. 🙏"
                         . $footer;
 
                     $message = $this->parseSpintax($rawMessage);
