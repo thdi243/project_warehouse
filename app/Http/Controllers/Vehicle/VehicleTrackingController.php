@@ -1193,6 +1193,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
             $actionName = $transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
@@ -1248,6 +1249,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
             $actionName = $transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
 
             // Conclude WPM tracking
@@ -1438,6 +1440,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             $today = Carbon::today();
             $maxAntrian = VehicleTransaction::whereNotNull('no_antrian')
@@ -1514,6 +1517,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             // Validasi: jika proses sampling sudah dimulai, antrian tidak dapat dibatalkan
             if ($transaction->qc_status === 'on_check' || !empty($transaction->start_sampling_time)) {
@@ -1584,6 +1588,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
             // QC hanya mengubah qc_status, tidak merubah status kendaraan
@@ -1649,6 +1654,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
             $now = Carbon::now();
 
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
@@ -1793,6 +1799,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
             $actionName = $transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
@@ -1848,6 +1855,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
             $actionName = $transaction->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
@@ -2016,6 +2024,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             $transaction->update([
                 'unloading_status' => 'process',
@@ -2071,6 +2080,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             // Conclude WFG tracking
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
@@ -2250,6 +2260,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             // Auto-assign queue number if not yet set
             if (empty($transaction->no_antrian)) {
@@ -2323,6 +2334,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             // Conclude SMU tracking
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
@@ -2425,6 +2437,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
             $jenis = strtolower(trim($transaction->jenis ?? ''));
 
             // Tentukan nama aksi: Bongkar / Muat
@@ -2532,6 +2545,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             // Conclude active tracking (TIMBANGAN_OUT)
             $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
@@ -2871,6 +2885,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             // Jika transaksi sudah memiliki nomor antrian, pertahankan nomor tersebut
             if (!empty($transaction->no_antrian)) {
@@ -2931,6 +2946,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             // Jika transaksi berada di area QC
             if ($transaction->qc_status === 'waiting_sampling' || in_array($transaction->status, ['antri_sampling', 'sampling'])) {
@@ -3056,6 +3072,7 @@ class VehicleTrackingController extends Controller
             DB::beginTransaction();
 
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
 
             // Validate target area based on jenis
             $targetLoc = Location::findOrFail($request->target_location_id);
@@ -3200,6 +3217,7 @@ class VehicleTrackingController extends Controller
         try {
             DB::beginTransaction();
             $transaction = VehicleTransaction::findOrFail($id);
+            $status = strtolower(trim($transaction->status ?? ''));
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
             $txId = $transaction->id;
 
