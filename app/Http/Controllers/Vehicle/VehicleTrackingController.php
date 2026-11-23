@@ -2264,6 +2264,7 @@ class VehicleTrackingController extends Controller
 
             // Auto-assign queue number if not yet set
             if (empty($transaction->no_antrian)) {
+                $this->syncAndResetDailyQueues();
                 $formattedAntrian = $this->generateNextQueueNumber($transaction);
             } else {
                 $formattedAntrian = $transaction->no_antrian;
@@ -2821,38 +2822,46 @@ class VehicleTrackingController extends Controller
             ->where('id', '!=', $transaction->id)
             ->where(function ($q) use ($todayStr, $txDateStr) {
                 $q->whereDate(DB::raw('COALESCE(queue_taken_time, created_at)'), $todayStr)
-                    ->orWhereDate(DB::raw('COALESCE(queue_taken_time, created_at)'), $txDateStr)
-                    ->orWhere(function ($q2) {
-                        $q2->whereNotIn('status', ['completed', 'timbangan_out'])
-                            ->whereNull('check_out_time');
-                    });
+                    ->orWhereDate(DB::raw('COALESCE(queue_taken_time, created_at)'), $txDateStr);
             });
 
         if ($category === 'slipsheet') {
+            // Group 1: WFG - slipsheet
             $query->where(function ($q) {
                 $q->where('status', 'wfg')
-                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'))
-                    ->orWhere('jenis', 'slipsheet');
+                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
             })->where(function ($q) {
                 $q->where('jenis', 'slipsheet')
                     ->orWhereNull('jenis')
                     ->orWhere('jenis', '');
-            })->where('status', '!=', 'smu')
-              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+            })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
         } elseif ($category === 'curah') {
+            // Group 2: WFG - curah
             $query->where(function ($q) {
                 $q->where('status', 'wfg')
-                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'))
-                    ->orWhere('jenis', 'curah');
+                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
             })->where('jenis', 'curah')
-              ->where('status', '!=', 'smu')
-              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-        } else { // bongkaran di WFG tergabung dengan SMU
+              ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+        } else {
+            // Group 3: WFG - bongkaran == SMU bongkaran
             $query->where(function ($q) {
-                $q->where('status', 'smu')
-                    ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
-                    ->orWhere('jenis', 'bongkaran');
-            });
+                // 1. Area SMU
+                $q->where(function ($smuQ) {
+                    $smuQ->where('status', 'smu')
+                        ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                })
+                // 2. ATAU Area WFG khusus jenis bongkaran
+                ->orWhere(function ($wfgQ) {
+                    $wfgQ->where(function ($w) {
+                        $w->where('status', 'wfg')
+                            ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                    })->where('jenis', 'bongkaran');
+                });
+            })
+            ->whereNotIn('status', ['wrm', 'wpm'])
+            ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
         }
 
         $maxAntrian = $query->get()
@@ -2866,14 +2875,127 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Sinkronisasi antrian harian (aman, nomor antrian supir tidak di-reset atau diubah urutannya).
+     * Sinkronisasi dan reset antrian saat ganti hari:
+     * - Khusus saat pergantian hari baru, antrian di-reset untuk hari baru.
+     * - Jika masih ada truk yang outstanding (menginap/sisa hari kemarin yang belum selesai),
+     *   truk-truk outstanding tersebut diurutkan ulang menjadi nomor 01, 02, ... n (ASC)
+     *   dan tanggal antriannya dimajukan ke hari ini agar menjadi antrian terdepan hari ini.
+     * - Truk baru yang ambil antrian hari ini akan melanjutkan urutan setelahnya (n+1, n+2, dst)
+     *   secara running terus-menerus tanpa di-reset kembali.
      */
     public function syncAndResetDailyQueues(): int
     {
-        // Nomor antrian supir bersifat running terus-menerus (+1 auto-increment per pool).
-        // Tidak dilakukan re-indexing/reset nomor antrian yang sudah diterbitkan kepada supir
-        // agar konsisten dengan pesan WhatsApp & tiket yang sudah dipegang supir.
-        return 0;
+        $today = Carbon::today();
+        $updatedCount = 0;
+        $categories = ['slipsheet', 'curah', 'bongkaran', 'qc'];
+
+        foreach ($categories as $cat) {
+            $query = VehicleTransaction::with('vehicle')
+                ->whereNotNull('no_antrian')
+                ->whereNotIn('status', ['completed', 'timbangan_out'])
+                ->whereNull('finish_loading_time')
+                ->whereNull('check_out_time')
+                ->whereNull('timbangan_out_time');
+
+            if ($cat === 'slipsheet') {
+                $query->where(function ($q) {
+                    $q->where('status', 'wfg')
+                        ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                })->where(function ($q) {
+                    $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
+                })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+            } elseif ($cat === 'curah') {
+                $query->where(function ($q) {
+                    $q->where('status', 'wfg')
+                        ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                })->where('jenis', 'curah')
+                  ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+            } elseif ($cat === 'bongkaran') {
+                // Group 3: WFG Bongkaran == SMU Bongkaran
+                $query->where(function ($q) {
+                    $q->where(function ($smuQ) {
+                        $smuQ->where('status', 'smu')
+                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                    })->orWhere(function ($wfgQ) {
+                        $wfgQ->where(function ($w) {
+                            $w->where('status', 'wfg')
+                                ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                        })->where('jenis', 'bongkaran');
+                    });
+                })->whereNotIn('status', ['wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
+            } else { // QC
+                $query->whereIn('qc_status', ['waiting_dokumen', 'waiting_sampling', 'on_check'])
+                    ->whereNull('finish_sampling_time');
+            }
+
+            $activeTxs = $query->get();
+            if ($activeTxs->isEmpty()) {
+                continue;
+            }
+
+            // Cari transaksi yang MASIH berstatus outstanding dari hari kemarin (< today)
+            $overnightTxs = $activeTxs->filter(function ($tx) use ($today) {
+                $qDate = $tx->queue_taken_time ? Carbon::parse($tx->queue_taken_time) : Carbon::parse($tx->created_at);
+                return $qDate->lt($today);
+            });
+
+            // Hanya proses jika ada transaksi outstanding yang tanggalnya masih hari kemarin
+            if ($overnightTxs->isNotEmpty()) {
+                // Urutkan truk outstanding hari kemarin berdasarkan waktu / no antrian lama ASC
+                $sortedOvernight = $overnightTxs->sort(function ($a, $b) {
+                    $dateA = $a->queue_taken_time ? Carbon::parse($a->queue_taken_time) : Carbon::parse($a->created_at);
+                    $dateB = $b->queue_taken_time ? Carbon::parse($b->queue_taken_time) : Carbon::parse($b->created_at);
+
+                    if ($dateA->ne($dateB)) {
+                        return $dateA->lt($dateB) ? -1 : 1;
+                    }
+                    return (int)$a->no_antrian <=> (int)$b->no_antrian;
+                })->values();
+
+                $seq = 1;
+                foreach ($sortedOvernight as $tx) {
+                    $formattedSeq = str_pad($seq, 2, '0', STR_PAD_LEFT);
+                    $tx->update([
+                        'no_antrian' => $formattedSeq,
+                        // Update queue_taken_time ke awal hari ini agar tercatat sebagai antrian hari ini
+                        'queue_taken_time' => $today->copy()->startOfDay()->addMinutes($seq)
+                    ]);
+                    $seq++;
+                    $updatedCount++;
+                }
+
+                // Jika sudah ada truk hari ini yang terbit sebelum sinkronisasi, lanjutkan urutannya setelah $seq
+                $todayTxs = $activeTxs->filter(function ($tx) use ($today) {
+                    $qDate = $tx->queue_taken_time ? Carbon::parse($tx->queue_taken_time) : Carbon::parse($tx->created_at);
+                    return $qDate->gte($today);
+                })->sort(function ($a, $b) {
+                    return (int)$a->no_antrian <=> (int)$b->no_antrian;
+                })->values();
+
+                foreach ($todayTxs as $tx) {
+                    $formattedSeq = str_pad($seq, 2, '0', STR_PAD_LEFT);
+                    if ($tx->no_antrian !== $formattedSeq) {
+                        $tx->update(['no_antrian' => $formattedSeq]);
+                        $updatedCount++;
+                    }
+                    $seq++;
+                }
+            }
+        }
+
+        if ($updatedCount > 0) {
+            Log::info("[VehicleTracking] syncAndResetDailyQueues: {$updatedCount} antrian outstanding hari kemarin disinkronkan menjadi antrian awal hari ini.");
+            event(new VehicleStatusUpdated([
+                'type' => 'queue_resynced',
+                'action' => 'queue_resynced',
+                'message' => "Antrian outstanding hari kemarin disinkronkan ({$updatedCount} kendaraan disesuaikan urutannya)"
+            ]));
+        }
+
+        return $updatedCount;
     }
 
     /**
@@ -2887,7 +3009,10 @@ class VehicleTrackingController extends Controller
             $transaction = VehicleTransaction::findOrFail($id);
             $status = strtolower(trim($transaction->status ?? ''));
 
-            // Jika transaksi sudah memiliki nomor antrian, pertahankan nomor tersebut
+            // 1. Sinkronkan antrian outstanding jika baru berganti hari
+            $this->syncAndResetDailyQueues();
+
+            // 2. Jika transaksi sudah memiliki nomor antrian, pertahankan nomor tersebut
             if (!empty($transaction->no_antrian)) {
                 $formattedAntrian = $transaction->no_antrian;
             } else {
@@ -3954,15 +4079,23 @@ class VehicleTrackingController extends Controller
     {
         $areaUpper = strtoupper($area ?? $transaction->status ?? '');
         $jenis = strtolower(trim($transaction->jenis ?? ''));
+        $transaction->loadMissing('targetLocation');
+        $targetSloc = $transaction->targetLocation ? strtoupper($transaction->targetLocation->s_loc) : '';
 
-        if ($areaUpper === 'SMU' || $jenis === 'bongkaran' || ($transaction->targetLocation && in_array($transaction->targetLocation->s_loc, ['A002', 'SMU']))) {
+        // Group 3: Area SMU atau WFG khusus jenis Bongkaran
+        $isSmu = ($areaUpper === 'SMU') || in_array($targetSloc, ['A002', 'SMU']);
+        $isWfgBongkaran = ($areaUpper === 'WFG' || $targetSloc === 'A001') && ($jenis === 'bongkaran');
+
+        if ($isSmu || $isWfgBongkaran) {
             return 'bongkaran';
         }
 
+        // Group 2: WFG Curah
         if ($jenis === 'curah') {
             return 'curah';
         }
 
+        // Group 1: WFG Slipsheet
         return 'slipsheet';
     }
 
@@ -3980,6 +4113,7 @@ class VehicleTrackingController extends Controller
                         ->whereNotIn('unloading_status', ['completed', 'cancelled']);
                 });
         })
+            ->whereNull('finish_loading_time')
             ->whereNull('check_out_time')
             ->whereNull('timbangan_out_time')
             ->whereNotIn('status', ['completed', 'timbangan_out']);
@@ -3989,17 +4123,34 @@ class VehicleTrackingController extends Controller
         }
 
         if ($cat === 'slipsheet') {
-            $query->where('jenis', 'slipsheet');
-        } elseif ($cat === 'curah') {
-            $query->where('jenis', 'curah');
-        } elseif (in_array($cat, ['bongkaran', 'smu'])) {
             $query->where(function ($q) {
-                $q->where('jenis', 'bongkaran')
-                    ->orWhere('status', 'smu')
-                    ->orWhereHas('targetLocation', function ($tl) {
-                        $tl->whereIn('s_loc', ['A002', 'SMU']);
-                    });
-            });
+                $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+            })->where(function ($q) {
+                $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
+            })->where('status', '!=', 'smu')
+              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+        } elseif ($cat === 'curah') {
+            $query->where(function ($q) {
+                $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+            })->where('jenis', 'curah')
+              ->where('status', '!=', 'smu')
+              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+        } elseif (in_array($cat, ['bongkaran', 'smu'])) {
+            // HANYA Area SMU ATAU Area WFG khusus jenis Bongkaran (slot 2/2)
+            // TIDAK boleh menghitung truk di WRM (B006), WPM (C001), QC, dll.
+            $query->where(function ($q) {
+                $q->where(function ($smuQ) {
+                    $smuQ->where('status', 'smu')
+                        ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                })->orWhere(function ($wfgQ) {
+                    $wfgQ->where(function ($w) {
+                        $w->where('status', 'wfg')
+                            ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                    })->where('jenis', 'bongkaran');
+                });
+            })
+            ->whereNotIn('status', ['wrm', 'wpm'])
+            ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
         }
 
         return $query->count();
@@ -4160,18 +4311,22 @@ class VehicleTrackingController extends Controller
 
             // Pisahkan antrian secara ketat berdasarkan pool dock:
             if ($currentCategory === 'slipsheet') {
+                // Group 1: WFG - slipsheet
                 $nextQuery->where(function ($q) {
                     $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                })->where('jenis', 'slipsheet')
-                  ->where('status', '!=', 'smu')
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                })->where(function ($q) {
+                    $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
+                })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } elseif ($currentCategory === 'curah') {
+                // Group 2: WFG - curah
                 $nextQuery->where(function ($q) {
                     $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
                 })->where('jenis', 'curah')
-                  ->where('status', '!=', 'smu')
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-            } else { // bongkaran di WFG & SMU tergabung dalam 1 pool
+                  ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+            } else {
+                // Group 3: WFG - bongkaran == SMU bongkaran
                 $nextQuery->where(function ($q) {
                     $q->where(function ($smuQ) {
                         $smuQ->where('status', 'smu')
@@ -4182,11 +4337,8 @@ class VehicleTrackingController extends Controller
                                 ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
                         })->where('jenis', 'bongkaran');
                     });
-                })->where(function ($q) {
-                    $q->where('status', 'smu')
-                        ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
-                        ->orWhere('jenis', 'bongkaran');
-                });
+                })->whereNotIn('status', ['wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
             }
 
             // Utamakan antrian hari sebelumnya yang belum selesai (Carry-Over), lalu urutan antrian berikutnya
@@ -4499,24 +4651,28 @@ class VehicleTrackingController extends Controller
                 ->whereNotIn('status', ['completed', 'timbangan_out']);
 
             if ($category === 'slipsheet') {
+                // Group 1: WFG - slipsheet
                 $query->where(function ($q) {
                     $q->where('status', 'wfg')
                         ->orWhereHas('targetLocation', function ($tl) {
                             $tl->where('s_loc', 'A001');
                         });
-                })->where('jenis', 'slipsheet')
-                  ->where('status', '!=', 'smu')
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                })->where(function ($q) {
+                    $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
+                })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } elseif ($category === 'curah') {
+                // Group 2: WFG - curah
                 $query->where(function ($q) {
                     $q->where('status', 'wfg')
                         ->orWhereHas('targetLocation', function ($tl) {
                             $tl->where('s_loc', 'A001');
                         });
                 })->where('jenis', 'curah')
-                  ->where('status', '!=', 'smu')
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                  ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } elseif ($category === 'bongkaran') {
+                // Group 3: WFG - bongkaran == SMU bongkaran
                 $query->where(function ($q) {
                     $q->where(function ($smuQ) {
                         $smuQ->where('status', 'smu')
@@ -4527,11 +4683,8 @@ class VehicleTrackingController extends Controller
                                 ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
                         })->where('jenis', 'bongkaran');
                     });
-                })->where(function ($q) {
-                    $q->where('status', 'smu')
-                        ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
-                        ->orWhere('jenis', 'bongkaran');
-                });
+                })->whereNotIn('status', ['wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
             }
 
             // Prioritaskan carry-over (hari kemarin) terlebih dahulu, lalu urutan no antrian ASC

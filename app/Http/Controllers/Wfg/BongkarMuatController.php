@@ -703,10 +703,8 @@ class BongkarMuatController extends Controller
 
             DB::commit();
 
-            // Sinkronisasi status selesai muat ke Vehicle Monitoring (WFG & SMU - slipsheet & curah)
-            if (!empty($order->no_mobil)) {
-                $this->syncVehicleFinishLoading($order->no_mobil);
-            }
+            // Selesai muat fisik mobil TIDAK di-sinkronkan otomatis dari form ini,
+            // melainkan diselesaikan secara manual oleh admin/pengawas di Vehicle Monitoring WFG/SMU.
 
             return response()->json(['status' => true, 'message' => 'Bongkar Muat submitted successfully.', 'redirect' => route('wfg.bongkar_muat.show', $order->id)]);
         } catch (\Exception $e) {
@@ -859,11 +857,7 @@ class BongkarMuatController extends Controller
             ]);
         }
 
-        // Auto finish vehicle tracking if active transaction exists matching no_mobil (WFG & SMU, slipsheet & curah)
-        if (!empty($order->no_mobil)) {
-            $this->syncVehicleFinishLoading($order->no_mobil);
-        }
-
+        // Selesai muat fisik mobil diselesaikan secara manual oleh admin/pengawas di Vehicle Monitoring WFG/SMU.
         return back()->with('success', 'Driver approved successfully.');
     }
 
