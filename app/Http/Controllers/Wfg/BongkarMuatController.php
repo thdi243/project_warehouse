@@ -1342,31 +1342,7 @@ class BongkarMuatController extends Controller
                 // Isi nomor antrian urut otomatis jika belum ada nomor antrian
                 $assignedAntrian = $transaction->no_antrian;
                 if (empty($assignedAntrian)) {
-                    $txJenis = strtolower(trim($transaction->jenis ?? ''));
-                    $maxAntrianQuery = VehicleTransaction::where(function ($q) use ($newStatus, $isSmu) {
-                        $q->where('status', $newStatus)
-                            ->orWhereHas('targetLocation', function ($tl) use ($isSmu) {
-                                if ($isSmu) {
-                                    $tl->whereIn('s_loc', ['SMU', 'A002']);
-                                } else {
-                                    $tl->where('s_loc', 'A001');
-                                }
-                            });
-                    })
-                        ->whereNotNull('no_antrian');
-
-                    if ($newStatus === 'wfg' && !empty($txJenis)) {
-                        $maxAntrianQuery->where('jenis', $txJenis);
-                    }
-
-                    $maxAntrian = $maxAntrianQuery->get()
-                        ->map(function ($tx) {
-                            return (int)$tx->no_antrian;
-                        })
-                        ->max();
-
-                    $nextAntrian = $maxAntrian ? $maxAntrian + 1 : 1;
-                    $assignedAntrian = str_pad($nextAntrian, 2, '0', STR_PAD_LEFT);
+                    $assignedAntrian = app(\App\Http\Controllers\Vehicle\VehicleTrackingController::class)->generateNextQueueNumber($transaction);
                 }
 
                 $updateData = [
@@ -1505,7 +1481,6 @@ class BongkarMuatController extends Controller
                         'start_loading_by' => $transaction->start_loading_by ?? Auth::id(),
                         'finish_loading_time' => $transaction->finish_loading_time ?? $now,
                         'finish_loading_by' => $transaction->finish_loading_by ?? Auth::id(),
-                        'no_antrian' => null, // Clear queue
                         'updated_by' => Auth::id()
                     ];
 
@@ -1518,34 +1493,7 @@ class BongkarMuatController extends Controller
 
                     $transaction->update($updateData);
 
-                    // Shift remaining active queues in area tersebut (jika WFG, shift per jenis)
-                    if ($completedAntrian > 0) {
-                        $txJenis = strtolower(trim($transaction->jenis ?? ''));
-                        $otherActiveQuery = VehicleTransaction::where(function ($q) use ($currentStatus, $isSmu) {
-                            $q->where('status', $currentStatus)
-                                ->orWhereHas('targetLocation', function ($tl) use ($isSmu) {
-                                    if ($isSmu) {
-                                        $tl->whereIn('s_loc', ['SMU', 'A002']);
-                                    } else {
-                                        $tl->where('s_loc', 'A001');
-                                    }
-                                });
-                        })
-                            ->whereNotNull('no_antrian');
-
-                        if ($currentStatus === 'wfg' && !empty($txJenis)) {
-                            $otherActiveQuery->where('jenis', $txJenis);
-                        }
-
-                        $otherActive = $otherActiveQuery->get();
-                        foreach ($otherActive as $tx) {
-                            $currAntrian = (int)$tx->no_antrian;
-                            if ($currAntrian > $completedAntrian) {
-                                $tx->update(['no_antrian' => str_pad($currAntrian - 1, 2, '0', STR_PAD_LEFT)]);
-                            }
-                        }
-                    }
-
+                    // Antrian running terus-menerus: nomor antrian mobil tetap utuh dan tidak ada shift down
                     if (!$isAlreadyCompleted) {
                         // Create new tracking log for Timbangan Out
                         VehicleTracking::create([

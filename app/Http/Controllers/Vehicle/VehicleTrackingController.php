@@ -2253,39 +2253,7 @@ class VehicleTrackingController extends Controller
 
             // Auto-assign queue number if not yet set
             if (empty($transaction->no_antrian)) {
-                $today = Carbon::today();
-                $maxAntrian = VehicleTransaction::whereNotNull('no_antrian')
-                    ->where(function ($q) use ($today) {
-                        $q->whereDate('queue_taken_time', $today)
-                            ->orWhere(function ($q2) use ($today) {
-                                $q2->whereNull('queue_taken_time')
-                                    ->whereDate('created_at', $today);
-                            });
-                    })
-                    ->where(function ($q) {
-                        $q->where(function ($smuQ) {
-                            $smuQ->where('status', 'smu')
-                                ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-                        })->orWhere(function ($wfgQ) {
-                            $wfgQ->where(function ($w) {
-                                $w->where('status', 'wfg')
-                                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                            })->where('jenis', 'bongkaran');
-                        });
-                    })->where(function ($q) {
-                        $q->where('status', 'smu')
-                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
-                            ->orWhere('jenis', 'bongkaran');
-                    })
-                    ->where('id', '!=', $transaction->id)
-                    ->get()
-                    ->map(function ($tx) {
-                        return (int)$tx->no_antrian;
-                    })
-                    ->max();
-
-                $nextAntrian = $maxAntrian ? $maxAntrian + 1 : 1;
-                $formattedAntrian = str_pad($nextAntrian, 2, '0', STR_PAD_LEFT);
+                $formattedAntrian = $this->generateNextQueueNumber($transaction);
             } else {
                 $formattedAntrian = $transaction->no_antrian;
             }
@@ -2824,127 +2792,74 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Sinkronisasi dan reset antrian harian untuk mobil menginap / sisa hari sebelumnya.
-     * Jika ada mobil aktif yang belum selesai dari hari sebelumnya:
-     * - Mobil sisa kemarin akan di-reset dan diurutkan mulai dari nomor 01, 02, dst.
-     * - Mobil baru hari ini akan melanjutkan urutan setelahnya (03, 04, dst).
-     * - Menghilangkan nomor ganda (duplikat) dan memastikan urutan selalu rapi 1, 2, 3...
+     * Generate running queue number (+1 auto increment) strictly scoped by dock pool:
+     * 1. Slipsheet (WFG Slipsheet saja)
+     * 2. Curah (WFG Curah saja)
+     * 3. Bongkaran & SMU (Antrian gabungan untuk WFG Bongkaran + semua truk di Area SMU)
+     */
+    public function generateNextQueueNumber(VehicleTransaction $transaction): string
+    {
+        $category = $this->resolveDockCategory($transaction);
+        $todayStr = Carbon::today()->toDateString();
+        $txDateStr = $transaction->created_at ? $transaction->created_at->toDateString() : $todayStr;
+
+        $query = VehicleTransaction::whereNotNull('no_antrian')
+            ->where('id', '!=', $transaction->id)
+            ->where(function ($q) use ($todayStr, $txDateStr) {
+                $q->whereDate(DB::raw('COALESCE(queue_taken_time, created_at)'), $todayStr)
+                    ->orWhereDate(DB::raw('COALESCE(queue_taken_time, created_at)'), $txDateStr)
+                    ->orWhere(function ($q2) {
+                        $q2->whereNotIn('status', ['completed', 'timbangan_out'])
+                            ->whereNull('check_out_time');
+                    });
+            });
+
+        if ($category === 'slipsheet') {
+            $query->where(function ($q) {
+                $q->where('status', 'wfg')
+                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'))
+                    ->orWhere('jenis', 'slipsheet');
+            })->where(function ($q) {
+                $q->where('jenis', 'slipsheet')
+                    ->orWhereNull('jenis')
+                    ->orWhere('jenis', '');
+            })->where('status', '!=', 'smu')
+              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+        } elseif ($category === 'curah') {
+            $query->where(function ($q) {
+                $q->where('status', 'wfg')
+                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'))
+                    ->orWhere('jenis', 'curah');
+            })->where('jenis', 'curah')
+              ->where('status', '!=', 'smu')
+              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+        } else { // bongkaran di WFG tergabung dengan SMU
+            $query->where(function ($q) {
+                $q->where('status', 'smu')
+                    ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
+                    ->orWhere('jenis', 'bongkaran');
+            });
+        }
+
+        $maxAntrian = $query->get()
+            ->map(function ($tx) {
+                return (int)$tx->no_antrian;
+            })
+            ->max();
+
+        $nextAntrian = $maxAntrian ? $maxAntrian + 1 : 1;
+        return str_pad($nextAntrian, 2, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Sinkronisasi antrian harian (aman, nomor antrian supir tidak di-reset atau diubah urutannya).
      */
     public function syncAndResetDailyQueues(): int
     {
-        $today = Carbon::today();
-        $updatedCount = 0;
-
-        // Kategori yang disinkronkan di WFG & SMU serta QC
-        $categories = ['slipsheet', 'curah', 'bongkaran', 'qc'];
-
-        foreach ($categories as $cat) {
-            $query = VehicleTransaction::with('vehicle')
-                ->whereNotNull('no_antrian')
-                ->whereNotIn('status', ['completed', 'timbangan_out'])
-                ->whereNull('check_out_time')
-                ->whereNull('timbangan_out_time');
-
-            if ($cat === 'slipsheet') {
-                $query->whereNull('finish_loading_time')
-                    ->where(function ($q) {
-                        $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                    })->where('jenis', 'slipsheet')
-                    ->where('status', '!=', 'smu')
-                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-            } elseif ($cat === 'curah') {
-                $query->whereNull('finish_loading_time')
-                    ->where(function ($q) {
-                        $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                    })->where('jenis', 'curah')
-                    ->where('status', '!=', 'smu')
-                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-            } elseif ($cat === 'bongkaran') { // bongkaran di WFG & SMU tergabung dalam 1 pool
-                $query->whereNull('finish_loading_time')
-                    ->where(function ($q) {
-                        $q->where(function ($smuQ) {
-                            $smuQ->where('status', 'smu')
-                                ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-                        })->orWhere(function ($wfgQ) {
-                            $wfgQ->where(function ($w) {
-                                $w->where('status', 'wfg')
-                                    ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                            })->where('jenis', 'bongkaran');
-                        });
-                    })->where(function ($q) {
-                        $q->where('status', 'smu')
-                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
-                            ->orWhere('jenis', 'bongkaran');
-                    });
-            } else { // QC
-                $query->whereIn('qc_status', ['waiting_dokumen', 'waiting_sampling', 'on_check'])
-                    ->whereNull('finish_sampling_time');
-            }
-
-            $activeTxs = $query->get();
-            if ($activeTxs->isEmpty()) {
-                continue;
-            }
-
-            // Periksa apakah ada truk menginap (queue_taken_time < today) ATAU ada nomor duplikat
-            $hasOvernight = $activeTxs->contains(function ($tx) use ($today) {
-                $qDate = $tx->queue_taken_time ? Carbon::parse($tx->queue_taken_time) : Carbon::parse($tx->created_at);
-                return $qDate->lt($today);
-            });
-
-            $hasDuplicates = $activeTxs->pluck('no_antrian')->duplicates()->isNotEmpty();
-
-            // Jika ada mobil menginap atau nomor antrian duplikat, lakukan re-indexing
-            if ($hasOvernight || $hasDuplicates) {
-                $sorted = $activeTxs->sort(function ($a, $b) use ($today) {
-                    $dateA = $a->queue_taken_time ? Carbon::parse($a->queue_taken_time) : Carbon::parse($a->created_at);
-                    $dateB = $b->queue_taken_time ? Carbon::parse($b->queue_taken_time) : Carbon::parse($b->created_at);
-
-                    $isOvernightA = $dateA->lt($today);
-                    $isOvernightB = $dateB->lt($today);
-
-                    // Mobil kemarin selalu diprioritaskan di awal urutan antrian
-                    if ($isOvernightA && !$isOvernightB) return -1;
-                    if (!$isOvernightA && $isOvernightB) return 1;
-
-                    // Jika sama-sama kemarin atau sama-sama hari ini, urutkan berdasarkan tanggal & antrian lama
-                    if ($dateA->ne($dateB)) return $dateA->lt($dateB) ? -1 : 1;
-
-                    return (int)$a->no_antrian <=> (int)$b->no_antrian;
-                })->values();
-
-                $seq = 1;
-                foreach ($sorted as $tx) {
-                    $formattedSeq = str_pad($seq, 2, '0', STR_PAD_LEFT);
-                    $qDate = $tx->queue_taken_time ? Carbon::parse($tx->queue_taken_time) : Carbon::parse($tx->created_at);
-
-                    $needsUpdate = ($tx->no_antrian !== $formattedSeq) || ($qDate->lt($today));
-
-                    if ($needsUpdate) {
-                        $updateData = ['no_antrian' => $formattedSeq];
-                        // Jika dari hari sebelumnya, update queue_taken_time ke hari ini di awal hari
-                        // agar terdaftar dalam urutan hari ini tanpa mengubah check_in_time aslinya
-                        if ($qDate->lt($today)) {
-                            $updateData['queue_taken_time'] = $today->copy()->startOfDay()->addMinutes($seq);
-                        }
-                        $tx->update($updateData);
-                        $updatedCount++;
-                    }
-                    $seq++;
-                }
-            }
-        }
-
-        if ($updatedCount > 0) {
-            Log::info("[VehicleTracking] syncAndResetDailyQueues: {$updatedCount} transaksi berhasil disinkronkan & di-reset urutan antriannya.");
-            event(new VehicleStatusUpdated([
-                'type' => 'queue_resynced',
-                'action' => 'queue_resynced',
-                'message' => "Antrian harian disinkronkan ({$updatedCount} kendaraan disesuaikan urutannya)"
-            ]));
-        }
-
-        return $updatedCount;
+        // Nomor antrian supir bersifat running terus-menerus (+1 auto-increment per pool).
+        // Tidak dilakukan re-indexing/reset nomor antrian yang sudah diterbitkan kepada supir
+        // agar konsisten dengan pesan WhatsApp & tiket yang sudah dipegang supir.
+        return 0;
     }
 
     /**
@@ -2957,75 +2872,18 @@ class VehicleTrackingController extends Controller
 
             $transaction = VehicleTransaction::findOrFail($id);
 
-            // 1. Sinkronkan dan reset antrian hari ini (truk kemarin menjadi nomor awal 1, 2, dst)
-            $this->syncAndResetDailyQueues();
-
-            // Auto-assign queue number: Model Tiket RS (Auto-increment per hari, melanjutkan urutan setelah mobil kemarin)
-            $category = $this->resolveDockCategory($transaction);
-            $status = strtolower(trim($transaction->status ?? ''));
-            $jenis = strtolower(trim($transaction->jenis ?? ''));
-            $today = Carbon::today();
-
-            $query = VehicleTransaction::whereNotNull('no_antrian')
-                ->where(function ($q) use ($today) {
-                    $q->whereDate('queue_taken_time', $today)
-                        ->orWhere(function ($q2) {
-                            $q2->whereNotIn('status', ['completed', 'timbangan_out'])
-                                ->whereNull('finish_loading_time')
-                                ->whereNull('check_out_time');
-                        });
-                });
-
-            // Pisahkan antrian secara ketat berdasarkan pool dock:
-            // 1. Slipsheet (WFG Slipsheet saja)
-            // 2. Curah (WFG Curah saja)
-            // 3. Bongkaran & SMU (Antrian gabungan untuk WFG Bongkaran + semua truk di Area SMU)
-            if ($category === 'slipsheet') {
-                $query->where(function ($q) {
-                    $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                })->where('jenis', 'slipsheet')
-                  ->where('status', '!=', 'smu')
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-            } elseif ($category === 'curah') {
-                $query->where(function ($q) {
-                    $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                })->where('jenis', 'curah')
-                  ->where('status', '!=', 'smu')
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-            } else { // bongkaran di WFG tergabung dengan SMU
-                $query->where(function ($q) {
-                    $q->where(function ($smuQ) {
-                        $smuQ->where('status', 'smu')
-                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
-                    })->orWhere(function ($wfgQ) {
-                        $wfgQ->where(function ($w) {
-                            $w->where('status', 'wfg')
-                                ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                        })->where('jenis', 'bongkaran');
-                    });
-                })->where(function ($q) {
-                    $q->where('status', 'smu')
-                        ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']))
-                        ->orWhere('jenis', 'bongkaran');
-                });
+            // Jika transaksi sudah memiliki nomor antrian, pertahankan nomor tersebut
+            if (!empty($transaction->no_antrian)) {
+                $formattedAntrian = $transaction->no_antrian;
+            } else {
+                $formattedAntrian = $this->generateNextQueueNumber($transaction);
+                $transaction->update([
+                    'no_antrian' => $formattedAntrian,
+                    'queue_taken_time' => Carbon::now(),
+                    'queue_taken_by' => $transaction->queue_taken_by ?? Auth::id(),
+                    'updated_by' => Auth::id()
+                ]);
             }
-
-            $maxAntrian = $query->get()
-                ->map(function ($tx) {
-                    return (int)$tx->no_antrian;
-                })
-                ->max();
-
-            $nextAntrian = $maxAntrian ? $maxAntrian + 1 : 1;
-            $formattedAntrian = str_pad($nextAntrian, 2, '0', STR_PAD_LEFT);
-
-            // Update queue number
-            $transaction->update([
-                'no_antrian' => $formattedAntrian,
-                'queue_taken_time' => Carbon::now(),
-                'queue_taken_by' => $transaction->queue_taken_by ?? Auth::id(),
-                'updated_by' => Auth::id()
-            ]);
 
             // Kendaraan TETAP berada di slot kantong parkir saat mengambil antrian.
             // Release dari parkir HANYA dilakukan saat action Mulai Bongkar/Muat (start_loading_time).
@@ -4276,6 +4134,8 @@ class VehicleTrackingController extends Controller
                     $q->whereNull('unloading_status')
                         ->orWhereNotIn('unloading_status', ['process', 'completed', 'complete']);
                 })
+                ->whereNull('start_loading_time')
+                ->whereNull('finish_loading_time')
                 ->whereNull('check_out_time')
                 ->whereNull('timbangan_out_time')
                 ->whereNull('follow_up_time'); // Point 6: Lewati jika truk berikutnya ada follow up timbangan
@@ -4342,15 +4202,17 @@ class VehicleTrackingController extends Controller
             $currentNoPol = $currentTx->vehicle ? $currentTx->vehicle->no_pol : 'N/A';
             $nextNoPol = $nextTx->vehicle ? $nextTx->vehicle->no_pol : 'N/A';
 
-            // Anti-spam / Duplicate Lock: Jika truk antrian berikutnya sudah pernah dikirimi pesan siap-siap,
+            // Anti-spam / Duplicate Lock: Jika truk antrian berikutnya sudah pernah dikirimi pesan siap-siap atau dipanggil dock,
             // JANGAN kirim ulang ke truk ini, dan JANGAN loncat broadcast ke antrian nomor berikutnya (misal #5).
             // Langsung hentikan proses (notifikasi persiapan cukup sekali saja per transaksi antrian).
-            $hasBeenPrepared = !empty($nextTx->notif_prepare_at) || Cache::has("driver_prepare_notif_{$nextTx->id}");
+            $hasBeenPrepared = !empty($nextTx->notif_prepare_at)
+                || Cache::has("driver_prepare_notif_{$nextTx->id}")
+                || Cache::has("driver_dock_called_{$nextTx->id}");
             if ($hasBeenPrepared) {
-                Log::info("[VehicleTracking] Truk antrian berikutnya {$nextNoPol} (#{$nextTx->no_antrian}) sudah pernah mendapatkan notif siap-siap sebelumnya (DB: {$nextTx->notif_prepare_at}). Skip (tidak kirim ulang dan tidak broadcast ke antrian berikutnya).");
+                Log::info("[VehicleTracking] Truk antrian berikutnya {$nextNoPol} (#{$nextTx->no_antrian}) sudah pernah mendapatkan notif siap-siap/panggilan dock sebelumnya (DB: {$nextTx->notif_prepare_at}). Skip (tidak kirim ulang dan tidak broadcast ke antrian berikutnya).");
                 return [
                     'status' => false,
-                    'message' => "Truk {$nextNoPol} (#{$nextTx->no_antrian}) sudah pernah mendapatkan notifikasi siap-siap sebelumnya."
+                    'message' => "Truk {$nextNoPol} (#{$nextTx->no_antrian}) sudah pernah mendapatkan notifikasi siap-siap/panggilan dock sebelumnya."
                 ];
             }
 
