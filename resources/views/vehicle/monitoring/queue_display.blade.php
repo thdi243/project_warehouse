@@ -1089,12 +1089,13 @@
             function initReverb() {
                 try {
                     window.Pusher = Pusher;
+                    const wsHost = window.location.hostname || "{{ request()->getHost() }}";
                     window.Echo = new Echo({
                         broadcaster: 'reverb',
                         key: "{{ env('REVERB_APP_KEY') }}",
-                        wsHost: "{{ env('REVERB_HOST') ?: request()->getHost() }}",
-                        wsPort: {{ env('REVERB_PORT') ?: 8080 }},
-                        wssPort: {{ env('REVERB_PORT') ?: 8080 }},
+                        wsHost: wsHost,
+                        wsPort: {{ env('REVERB_PORT', 8080) }},
+                        wssPort: {{ env('REVERB_PORT', 8080) }},
                         forceTLS: {{ env('REVERB_SCHEME') === 'https' ? 'true' : 'false' }},
                         enabledTransports: ['ws', 'wss'],
                     });
@@ -1105,9 +1106,27 @@
                             fetchQueueData();
                         });
 
-                    const wsIndicator = document.getElementById('ws-status-text');
-                    if (wsIndicator) wsIndicator.innerText = 'LIVE';
-                    console.log('[Reverb] WebSocket connection established.');
+                    if (window.Echo.connector && window.Echo.connector.pusher) {
+                        window.Echo.connector.pusher.connection.bind('connected', () => {
+                            const wsIndicator = document.getElementById('ws-status-text');
+                            if (wsIndicator) {
+                                wsIndicator.innerText = 'LIVE (WS)';
+                                wsIndicator.classList.remove('text-warning');
+                                wsIndicator.classList.add('text-success');
+                            }
+                            console.log(`[Reverb] WebSocket connected to ws://${wsHost}:{{ env('REVERB_PORT', 8080) }}`);
+                        });
+
+                        window.Echo.connector.pusher.connection.bind('unavailable', () => {
+                            const wsIndicator = document.getElementById('ws-status-text');
+                            if (wsIndicator) {
+                                wsIndicator.innerText = 'LIVE (POLL)';
+                                wsIndicator.classList.remove('text-success');
+                                wsIndicator.classList.add('text-warning');
+                            }
+                            console.warn('[Reverb] WebSocket unavailable, falling back to 10s polling.');
+                        });
+                    }
                 } catch (e) {
                     console.warn('[Reverb] WebSocket init failed, fallback to polling:', e);
                 }
