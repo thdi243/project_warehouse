@@ -555,7 +555,7 @@
                                 </span>
                             </div>
 
-                            <div id="wrm-active-container" class="d-flex flex-column gap-1">
+                            <div id="wrm-active-container" class="d-flex flex-column gap-1" style="max-height: calc(100vh - 450px); overflow-y: auto;">
                                 <div class="slot-box available text-center py-2">
                                     <span class="text-secondary small">Memuat data aktif WRM...</span>
                                 </div>
@@ -578,7 +578,7 @@
                                 </span>
                             </div>
 
-                            <div id="wpm-active-container" class="d-flex flex-column gap-1">
+                            <div id="wpm-active-container" class="d-flex flex-column gap-1" style="max-height: calc(100vh - 450px); overflow-y: auto;">
                                 <div class="slot-box available text-center py-2">
                                     <span class="text-secondary small">Memuat data aktif WPM...</span>
                                 </div>
@@ -1009,70 +1009,71 @@
                 return html;
             }
 
+            // Helper to render active dock cards (responsive 2-column if active count >= 3)
+            function renderActiveDockCards(items, typeBadge, badgeBgClass) {
+                const isMultiCol = items && items.length >= 3;
+                let html = '';
+                items.forEach(item => {
+                    const cardHtml = `
+                        <div class="slot-box occupied p-2 px-2 px-md-3 h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
+                                <span class="badge ${badgeBgClass}" style="font-size: ${isMultiCol ? '10px' : '11px'}; padding: 2px 6px;">${typeBadge}</span>
+                                <span class="badge bg-light text-dark border mono flex-shrink-0" style="font-size: ${isMultiCol ? '10px' : '11px'};">⏱ ${item.duration}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center my-1 gap-1">
+                                <span class="badge-plat ${isMultiCol ? 'fs-5' : 'fs-4'} fw-bold text-dark text-truncate">${item.no_pol}</span>
+                                <span class="badge-queue-no flex-shrink-0" style="font-size: ${isMultiCol ? '13px' : '14px'}; padding: 2px ${isMultiCol ? '6px' : '8px'};">#${item.no_antrian}</span>
+                            </div>
+                            <div class="text-dark small text-truncate" style="font-size: ${isMultiCol ? '11px' : '12px'};">
+                                <strong>${item.nama_driver}</strong> (${item.vendor}) • <span class="text-primary fw-medium">${item.item_name}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    if (isMultiCol) {
+                        html += `<div class="col-sm-6 col-12 p-1">${cardHtml}</div>`;
+                    } else {
+                        html += cardHtml;
+                    }
+                });
+
+                return { html, isMultiCol };
+            }
+
             // Render WRM & WPM View
             function renderWrmView(data) {
                 // WRM Active
                 document.getElementById('wrm-active-count').innerText = data.wrm?.active_count || 0;
                 const wrmActiveContainer = document.getElementById('wrm-active-container');
                 if (data.wrm?.active && data.wrm.active.length > 0) {
-                    let html = '';
-                    data.wrm.active.forEach(item => {
-                        html += `
-                        <div class="slot-box occupied p-2 px-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="badge bg-success" style="font-size: 11px; padding: 2px 6px;">BONGKAR WRM</span>
-                                <span class="badge bg-light text-dark border mono" style="font-size: 11px;">⏱ ${item.duration}</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center my-1">
-                                <span class="badge-plat fs-4 fw-bold text-dark">${item.no_pol}</span>
-                                <span class="badge-queue-no" style="font-size: 14px; padding: 2px 8px;">#${item.no_antrian}</span>
-                            </div>
-                            <div class="text-dark small text-truncate" style="font-size: 12px;">
-                                <strong>${item.nama_driver}</strong> (${item.vendor}) • <span class="text-primary fw-medium">${item.item_name}</span>
-                            </div>
-                        </div>
-                    `;
-                    });
+                    const { html, isMultiCol } = renderActiveDockCards(data.wrm.active, 'BONGKAR WRM', 'bg-success');
+                    wrmActiveContainer.className = isMultiCol ? 'row g-0 m-0' : 'd-flex flex-column gap-1';
                     wrmActiveContainer.innerHTML = html;
                 } else {
+                    wrmActiveContainer.className = 'd-flex flex-column gap-1';
                     wrmActiveContainer.innerHTML = `
-                    <div class="slot-box available text-center py-3 px-2">
-                        <div class="text-success fw-bold mb-1" style="font-size: 14px;"><i class="ri-check-circle-line"></i> DOCK WRM TERSEDIA</div>
-                        <small class="text-secondary" style="font-size: 11px;">Tidak ada proses bongkar aktif</small>
-                    </div>
-                `;
+                        <div class="slot-box available text-center py-3 px-2">
+                            <div class="text-success fw-bold mb-1" style="font-size: 14px;"><i class="ri-check-circle-line"></i> DOCK WRM TERSEDIA</div>
+                            <small class="text-secondary" style="font-size: 11px;">Tidak ada proses bongkar aktif</small>
+                        </div>
+                    `;
                 }
 
                 // WPM Active
                 document.getElementById('wpm-active-count').innerText = data.wpm?.active_count || 0;
                 const wpmActiveContainer = document.getElementById('wpm-active-container');
                 if (data.wpm?.active && data.wpm.active.length > 0) {
-                    let html = '';
-                    data.wpm.active.forEach(item => {
-                        html += `
-                        <div class="slot-box occupied p-2 px-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="badge bg-info" style="font-size: 11px; padding: 2px 6px;">PROSES WPM</span>
-                                <span class="badge bg-light text-dark border mono" style="font-size: 11px;">⏱ ${item.duration}</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center my-1">
-                                <span class="badge-plat fs-4 fw-bold text-dark">${item.no_pol}</span>
-                                <span class="badge-queue-no" style="font-size: 14px; padding: 2px 8px;">#${item.no_antrian}</span>
-                            </div>
-                            <div class="text-dark small text-truncate" style="font-size: 12px;">
-                                <strong>${item.nama_driver}</strong> (${item.vendor}) • <span class="text-primary fw-medium">${item.item_name}</span>
-                            </div>
-                        </div>
-                    `;
-                    });
+                    const { html, isMultiCol } = renderActiveDockCards(data.wpm.active, 'PROSES WPM', 'bg-info text-white');
+                    wpmActiveContainer.className = isMultiCol ? 'row g-0 m-0' : 'd-flex flex-column gap-1';
                     wpmActiveContainer.innerHTML = html;
                 } else {
+                    wpmActiveContainer.className = 'd-flex flex-column gap-1';
                     wpmActiveContainer.innerHTML = `
-                    <div class="slot-box available text-center py-3 px-2">
-                        <div class="text-success fw-bold mb-1" style="font-size: 14px;"><i class="ri-check-circle-line"></i> DOCK WPM TERSEDIA</div>
-                        <small class="text-secondary" style="font-size: 11px;">Tidak ada proses aktif</small>
-                    </div>
-                `;
+                        <div class="slot-box available text-center py-3 px-2">
+                            <div class="text-success fw-bold mb-1" style="font-size: 14px;"><i class="ri-check-circle-line"></i> DOCK WPM TERSEDIA</div>
+                            <small class="text-secondary" style="font-size: 11px;">Tidak ada proses aktif</small>
+                        </div>
+                    `;
                 }
 
                 // Waiting Queue in 2 Columns (WRM & WPM)
