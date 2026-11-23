@@ -4202,7 +4202,70 @@ class VehicleTrackingController extends Controller
             $category = $this->resolveDockCategory($transaction, $areaUpper);
             $quota = $this->getDockQuota($category);
             $activeOccupancy = $this->getActiveDockOccupancy($category, $transaction->id);
-            $isDockAvailable = $activeOccupancy < $quota;
+            $availableSlots = max(0, $quota - $activeOccupancy);
+
+            // Hitung antrian sebelumnya di pool yang sama yang MASIH MENUNGGU di kantong parkir
+            $waitingAheadQuery = VehicleTransaction::where('id', '!=', $transaction->id)
+                ->whereNotNull('no_antrian')
+                ->where(function ($q) {
+                    $q->whereNull('unloading_status')
+                        ->orWhereIn('unloading_status', ['pending', 'waiting', 'call', 'dipanggil']);
+                })
+                ->whereNull('start_loading_time')
+                ->whereNull('finish_loading_time')
+                ->whereNull('check_out_time')
+                ->whereNull('timbangan_out_time')
+                ->whereNull('follow_up_time')
+                ->whereNotIn('status', ['completed', 'timbangan_out']);
+
+            if ($category === 'slipsheet') {
+                // Group 1: WFG - slipsheet
+                $waitingAheadQuery->where(function ($q) {
+                    $q->where('status', 'wfg')
+                        ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                })->where(function ($q) {
+                    $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
+                })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+            } elseif ($category === 'curah') {
+                // Group 2: WFG - curah
+                $waitingAheadQuery->where(function ($q) {
+                    $q->where('status', 'wfg')
+                        ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                })->where('jenis', 'curah')
+                  ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+            } else {
+                // Group 3: WFG - bongkaran == SMU bongkaran
+                $waitingAheadQuery->where(function ($q) {
+                    $q->where(function ($smuQ) {
+                        $smuQ->where('status', 'smu')
+                            ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
+                    })->orWhere(function ($wfgQ) {
+                        $wfgQ->where(function ($w) {
+                            $w->where('status', 'wfg')
+                                ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                        })->where('jenis', 'bongkaran');
+                    });
+                })->whereNotIn('status', ['wrm', 'wpm'])
+                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
+            }
+
+            $currentDate = $transaction->queue_taken_time ? $transaction->queue_taken_time->toDateString() : ($transaction->created_at ? $transaction->created_at->toDateString() : date('Y-m-d'));
+            $currentAntrianNum = (int)$antrian;
+
+            $waitingAheadQuery->where(function ($q) use ($currentDate, $currentAntrianNum) {
+                $q->whereDate(DB::raw('COALESCE(queue_taken_time, created_at)'), '<', $currentDate)
+                    ->orWhere(function ($q2) use ($currentDate, $currentAntrianNum) {
+                        $q2->whereDate(DB::raw('COALESCE(queue_taken_time, created_at)'), '=', $currentDate)
+                            ->whereRaw('CAST(no_antrian AS UNSIGNED) < ?', [$currentAntrianNum]);
+                    });
+            });
+
+            $waitingAheadCount = $waitingAheadQuery->count();
+
+            // Truk hanya boleh langsung dipanggil masuk dock jika slot dock tersedia DAN tidak ada antrian di depannya yang mengantri slot tersebut
+            $isDockAvailable = ($availableSlots > 0) && ($waitingAheadCount < $availableSlots);
 
             $categoryLabel = match ($category) {
                 'slipsheet' => 'Slipsheet',
@@ -4219,7 +4282,7 @@ class VehicleTrackingController extends Controller
             $footer = $this->dynamicMessageFooter('ANTRIAN');
 
             if ($isDockAvailable) {
-                // Dock masih ada slot kosong (belum terisi kuota), langsung panggil masuk dock!
+                // Dock masih ada slot kosong dan tidak ada antrian menunggu di depan, langsung panggil masuk dock!
                 $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
                     . "{Nomor antrian untuk kendaraan|Nomor antrian kendaraan Anda|Antrian untuk mobil|Informasi antrian kendaraan} *{$noPol}* {sudah terbit|sudah diterbitkan|telah dibuat|telah siap}:\n"
                     . "• No. Antrian : *#{$antrian}* ({$categoryLabel})\n"
@@ -4231,13 +4294,17 @@ class VehicleTrackingController extends Controller
                     . $footer;
                 $message = $this->parseSpintax($rawMessage);
             } else {
-                // Dock sedang penuh terisi sesuai kuota, infokan no antrian dan instruksi standby di parkir
+                // Dock sedang penuh terisi ATAU sisa slot kosong sudah menjadi hak antrian-antrian di depan
+                $statusDockText = ($activeOccupancy >= $quota)
+                    ? "Penuh ({$activeOccupancy}/{$quota} Terisi)"
+                    : "Terisi {$activeOccupancy}/{$quota}" . ($waitingAheadCount > 0 ? " ({$waitingAheadCount} Antrian di Depan Anda)" : "");
+
                 $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
                     . "{Nomor antrian untuk kendaraan|Nomor antrian kendaraan Anda|Antrian untuk mobil|Informasi antrian kendaraan} *{$noPol}* {sudah terbit|sudah diterbitkan|telah dibuat|telah siap}:\n"
                     . "• No. Antrian : *#{$antrian}* ({$categoryLabel})\n"
                     . "• Area Dock   : *{$areaUpper}*\n"
-                    . "• Status Dock : *Penuh ({$activeOccupancy}/{$quota} Terisi)*\n\n"
-                    . "{Saat ini|Untuk saat ini} Loading Dock {$categoryLabel} {sedang terisi penuh|masih penuh|sedang terisi semua} ({$activeOccupancy}/{$quota} truk). {Silakan|Mohon|Bisa|Dipersilakan} *{istirahat atau standby|standby|menunggu} di kantong parkir* terlebih dahulu ya pak. {Nanti giliran masuk akan kami infokan via WhatsApp & layar monitor segera setelah dock siap|Informasi giliran masuk dock akan kami kabari segera via WhatsApp setelah ada slot kosong|Begitu ada slot dock yang kosong, akan langsung kami panggil via pesan ini}.\n\n"
+                    . "• Status Dock : *{$statusDockText}*\n\n"
+                    . "{Saat ini|Untuk saat ini} Loading Dock {$categoryLabel} {sedang ada aktivitas|masih terisi|sedang berjalan proses}" . ($waitingAheadCount > 0 ? " dan masih ada {$waitingAheadCount} truk antrian di depan Anda" : "") . ". {Silakan|Mohon|Bisa|Dipersilakan} *{istirahat atau standby|standby|menunggu} di kantong parkir* terlebih dahulu ya pak. {Nanti giliran masuk akan kami infokan via WhatsApp & layar monitor segera setelah dock siap|Informasi giliran masuk dock akan kami kabari segera via WhatsApp setelah ada slot kosong|Begitu ada slot dock yang kosong, akan langsung kami panggil via pesan ini}.\n\n"
                     . "{Kalau ada kendala atau butuh bantuan silakan balas chat ini ya pak|Bisa dibalas yaaa pak kalau ada pertanyaan|Terima kasih banyak atas kesabarannya menunggu|Mohon ditunggu sebentar ya pak, terima kasih atas kerja samanya}. 🙏"
                     . $footer;
                 $message = $this->parseSpintax($rawMessage);
