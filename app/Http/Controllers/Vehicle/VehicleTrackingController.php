@@ -4001,13 +4001,18 @@ class VehicleTrackingController extends Controller
 
     /**
      * Parse template spintax seperti "{Halo|Siang|Salam}" secara acak.
+     * Mendukung nested spintax dengan pengulangan parsing sampai bersih.
      */
     protected function parseSpintax(string $text): string
     {
-        return preg_replace_callback('/\{([^{}]+)\}/', function ($matches) {
-            $parts = explode('|', $matches[1]);
-            return trim($parts[array_rand($parts)]);
-        }, $text);
+        $maxIterations = 5;
+        while ($maxIterations-- > 0 && preg_match('/\{([^{}]+)\}/', $text)) {
+            $text = preg_replace_callback('/\{([^{}]+)\}/', function ($matches) {
+                $parts = explode('|', $matches[1]);
+                return trim($parts[array_rand($parts)]);
+            }, $text);
+        }
+        return $text;
     }
 
     /**
@@ -4651,13 +4656,13 @@ class VehicleTrackingController extends Controller
 
             $hour = (int)Carbon::now()->format('H');
             if ($hour >= 5 && $hour < 11) {
-                $timeWord = '{pagi|pagi menjelang siang}';
+                $timeWord = 'pagi';
             } elseif ($hour >= 11 && $hour < 15) {
-                $timeWord = '{siang}';
+                $timeWord = 'siang';
             } elseif ($hour >= 15 && $hour < 18) {
-                $timeWord = '{sore}';
+                $timeWord = 'sore';
             } else {
-                $timeWord = '{malam}';
+                $timeWord = 'malam';
             }
 
             $driverName = $driver['name'] ?: 'Supir';
@@ -4802,13 +4807,13 @@ class VehicleTrackingController extends Controller
 
             $hour = (int)Carbon::now()->format('H');
             if ($hour >= 5 && $hour < 11) {
-                $timeWord = '{pagi|pagi menjelang siang}';
+                $timeWord = 'pagi';
             } elseif ($hour >= 11 && $hour < 15) {
-                $timeWord = '{siang}';
+                $timeWord = 'siang';
             } elseif ($hour >= 15 && $hour < 18) {
-                $timeWord = '{sore}';
+                $timeWord = 'sore';
             } else {
-                $timeWord = '{malam}';
+                $timeWord = 'malam';
             }
 
             $driverName = $driver['name'] ?: 'Supir';
@@ -5283,13 +5288,13 @@ class VehicleTrackingController extends Controller
                 // Pengiriman ke-2 kali atau lebih: format santai seperti admin gudang menyapa supir langsung
                 $hour = (int)Carbon::now()->format('H');
                 if ($hour >= 5 && $hour < 11) {
-                    $timeWord = '{pagi|pagi menjelang siang}';
+                    $timeWord = 'pagi';
                 } elseif ($hour >= 11 && $hour < 15) {
-                    $timeWord = '{siang}';
+                    $timeWord = 'siang';
                 } elseif ($hour >= 15 && $hour < 18) {
-                    $timeWord = '{sore}';
+                    $timeWord = 'sore';
                 } else {
-                    $timeWord = '{malam}';
+                    $timeWord = 'malam';
                 }
 
                 $driverName = $driver['name'] ?: 'Supir';
