@@ -4649,13 +4649,24 @@ class VehicleTrackingController extends Controller
 
             $actionLabel = ($nextTx->jenis === 'bongkaran' || $areaUpper === 'WRM') ? 'Bongkar' : 'Muat';
 
-            $greeting = $this->humanGreeting();
-            $footer = $this->dynamicMessageFooter('DOCK');
+            $hour = (int)Carbon::now()->format('H');
+            if ($hour >= 5 && $hour < 11) {
+                $timeWord = '{pagi|pagi menjelang siang}';
+            } elseif ($hour >= 11 && $hour < 15) {
+                $timeWord = '{siang}';
+            } elseif ($hour >= 15 && $hour < 18) {
+                $timeWord = '{sore}';
+            } else {
+                $timeWord = '{malam}';
+            }
 
-            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "Kendaraan *{$nextNoPol}* {dipersilakan|silakan|bisa|mohon} *segera {masuk|merapat} ke area Loading Dock {$areaUpper}* untuk proses {$actionLabel} {sekarang ya pak|saat ini ya pak}.\n\n"
-                . "⚠️ *{Perhatian|Catatan penting|Info penting}:* {Harap segera merapat ke dock yaaa|Mohon segera meluncur ke dock|Pastikan kendaraan langsung menuju ke area dock}. {Jika datang terlambat atau berhalangan|Apabila terlambat tanpa konfirmasi|Jika tidak segera merapat}, giliran dock {akan dialihkan/digantikan ke antrian kendaraan lain|akan digeser ke antrian berikutnya|terpaksa digantikan truk lain}.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau sudah mulai jalan ke dock?|Tolong dikabari yaaa pak kalau sudah bergerak ke dock|Bisa konfirmasi balas chat ini ya pak kalau mobil sudah meluncur?|Mohon konfirmasinya ya pak jika sudah jalan} 🙏"
+            $driverName = $driver['name'] ?: 'Supir';
+            $casualGreeting = "{Selamat {$timeWord}|{$timeWord}|Halo {$timeWord}|Halo} {pak|bapak} *{$driverName}*";
+            $footer = $this->dynamicMessageFooter('DOCK');
+            $antrianNote = !empty($nextTx->no_antrian) ? " (Antrian #{$nextTx->no_antrian})" : "";
+
+            $rawMessage = "{$casualGreeting},\n\n"
+                . "{kendaraan|truk|mobil} *{$nextNoPol}*{$antrianNote} {slot dock|dock} *{$areaUpper}* {sudah siap ya pak|sudah kosong ya pak|sudah ready ya pak}, {mohon segera merapat|bisa langsung merapat dan masuk|tolong segera menuju|bisa segera memposisikan mobil} ke dock untuk proses {$actionLabel} ya {pakk|pak|yaa pak}, dan {tolong konfirmasinya yaa|mohon konfirmasinya ya pak|bisa tolong konfirmasinya ya pak jika mobil sudah bergerak}. 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -4789,17 +4800,26 @@ class VehicleTrackingController extends Controller
             $jenisLabel = ($targetAreaUpper === 'WFG' && !empty($nextJenis)) ? ' (' . ucfirst($nextJenis) . ')' : '';
             $actionLabel = ($category === 'bongkaran') ? 'Bongkar' : 'Muat';
 
-            $greeting = $this->humanGreeting();
+            $hour = (int)Carbon::now()->format('H');
+            if ($hour >= 5 && $hour < 11) {
+                $timeWord = '{pagi|pagi menjelang siang}';
+            } elseif ($hour >= 11 && $hour < 15) {
+                $timeWord = '{siang}';
+            } elseif ($hour >= 15 && $hour < 18) {
+                $timeWord = '{sore}';
+            } else {
+                $timeWord = '{malam}';
+            }
+
+            $driverName = $driver['name'] ?: 'Supir';
+            $casualGreeting = "{Selamat {$timeWord}|{$timeWord}|Halo {$timeWord}|Halo} {pak|bapak} *{$driverName}*";
             $footer = $this->dynamicMessageFooter('DOCK');
 
-            $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                . "{Truk sebelumnya sudah selesai dan|Proses muat truk di depan sudah rampung dan|Kabar baik,} slot Loading Dock {$categoryLabel} saat ini sudah *{siap|tersedia|kosong}*:\n"
-                . "• Truk Anda   : *{$nextNoPol}*\n"
-                . "• No. Antrian : *#{$nextTx->no_antrian}*\n"
-                . "• Area Dock   : *{$targetAreaUpper}*\n\n"
-                . "{Silakan|Dipersilakan|Bisa|Mohon} *{segera merapat dan masuk|langsung menuju dan merapat|segera memposisikan truk} ke Loading Dock {$targetAreaUpper}* untuk proses {$actionLabel} ya pak.\n\n"
-                . "⚠️ *{Perhatian|Catatan penting|Info penting}:* {Harap segera merapat ke area dock yaaa|Mohon segera memposisikan mobil|Pastikan segera standby di posisi dock}. {Jika datang terlambat atau tidak ada kabar|Apabila terlambat tanpa konfirmasi|Kalau lambat atau tidak ada konfirmasi}, giliran dock {akan digantikan dengan antrian kendaraan berikutnya|terpaksa dialihkan ke antrian lain|akan digeser ke antrian setelahnya}.\n\n"
-                . "{Bisa tolong balas sebentar ya pak kalau kendaraannya sudah mulai jalan?|Tolong dikabari yaaa pak kalau sudah meluncur ke dock|Bisa konfirmasi balas chat ini ya pak kalau sudah bergerak ke dock?|Mohon konfirmasinya ya pak jika mobil sudah bergerak} 🙏"
+            $antrianNote = !empty($nextTx->no_antrian) ? " (Antrian #{$nextTx->no_antrian})" : "";
+            $slotLabel = $categoryLabel ? " {$categoryLabel}" : "";
+
+            $rawMessage = "{$casualGreeting},\n\n"
+                . "{kendaraan|truk|mobil} *{$nextNoPol}*{$antrianNote} slot dock *{$targetAreaUpper}{$slotLabel}* {sudah siap ya pak|sudah kosong ya pak|sudah ready ya pak}, {mohon segera merapat|bisa langsung merapat dan masuk|tolong segera menuju|bisa segera memposisikan mobil} ke dock untuk proses {$actionLabel} ya {pakk|pak|yaa pak}, dan {tolong konfirmasinya yaa|mohon konfirmasinya ya pak|bisa tolong konfirmasinya ya pak jika mobil sudah bergerak}. 🙏"
                 . $footer;
             $message = $this->parseSpintax($rawMessage);
 
@@ -5217,7 +5237,7 @@ class VehicleTrackingController extends Controller
 
     /**
      * Send manual WhatsApp notification directly to driver's personal phone.
-     * Dilengkapi anti-spam / cooldown lock 5 menit per transaksi truk.
+     * Dilengkapi anti-spam / cooldown lock 20 menit per transaksi truk.
      */
     public function sendDriverManualNotification(VehicleTransaction $transaction, string $area = 'WRM'): array
     {
@@ -5225,13 +5245,14 @@ class VehicleTrackingController extends Controller
             $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : 'N/A';
 
             // 1. Anti-spam / Cooldown Lock (20 menit per transaksi truk)
+            $cooldownMinutes = 20;
             $cooldownKey = "wa_cooldown_manual_{$transaction->id}";
             if (Cache::has($cooldownKey)) {
                 $cooldownData = Cache::get($cooldownKey);
                 $sentBy = is_array($cooldownData) ? ($cooldownData['user_name'] ?? 'User lain') : 'Pengawas';
                 $sentTime = is_array($cooldownData) ? ($cooldownData['time'] ?? 'baru saja') : 'baru saja';
                 $sentTimestamp = is_array($cooldownData) ? ($cooldownData['timestamp'] ?? time()) : time();
-                $remainingSeconds = max(0, 1200 - (time() - $sentTimestamp));
+                $remainingSeconds = max(0, ($cooldownMinutes * 60) - (time() - $sentTimestamp));
                 $remainingMinutes = ceil($remainingSeconds / 60);
 
                 Log::warning("[VehicleTracking] Anti-Spam: {$noPol} baru saja di-push WA oleh {$sentBy} pada {$sentTime}. Cooldown sisa {$remainingMinutes} menit.");
@@ -5249,40 +5270,79 @@ class VehicleTrackingController extends Controller
             $driver = $this->resolveDriverInfo($transaction->nama_driver, $transaction->no_hp_driver);
             $actionLabel = $transaction->jenis === 'bongkaran' ? 'Bongkar' : ($transaction->jenis === 'slipsheet' ? 'Muat' : ucfirst($transaction->jenis ?? 'Bongkar/Muat'));
 
-            $greeting = $this->humanGreeting();
             $areaUpper = strtoupper($area);
             $isWfgOrSmu = in_array($areaUpper, ['WFG', 'SMU']);
             $hasQueue = !empty($transaction->no_antrian);
 
-            // Kondisi khusus WFG & SMU jika truk BELUM ambil antrian:
-            // Pesan diarahkan untuk segera menyerahkan dokumen perjalanan / SPB ke Admin WFG / SMU
-            if ($isWfgOrSmu && !$hasQueue) {
-                $actionType = 'submit_document';
-                $footer = $this->dynamicMessageFooter('DOKUMEN');
-                $adminTarget = ($areaUpper === 'SMU') ? '{Admin SMU / WFG|Admin WFG|loket Admin WFG}' : '{Admin WFG|loket Admin WFG|kantor Admin WFG}';
+            // Cek apakah panggilan manual ini adalah panggilan ulang (ke-2 kali atau lebih)
+            $sendCountKey = "wa_manual_send_count_{$transaction->id}";
+            $sendCount = (int) Cache::get($sendCountKey, 0);
+            $isRepeat = ($sendCount >= 1);
 
-                $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                    . "{Pemberitahuan|Sekadar mengingatkan|Informasi penting|Pengingat antrian|Info kendaraan} untuk truk *{$noPol}*:\n"
-                    . "• {Data kendaraan Anda saat ini sudah tercatat masuk di area parkir|Status truk Anda sudah standby di kantong parkir|Kendaraan Anda terpantau sudah berada di lokasi}, {namun saat ini *belum memiliki nomor antrian dock*|tetapi *belum mengambil nomor antrian*|tetapi nomor antrian dock Anda belum terbit}.\n\n"
-                    . "👉 {Mohon|Silakan|Dipersilakan|Bisa tolong|Harap} *{segera|langsung|bisa segera} {menyerahkan|membawa dan menyerahkan|mengantarkan} {dokumen perjalanan|surat jalan (SPB)|dokumen muatan / SPB|surat jalan dan berkas SPB} ke {$adminTarget}* ya pak, agar {nomor antrian dock bisa segera kami proses dan terbitkan|dapat segera diproses untuk penerbitan nomor antrian|bisa segera diinput dan masuk dalam antrian panggilan dock|petugas admin dapat segera menerbitkan antrian Anda}.\n\n"
-                    . "⚠️ *{Perhatian|Catatan Penting|Info Penting}:*\n"
-                    . "• {Sebelum dokumen diserahkan dan diverifikasi admin, nomor antrian dock belum dapat diproses|Nomor antrian dock baru akan terbit setelah berkas dokumen diterima dan dicek oleh admin|Pastikan dokumen sudah lengkap agar antrian segera diterbitkan|Antrian dock hanya akan berjalan setelah supir menyerahkan surat jalan ke admin}.\n"
-                    . "• {Harap tidak meninggalkan kantong parkir tanpa menyerahkan dokumen ya pak|Mohon kerjasamanya agar antrian berjalan tertib dan tidak terlewat|Bila ada kendala mengenai dokumen perjalanan, harap segera koordinasikan dengan petugas admin}.\n\n"
-                    . "{Bisa tolong balas chat ini sebentar ya pak kalau sudah meluncur ke loket admin?|Tolong konfirmasi ya pak kalau dokumennya sudah diserahkan ke admin|Bisa dikabari yaa pak jika sudah bersiap ke loket admin?|Mohon balas pesan ini singkat saja jika sudah bersiap ya pak|Bisa balas OKE sebentar kalau sudah menuju loket admin?} 🙏"
-                    . $footer;
+            if ($isRepeat) {
+                // Pengiriman ke-2 kali atau lebih: format santai seperti admin gudang menyapa supir langsung
+                $hour = (int)Carbon::now()->format('H');
+                if ($hour >= 5 && $hour < 11) {
+                    $timeWord = '{pagi|pagi menjelang siang}';
+                } elseif ($hour >= 11 && $hour < 15) {
+                    $timeWord = '{siang}';
+                } elseif ($hour >= 15 && $hour < 18) {
+                    $timeWord = '{sore}';
+                } else {
+                    $timeWord = '{malam}';
+                }
+
+                $driverName = $driver['name'] ?: 'Supir';
+                $casualGreeting = "{Selamat {$timeWord}|{$timeWord}|Halo {$timeWord}|Halo} {pak|bapak} *{$driverName}*";
+
+                if ($isWfgOrSmu && !$hasQueue) {
+                    $actionType = 'submit_document';
+                    $footer = $this->dynamicMessageFooter('DOKUMEN');
+                    $adminTarget = ($areaUpper === 'SMU') ? '{admin SMU / WFG|admin WFG}' : 'admin WFG';
+
+                    $rawMessage = "{$casualGreeting},\n"
+                        . "{kendaraan|truk|mobil} *{$noPol}* {surat jalan / dokumennya tolong segera dibawa ke {$adminTarget} ya pak biar bisa diproses antriannya|dokumen muatannya mohon segera diserahkan ke loket {$adminTarget} ya pakk supaya antriannya terbit|bisa tolong ke loket {$adminTarget} untuk serahkan berkas surat jalan ya pak}, dan {tolong konfirmasinya yaa|mohon konfirmasinya ya pak|ditunggu kabarnya ya pak}. 🙏"
+                        . $footer;
+                } else {
+                    $actionType = 'dock_call';
+                    $footer = $this->dynamicMessageFooter('PANGGILAN');
+                    $antrianNote = $hasQueue ? " (Antrian #{$transaction->no_antrian})" : "";
+
+                    $rawMessage = "{$casualGreeting},\n"
+                        . "{kendaraan|truk|mobil} *{$noPol}*{$antrianNote} {mohon segera|bisa tolong segera|tolong segera|bisa langsung merapat} ke dock *{$areaUpper}* ya {pakk|pak|yaa pak}, dan {tolong konfirmasinya yaa|mohon konfirmasinya ya pak|bisa minta tolong konfirmasinya ya pak}. 🙏"
+                        . $footer;
+                }
             } else {
-                // Kondisi jika SUDAH memiliki nomor antrian: panggilan merapat ke Loading Dock
-                $actionType = 'dock_call';
-                $footer = $this->dynamicMessageFooter('PANGGILAN');
-                $antrianText = $hasQueue ? " (Antrian *#{$transaction->no_antrian}*)" : "";
+                // Pengiriman pertama kali: format standar lengkap
+                $greeting = $this->humanGreeting();
 
-                $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
-                    . "Kendaraan *{$noPol}*{$antrianText} {dipersilakan|silakan|bisa|mohon} *segera {merapat dan masuk|menuju dan memposisikan mobil} ke Loading Dock {$area}* untuk proses {$actionLabel} ya pak.\n\n"
-                    . "⚠️ *{Pemberitahuan Antrian|Catatan Penting|Info Antrian}:*\n"
-                    . "• {Harap segera merapat ke area dock ya pak|Mohon segera memposisikan mobil ke dock|Pastikan kendaraan langsung standby di dock}.\n"
-                    . "• *{Jika datang terlambat atau berhalangan|Apabila terlambat hadir tanpa konfirmasi|Kalau lambat atau tidak ada kabar}, giliran slot dock {akan dialihkan ke antrian kendaraan lain|terpaksa digantikan truk berikutnya|akan digeser ke antrian lain}.*\n\n"
-                    . "{Bisa tolong balas sebentar ya pak apakah mobilnya sudah siap masuk?|Tolong dikabari ya pak kalau sudah mulai jalan ke dock|Bisa konfirmasi balas chat ini yaaa pak kalau mobil sudah meluncur?|Mohon konfirmasi singkatnya ya pak jika sudah siap} 🙏"
-                    . $footer;
+                if ($isWfgOrSmu && !$hasQueue) {
+                    $actionType = 'submit_document';
+                    $footer = $this->dynamicMessageFooter('DOKUMEN');
+                    $adminTarget = ($areaUpper === 'SMU') ? '{Admin SMU / WFG|Admin WFG|loket Admin WFG}' : '{Admin WFG|loket Admin WFG|kantor Admin WFG}';
+
+                    $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                        . "{Pemberitahuan|Sekadar mengingatkan|Informasi penting|Pengingat antrian|Info kendaraan} untuk truk *{$noPol}*:\n"
+                        . "• {Data kendaraan Anda saat ini sudah tercatat masuk di area parkir|Status truk Anda sudah standby di kantong parkir|Kendaraan Anda terpantau sudah berada di lokasi}, {namun saat ini *belum memiliki nomor antrian dock*|tetapi *belum mengambil nomor antrian*|tetapi nomor antrian dock Anda belum terbit}.\n\n"
+                        . "👉 {Mohon|Silakan|Dipersilakan|Bisa tolong|Harap} *{segera|langsung|bisa segera} {menyerahkan|membawa dan menyerahkan|mengantarkan} {dokumen perjalanan|surat jalan (SPB)|dokumen muatan / SPB|surat jalan dan berkas SPB} ke {$adminTarget}* ya pak, agar {nomor antrian dock bisa segera kami proses dan terbitkan|dapat segera diproses untuk penerbitan nomor antrian|bisa segera diinput dan masuk dalam antrian panggilan dock|petugas admin dapat segera menerbitkan antrian Anda}.\n\n"
+                        . "⚠️ *{Perhatian|Catatan Penting|Info Penting}:*\n"
+                        . "• {Sebelum dokumen diserahkan dan diverifikasi admin, nomor antrian dock belum dapat diproses|Nomor antrian dock baru akan terbit setelah berkas dokumen diterima dan dicek oleh admin|Pastikan dokumen sudah lengkap agar antrian segera diterbitkan|Antrian dock hanya akan berjalan setelah supir menyerahkan surat jalan ke admin}.\n"
+                        . "• {Harap tidak meninggalkan kantong parkir tanpa menyerahkan dokumen ya pak|Mohon kerjasamanya agar antrian berjalan tertib dan tidak terlewat|Bila ada kendala mengenai dokumen perjalanan, harap segera koordinasikan dengan petugas admin}.\n\n"
+                        . "{Bisa tolong balas chat ini sebentar ya pak kalau sudah meluncur ke loket admin?|Tolong konfirmasi ya pak kalau dokumennya sudah diserahkan ke admin|Bisa dikabari yaa pak jika sudah bersiap ke loket admin?|Mohon balas pesan ini singkat saja jika sudah bersiap ya pak|Bisa balas OKE sebentar kalau sudah menuju loket admin?} 🙏"
+                        . $footer;
+                } else {
+                    $actionType = 'dock_call';
+                    $footer = $this->dynamicMessageFooter('PANGGILAN');
+                    $antrianText = $hasQueue ? " (Antrian *#{$transaction->no_antrian}*)" : "";
+
+                    $rawMessage = "{$greeting} *{$driver['name']}*,\n\n"
+                        . "Kendaraan *{$noPol}*{$antrianText} {dipersilakan|silakan|bisa|mohon} *segera {merapat dan masuk|menuju dan memposisikan mobil} ke Loading Dock {$area}* untuk proses {$actionLabel} ya pak.\n\n"
+                        . "⚠️ *{Pemberitahuan Antrian|Catatan Penting|Info Antrian}:*\n"
+                        . "• {Harap segera merapat ke area dock ya pak|Mohon segera memposisikan mobil ke dock|Pastikan kendaraan langsung standby di dock}.\n"
+                        . "• *{Jika datang terlambat atau berhalangan|Apabila terlambat hadir tanpa konfirmasi|Kalau lambat atau tidak ada kabar}, giliran slot dock {akan dialihkan ke antrian kendaraan lain|terpaksa digantikan truk berikutnya|akan digeser ke antrian lain}.*\n\n"
+                        . "{Bisa tolong balas sebentar ya pak apakah mobilnya sudah siap masuk?|Tolong dikabari ya pak kalau sudah mulai jalan ke dock|Bisa konfirmasi balas chat ini yaaa pak kalau mobil sudah meluncur?|Mohon konfirmasi singkatnya ya pak jika sudah siap} 🙏"
+                        . $footer;
+                }
             }
 
             $message = $this->parseSpintax($rawMessage);
@@ -5305,7 +5365,10 @@ class VehicleTrackingController extends Controller
                 'user_name' => $userName,
                 'time' => Carbon::now()->format('H:i'),
                 'timestamp' => time()
-            ], now()->addMinutes(5));
+            ], now()->addMinutes($cooldownMinutes));
+
+            // Simpan riwayat hitungan pengiriman manual
+            Cache::put($sendCountKey, $sendCount + 1, now()->addDays(7));
 
             $successLabel = ($actionType === 'submit_document') ? 'pengingat serah dokumen' : 'panggilan masuk dock';
             return [
