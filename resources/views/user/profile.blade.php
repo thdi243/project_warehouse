@@ -90,7 +90,12 @@
                         <!-- Header -->
                         <div class="profile-header">
                             <h3 class="mb-1 text-capitalize text-white">{{ $user->nama_lengkap ?? Auth::user()->username }}</h3>
-                            <span class="badge bg-light text-dark">{{ ucwords(str_replace('_', ' ', $user->jabatan)) }}</span>
+                            @php
+                                $jabatanText = $masterJabatan ? $masterJabatan->nama : ucwords(str_replace('_', ' ', $user->jabatan ?? '-'));
+                                $deptText = $masterDept ? ($masterDept->nama . ' (' . $masterDept->kode . ')') : ucfirst(str_replace('_', ' ', $user->departemen ?? '-'));
+                                $bagianText = $masterBagian ? $masterBagian->nama : ucwords(str_replace('_', ' ', $user->bagian ?? '-'));
+                            @endphp
+                            <span class="badge bg-light text-dark">{{ $jabatanText }}</span>
                             <img src="{{ $user->image_url }}" class="profile-avatar" alt="User">
                         </div>
 
@@ -109,12 +114,16 @@
 
                             <div class="row mb-3 pb-2 border-bottom border-light">
                                 <div class="col-sm-4 info-label text-muted">Departemen:</div>
-                                <div class="col-sm-8 info-value fw-medium">{{ ucfirst($user->departemen) }}</div>
+                                <div class="col-sm-8 info-value fw-medium text-capitalize">
+                                    {{ $deptText }}
+                                </div>
                             </div>
 
                             <div class="row mb-3 pb-2 border-bottom border-light">
                                 <div class="col-sm-4 info-label text-muted">Bagian:</div>
-                                <div class="col-sm-8 info-value fw-medium text-capitalize">{{ str_replace('_', ' ', $user->bagian) }}</div>
+                                <div class="col-sm-8 info-value fw-medium text-capitalize">
+                                    {{ $bagianText }}
+                                </div>
                             </div>
 
                             @if (!empty($user->no_hp))

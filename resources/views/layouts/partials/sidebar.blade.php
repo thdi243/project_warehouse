@@ -103,6 +103,7 @@
                         @endif
 
                         @include('layouts.partials.sidebar.user')
+                        @include('layouts.partials.sidebar.master_organization')
                         @include('layouts.partials.sidebar.permissions')
                     @endif
                 </ul>
@@ -137,6 +138,7 @@
                         @include('layouts.partials.sidebar.master_kempu')
 
                         @include('layouts.partials.sidebar.user')
+                        @include('layouts.partials.sidebar.master_organization')
                         @include('layouts.partials.sidebar.permissions')
                         {{-- @endif --}}
                     </ul>

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Master\MasterDepartemenModel;
+use App\Models\Master\MasterBagianModel;
+use App\Models\Master\MasterJabatanModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
@@ -19,7 +22,11 @@ class UserController extends Controller
     public function index()
     {
         $roles = \App\Models\Role::all();
-        return view('user.index', compact('roles'));
+        $masterDepartemens = MasterDepartemenModel::where('is_active', true)->orderBy('nama', 'asc')->get();
+        $masterBagians = MasterBagianModel::with('departemen')->where('is_active', true)->orderBy('nama', 'asc')->get();
+        $masterJabatans = MasterJabatanModel::where('is_active', true)->orderBy('nama', 'asc')->get();
+
+        return view('user.index', compact('roles', 'masterDepartemens', 'masterBagians', 'masterJabatans'));
     }
 
     public function profileIndex()
@@ -43,7 +50,35 @@ class UserController extends Controller
                 $user->image_url = url("material/assets/images/users/user-dummy-img.jpg");
             }
 
-            return view('user.profile', compact('user'));
+            // Ambil data referensi dari Master Organisasi
+            $deptVal = strtolower(trim($user->departemen ?? ''));
+            $masterDept = null;
+            if ($deptVal) {
+                $masterDept = MasterDepartemenModel::whereRaw('LOWER(kode) = ?', [$deptVal])
+                    ->orWhereRaw('LOWER(nama) = ?', [$deptVal])
+                    ->orWhereRaw('LOWER(REPLACE(nama, " ", "_")) = ?', [str_replace(' ', '_', $deptVal)])
+                    ->first();
+            }
+
+            $bagianVal = strtolower(trim($user->bagian ?? ''));
+            $masterBagian = null;
+            if ($bagianVal) {
+                $masterBagian = MasterBagianModel::whereRaw('LOWER(kode) = ?', [$bagianVal])
+                    ->orWhereRaw('LOWER(nama) = ?', [$bagianVal])
+                    ->orWhereRaw('LOWER(REPLACE(nama, " ", "_")) = ?', [str_replace(' ', '_', $bagianVal)])
+                    ->first();
+            }
+
+            $jabatanVal = strtolower(trim($user->jabatan ?? ''));
+            $masterJabatan = null;
+            if ($jabatanVal) {
+                $masterJabatan = MasterJabatanModel::whereRaw('LOWER(kode) = ?', [$jabatanVal])
+                    ->orWhereRaw('LOWER(nama) = ?', [$jabatanVal])
+                    ->orWhereRaw('LOWER(REPLACE(nama, " ", "_")) = ?', [str_replace(' ', '_', $jabatanVal)])
+                    ->first();
+            }
+
+            return view('user.profile', compact('user', 'masterDept', 'masterBagian', 'masterJabatan'));
         } catch (\Exception $e) {
             Log::error('Profile index error: ' . $e->getMessage());
 
@@ -497,7 +532,11 @@ class UserController extends Controller
             $user->image_url = url("material/assets/images/users/user-dummy-img.jpg");
         }
 
-        return view('user.edit-profile', compact('user'));
+        $masterDepartemens = MasterDepartemenModel::where('is_active', true)->orderBy('nama', 'asc')->get();
+        $masterBagians = MasterBagianModel::with('departemen')->where('is_active', true)->orderBy('nama', 'asc')->get();
+        $masterJabatans = MasterJabatanModel::where('is_active', true)->orderBy('nama', 'asc')->get();
+
+        return view('user.edit-profile', compact('user', 'masterDepartemens', 'masterBagians', 'masterJabatans'));
     }
 
     public function updateProfile(Request $request)

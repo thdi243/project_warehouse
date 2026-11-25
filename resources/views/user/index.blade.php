@@ -218,16 +218,14 @@
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="jabatan" name="jabatan" required>
                                         <option value="" disabled selected>Pilih Jabatan</option>
-                                        <option value="dept_head">Head of Departemen</option>
-                                        <option value="foreman">Foreman</option>
-                                        <option value="supervisor">Supervisor</option>
-                                        <option value="operator">Operator</option>
-                                        @if (Auth::user()->jabatan == 'admin')
-                                            <option value="fm">Factory Manager</option>
-                                            <option value="admin">Admin</option>
-                                        @endif
+                                        @foreach ($masterJabatans as $j)
+                                            @php
+                                                $slug = \Illuminate\Support\Str::snake(strtolower($j->nama));
+                                                $val = ($j->kode === 'ADM' || $slug === 'administrator') ? 'admin' : $slug;
+                                            @endphp
+                                            <option value="{{ $val }}" data-kode="{{ $j->kode }}">{{ $j->nama }}</option>
+                                        @endforeach
                                     </select>
-                                    {{-- <div class="invalid-feedback">Please select a Jabatan.</div> --}}
                                 </div>
 
                                 <div class="mb-3">
@@ -235,22 +233,13 @@
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="departemen" name="departemen" required>
                                         <option value="" disabled selected>Pilih Departemen</option>
-                                        <option value="warehouse">Warehouse</option>
-                                        <option value="engineering">Engineering</option>
-                                        <option value="quality_control">Quality Control</option>
-                                        <option value="produksi">Produksi</option>
-                                        <option value="ppic">PPIC</option>
-                                        <option value="purchasing">Purchasing</option>
-                                        <option value="hrga">HRGA</option>
-                                        <option value="expedisi">Expedisi</option>
-                                        <option value="timbangan">Timbangan</option>
-                                        <option value="hse">HSE</option>
-                                        @if (Auth::user()->jabatan == 'admin')
-                                            <option value="FM">Factory Manager</option>
-                                            <option value="IT">ITE</option>
-                                        @endif
+                                        @foreach ($masterDepartemens as $d)
+                                            @php
+                                                $slug = \Illuminate\Support\Str::snake(strtolower($d->nama));
+                                            @endphp
+                                            <option value="{{ $slug }}" data-kode="{{ $d->kode }}">{{ $d->nama }} ({{ $d->kode }})</option>
+                                        @endforeach
                                     </select>
-                                    {{-- <div class="invalid-feedback">Please select a Departemen.</div> --}}
                                 </div>
 
                                 <div class="mb-3">
@@ -258,30 +247,16 @@
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="bagian" name="bagian" required>
                                         <option value="" disabled selected>Pilih Bagian</option>
-                                        <option value="warehouse">Warehouse</option>
-                                        <option value="warehouse_co_product">Warehouse Co Product</option>
-                                        <option value="warehouse_finish_goods">Warehouse Finish Good</option>
-                                        <option value="warehouse_raw_material">Warehouse Raw Material</option>
-                                        <option value="warehouse_sparepart">Warehouse Sparepart</option>
-                                        <option value="warehouse_packaging_material">Warehouse Packaging Material</option>
-                                        <option value="engineering">Engineering</option>
-                                        <option value="engineering_utility">Engineering Utility</option>
-                                        <option value="engineering_production">Engineering Production</option>
-                                        <option value="engineering_project">Engineering Project</option>
-                                        <option value="quality_control">Quality Control</option>
-                                        <option value="quality_control_rmpm">Quality Control RMPM</option>
-                                        <option value="quality_control_proses">Quality Control Proses</option>
-                                        <option value="produksi">Produksi</option>
-                                        <option value="ppic">PPIC</option>
-                                        <option value="purchasing">Purchasing</option>
-                                        <option value="hrga">HRGA</option>
-                                        <option value="expedisi">Expedisi</option>
-                                        <option value="timbangan">Timbangan</option>
-                                        <option value="hse">HSE</option>
-                                        @if (Auth::user()->jabatan == 'admin')
-                                            <option value="FM">Factory Manager</option>
-                                            <option value="IT">ITE</option>
-                                        @endif
+                                        @foreach ($masterBagians as $b)
+                                            @php
+                                                $slug = \Illuminate\Support\Str::snake(strtolower($b->nama));
+                                                $deptSlug = $b->departemen ? \Illuminate\Support\Str::snake(strtolower($b->departemen->nama)) : '';
+                                                $deptKode = $b->departemen ? $b->departemen->kode : '';
+                                            @endphp
+                                            <option value="{{ $slug }}" data-dept-slug="{{ $deptSlug }}" data-dept-kode="{{ $deptKode }}">
+                                                {{ $b->nama }} {{ $b->kode ? '('.$b->kode.')' : '' }} {{ $b->departemen ? ' - ['.$b->departemen->nama.']' : '' }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
 
@@ -383,14 +358,13 @@
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="editJabatan" name="editJabatan" required>
                                         <option value="">Pilih Jabatan</option>
-                                        <option value="dept_head">Head of Departement</option>
-                                        <option value="supervisor">Supervisor</option>
-                                        <option value="foreman">Foreman</option>
-                                        <option value="operator">Operator</option>
-                                        @if (Auth::user()->jabatan == 'admin')
-                                            <option value="fm">Factory Manager</option>
-                                            <option value="admin">Admin</option>
-                                        @endif
+                                        @foreach ($masterJabatans as $j)
+                                            @php
+                                                $slug = \Illuminate\Support\Str::snake(strtolower($j->nama));
+                                                $val = ($j->kode === 'ADM' || $slug === 'administrator') ? 'admin' : $slug;
+                                            @endphp
+                                            <option value="{{ $val }}" data-kode="{{ $j->kode }}">{{ $j->nama }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                             </div>
@@ -400,20 +374,12 @@
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="editDepartemen" name="editDepartemen" required>
                                         <option value="">Pilih Departemen</option>
-                                        <option value="warehouse">Warehouse</option>
-                                        <option value="engineering">Engineering</option>
-                                        <option value="quality_control">Quality Control</option>
-                                        <option value="produksi">Produksi</option>
-                                        <option value="ppic">PPIC</option>
-                                        <option value="purchasing">Purchasing</option>
-                                        <option value="hrga">HRGA</option>
-                                        <option value="expedisi">Expedisi</option>
-                                        <option value="timbangan">Timbangan</option>
-                                        <option value="hse">HSE</option>
-                                        @if (Auth::user()->jabatan == 'admin')
-                                            <option value="FM">Factory Manager</option>
-                                            <option value="IT">ITE</option>
-                                        @endif
+                                        @foreach ($masterDepartemens as $d)
+                                            @php
+                                                $slug = \Illuminate\Support\Str::snake(strtolower($d->nama));
+                                            @endphp
+                                            <option value="{{ $slug }}" data-kode="{{ $d->kode }}">{{ $d->nama }} ({{ $d->kode }})</option>
+                                        @endforeach
                                     </select>
                                 </div>
                             </div>
@@ -423,30 +389,16 @@
                                             class="text-danger">*</span></label>
                                     <select class="form-select" id="editBagian" name="editBagian" required>
                                         <option value="" disabled>Pilih Bagian</option>
-                                        <option value="warehouse">Warehouse</option>
-                                        <option value="warehouse_co_product">Warehouse Co Product</option>
-                                        <option value="warehouse_finish_goods">Warehouse Finish Good</option>
-                                        <option value="warehouse_raw_material">Warehouse Raw Material</option>
-                                        <option value="warehouse_sparepart">Warehouse Sparepart</option>
-                                        <option value="warehouse_packaging_material">Warehouse Packaging Material</option>
-                                        <option value="engineering">Engineering</option>
-                                        <option value="engineering_utility">Engineering Utility</option>
-                                        <option value="engineering_production">Engineering Production</option>
-                                        <option value="engineering_project">Engineering Project</option>
-                                        <option value="quality_control">Quality Control</option>
-                                        <option value="quality_control_rmpm">Quality Control RMPM</option>
-                                        <option value="quality_control_proses">Quality Control Proses</option>
-                                        <option value="produksi">Produksi</option>
-                                        <option value="ppic">PPIC</option>
-                                        <option value="purchasing">Purchasing</option>
-                                        <option value="hrga">HRGA</option>
-                                        <option value="expedisi">Expedisi</option>
-                                        <option value="timbangan">Timbangan</option>
-                                        <option value="hse">HSE</option>
-                                        @if (Auth::user()->jabatan == 'admin')
-                                            <option value="FM">Factory Manager</option>
-                                            <option value="IT">ITE</option>
-                                        @endif
+                                        @foreach ($masterBagians as $b)
+                                            @php
+                                                $slug = \Illuminate\Support\Str::snake(strtolower($b->nama));
+                                                $deptSlug = $b->departemen ? \Illuminate\Support\Str::snake(strtolower($b->departemen->nama)) : '';
+                                                $deptKode = $b->departemen ? $b->departemen->kode : '';
+                                            @endphp
+                                            <option value="{{ $slug }}" data-dept-slug="{{ $deptSlug }}" data-dept-kode="{{ $deptKode }}">
+                                                {{ $b->nama }} {{ $b->kode ? '('.$b->kode.')' : '' }} {{ $b->departemen ? ' - ['.$b->departemen->nama.']' : '' }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </div>
                             </div>
@@ -531,6 +483,39 @@
     <script>
         $(document).ready(function() {
             let addSignaturePad, editSignaturePad;
+
+            // Helper dynamic filter bagian based on departemen
+            function filterBagianOptions(deptSelector, bagianSelector, currentBagianVal = '') {
+                const selectedDept = ($(deptSelector).val() || '').toLowerCase().replace(/[\s_]+/g, '');
+                const selectedKode = ($(deptSelector + ' option:selected').data('kode') || '').toLowerCase();
+
+                $(bagianSelector + ' option').each(function() {
+                    const $opt = $(this);
+                    const optVal = $opt.val();
+                    if (!optVal) return;
+
+                    const deptSlug = ($opt.data('dept-slug') || '').toLowerCase().replace(/[\s_]+/g, '');
+                    const deptKode = ($opt.data('dept-kode') || '').toLowerCase();
+
+                    if (!selectedDept || deptSlug === selectedDept || deptKode === selectedKode) {
+                        $opt.show().prop('disabled', false);
+                    } else {
+                        $opt.hide().prop('disabled', true);
+                    }
+                });
+
+                if (currentBagianVal) {
+                    $(bagianSelector).val(currentBagianVal);
+                }
+            }
+
+            $('#departemen').on('change', function() {
+                filterBagianOptions('#departemen', '#bagian');
+            });
+
+            $('#editDepartemen').on('change', function() {
+                filterBagianOptions('#editDepartemen', '#editBagian');
+            });
 
             function initSignaturePad(canvasSelector) {
                 const $canvas = $(canvasSelector);
@@ -1224,6 +1209,7 @@
                         $("#editNoHp").val(user.no_hp || '');
                         $("#editJabatan").val(user.jabatan);
                         $("#editDepartemen").val(user.departemen);
+                        filterBagianOptions('#editDepartemen', '#editBagian', user.bagian);
                         $("#editBagian").val(user.bagian);
                         $("#editPrincipal").val(user.principal?.principal || '-');
 

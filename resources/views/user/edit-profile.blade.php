@@ -125,167 +125,95 @@
                                     @if (Auth::user()->jabatan == 'admin')
                                         <div class="col-md-6">
                                             <div class="mb-3">
-                                                <label for="jabatan" class="form-label fw-semibold">Jabatan</label>
-                                                <select class="form-select text-capitalize" id="jabatan" name="jabatan"
-                                                    required @if (Auth::user()->jabatan === 'operator') disabled @endif>
+                                                <label for="jabatan" class="form-label fw-semibold">Jabatan <span class="text-danger">*</span></label>
+                                                <select class="form-select" id="jabatan" name="jabatan" required>
                                                     <option value="">Pilih Jabatan</option>
-                                                    <option value="dept_head"
-                                                        {{ old('jabatan', $user->jabatan) == 'dept_head' ? 'selected' : '' }}>
-                                                        Head of Departement</option>
-                                                    <option value="supervisor"
-                                                        {{ old('jabatan', $user->jabatan) == 'supervisor' ? 'selected' : '' }}>
-                                                        Supervisor</option>
-                                                    <option value="foreman"
-                                                        {{ old('jabatan', $user->jabatan) == 'foreman' ? 'selected' : '' }}>
-                                                        Foreman</option>
-                                                    <option value="operator"
-                                                        {{ old('jabatan', $user->jabatan) == 'operator' ? 'selected' : '' }}>
-                                                        Operator</option>
-                                                    @if (Auth::user()->jabatan === 'admin')
-                                                        <option value="admin"
-                                                            {{ old('jabatan', $user->jabatan) == 'admin' ? 'selected' : '' }}>
-                                                            Admin</option>
-                                                        <option value="fm"
-                                                            {{ old('jabatan', $user->jabatan) == 'fm' ? 'selected' : '' }}>
-                                                            Factory Manager</option>
-                                                    @endif
-                                                </select>
-                                                @if (Auth::user()->jabatan === 'operator')
-                                                    <input type="hidden" name="jabatan" value="{{ $user->jabatan }}">
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label for="departemen" class="form-label fw-semibold">Departemen</label>
-                                                <select class="form-select text-capitalize" id="departemen"
-                                                    name="departemen" required
-                                                    @if (Auth::user()->jabatan === 'operator') disabled @endif>
-                                                    <option value="">Pilih Departemen</option>
-                                                    <option value="warehouse"
-                                                        {{ old('departemen', $user->departemen) == 'warehouse' ? 'selected' : '' }}>
-                                                        Warehouse</option>
-                                                    <option value="engineering"
-                                                        {{ old('departemen', $user->departemen) == 'engineering' ? 'selected' : '' }}>
-                                                        Engineering</option>
-                                                    <option value="quality_control"
-                                                        {{ old('departemen', $user->departemen) == 'quality_control' ? 'selected' : '' }}>
-                                                        Quality Control</option>
-                                                    <option value="produksi"
-                                                        {{ old('departemen', $user->departemen) == 'produksi' ? 'selected' : '' }}>
-                                                        Produksi</option>
-                                                    <option value="ppic"
-                                                        {{ old('departemen', $user->departemen) == 'ppic' ? 'selected' : '' }}>
-                                                        PPIC</option>
-                                                    <option value="purchasing"
-                                                        {{ old('departemen', $user->departemen) == 'purchasing' ? 'selected' : '' }}>
-                                                        Purchasing</option>
-                                                    <option value="hrga"
-                                                        {{ old('departemen', $user->departemen) == 'hrga' ? 'selected' : '' }}>
-                                                        HRGA</option>
-                                                    <option value="expedisi"
-                                                        {{ old('departemen', $user->departemen) == 'expedisi' ? 'selected' : '' }}>
-                                                        Expedisi</option>
-                                                    <option value="timbangan"
-                                                        {{ old('departemen', $user->departemen) == 'timbangan' ? 'selected' : '' }}>
-                                                        Timbangan</option>
-                                                    <option value="hse"
-                                                        {{ old('departemen', $user->departemen) == 'hse' ? 'selected' : '' }}>
-                                                        HSE</option>
-                                                    @if (Auth::user()->jabatan == 'admin')
-                                                        <option value="FM"
-                                                            {{ old('departemen', $user->departemen) == 'FM' ? 'selected' : '' }}>
-                                                            Factory Manager</option>
-                                                        <option value="IT"
-                                                            {{ old('departemen', $user->departemen) == 'IT' ? 'selected' : '' }}>
-                                                            ITE</option>
-                                                    @endif
-                                                </select>
-                                                @if (Auth::user()->jabatan === 'operator')
-                                                    <input type="hidden" name="departemen"
-                                                        value="{{ $user->departemen }}">
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label for="bagian" class="form-label fw-semibold">Bagian</label>
-                                                <select class="form-select text-capitalize" id="bagian" name="bagian"
-                                                    required @if (Auth::user()->jabatan === 'operator') disabled @endif>
-                                                    <option value="" disabled>Pilih Bagian</option>
-                                                    <option value="warehouse"
-                                                        {{ old('bagian', $user->bagian) == 'warehouse' ? 'selected' : '' }}>
-                                                        Warehouse</option>
-                                                    <option value="warehouse_co_product"
-                                                        {{ old('bagian', $user->bagian) == 'warehouse_co_product' ? 'selected' : '' }}>
-                                                        Warehouse Co Product</option>
-                                                    <option value="warehouse_finish_goods"
-                                                        {{ old('bagian', $user->bagian) == 'warehouse_finish_goods' ? 'selected' : '' }}>
-                                                        Warehouse Finish Good</option>
-                                                    <option value="warehouse_raw_material"
-                                                        {{ old('bagian', $user->bagian) == 'warehouse_raw_material' ? 'selected' : '' }}>
-                                                        Warehouse Raw Material</option>
-                                                    <option value="warehouse_sparepart"
-                                                        {{ old('bagian', $user->bagian) == 'warehouse_sparepart' ? 'selected' : '' }}>
-                                                        Warehouse Sparepart</option>
-                                                    <option value="warehouse_packaging_material"
-                                                        {{ old('bagian', $user->bagian) == 'warehouse_packaging_material' ? 'selected' : '' }}>
-                                                        Warehouse Packaging Material</option>
-                                                    <option value="engineering"
-                                                        {{ old('bagian', $user->bagian) == 'engineering' ? 'selected' : '' }}>
-                                                        Engineering</option>
-                                                    <option value="engineering_utility"
-                                                        {{ old('bagian', $user->bagian) == 'engineering_utility' ? 'selected' : '' }}>
-                                                        Engineering Utility</option>
-                                                    <option value="engineering_production"
-                                                        {{ old('bagian', $user->bagian) == 'engineering_production' ? 'selected' : '' }}>
-                                                        Engineering Production</option>
-                                                    <option value="engineering_project"
-                                                        {{ old('bagian', $user->bagian) == 'engineering_project' ? 'selected' : '' }}>
-                                                        Engineering Project</option>
-                                                    <option value="quality_control"
-                                                        {{ old('bagian', $user->bagian) == 'quality_control' ? 'selected' : '' }}>
-                                                        Quality Control</option>
-                                                    <option value="quality_control_rmpm"
-                                                        {{ old('bagian', $user->bagian) == 'quality_control_rmpm' ? 'selected' : '' }}>
-                                                        Quality Control RMPM</option>
-                                                    <option value="quality_control_proses"
-                                                        {{ old('bagian', $user->bagian) == 'quality_control_proses' ? 'selected' : '' }}>
-                                                        Quality Control Proses</option>
-                                                    <option value="produksi"
-                                                        {{ old('bagian', $user->bagian) == 'produksi' ? 'selected' : '' }}>
-                                                        Produksi</option>
-                                                    <option value="ppic"
-                                                        {{ old('bagian', $user->bagian) == 'ppic' ? 'selected' : '' }}>PPIC
-                                                    </option>
-                                                    <option value="purchasing"
-                                                        {{ old('bagian', $user->bagian) == 'purchasing' ? 'selected' : '' }}>
-                                                        Purchasing</option>
-                                                    <option value="hrga"
-                                                        {{ old('bagian', $user->bagian) == 'hrga' ? 'selected' : '' }}>HRGA
-                                                    </option>
-                                                    <option value="expedisi"
-                                                        {{ old('bagian', $user->bagian) == 'expedisi' ? 'selected' : '' }}>
-                                                        Expedisi</option>
-                                                    <option value="timbangan"
-                                                        {{ old('bagian', $user->bagian) == 'timbangan' ? 'selected' : '' }}>
-                                                        Timbangan</option>
-                                                    <option value="hse"
-                                                        {{ old('departemen', $user->departemen) == 'hse' ? 'selected' : '' }}>
-                                                        HSE</option>
-                                                    @if (Auth::user()->jabatan == 'admin')
-                                                        <option value="FM"
-                                                            {{ old('bagian', $user->bagian) == 'FM' ? 'selected' : '' }}>
-                                                            Factory Manager</option>
-                                                        <option value="IT"
-                                                            {{ old('bagian', $user->bagian) == 'IT' ? 'selected' : '' }}>
-                                                            ITE
+                                                    @foreach ($masterJabatans as $j)
+                                                        @php
+                                                            $slug = \Illuminate\Support\Str::snake(strtolower($j->nama));
+                                                            $isAdm = ($j->kode === 'ADM' || $slug === 'administrator');
+                                                            $isSelected = (old('jabatan', $user->jabatan) == $slug || 
+                                                                           old('jabatan', $user->jabatan) == $j->kode || 
+                                                                           strtolower(old('jabatan', $user->jabatan)) == strtolower($j->nama) ||
+                                                                           ($isAdm && old('jabatan', $user->jabatan) == 'admin'));
+                                                            $val = $isAdm && (old('jabatan', $user->jabatan) == 'admin') ? 'admin' : $slug;
+                                                        @endphp
+                                                        <option value="{{ $val }}" data-kode="{{ $j->kode }}" {{ $isSelected ? 'selected' : '' }}>
+                                                            {{ $j->nama }}
                                                         </option>
-                                                    @endif
+                                                    @endforeach
                                                 </select>
-                                                @if (Auth::user()->jabatan === 'operator')
-                                                    <input type="hidden" name="bagian" value="{{ $user->bagian }}">
-                                                @endif
+                                                @error('jabatan')
+                                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="departemen" class="form-label fw-semibold">Departemen <span class="text-danger">*</span></label>
+                                                <select class="form-select" id="departemen" name="departemen" required>
+                                                    <option value="">Pilih Departemen</option>
+                                                    @foreach ($masterDepartemens as $d)
+                                                        @php
+                                                            $slug = \Illuminate\Support\Str::snake(strtolower($d->nama));
+                                                            $isSelected = (old('departemen', $user->departemen) == $slug || 
+                                                                           old('departemen', $user->departemen) == $d->kode || 
+                                                                           strtolower(old('departemen', $user->departemen)) == strtolower($d->nama));
+                                                        @endphp
+                                                        <option value="{{ $slug }}" data-kode="{{ $d->kode }}" {{ $isSelected ? 'selected' : '' }}>
+                                                            {{ $d->nama }} ({{ $d->kode }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                @error('departemen')
+                                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="bagian" class="form-label fw-semibold">Bagian <span class="text-danger">*</span></label>
+                                                <select class="form-select" id="bagian" name="bagian" required>
+                                                    <option value="">Pilih Bagian</option>
+                                                    @foreach ($masterBagians as $b)
+                                                        @php
+                                                            $slug = \Illuminate\Support\Str::snake(strtolower($b->nama));
+                                                            $deptSlug = $b->departemen ? \Illuminate\Support\Str::snake(strtolower($b->departemen->nama)) : '';
+                                                            $deptKode = $b->departemen ? $b->departemen->kode : '';
+                                                            $isSelected = (old('bagian', $user->bagian) == $slug || 
+                                                                           old('bagian', $user->bagian) == $b->kode || 
+                                                                           strtolower(old('bagian', $user->bagian)) == strtolower($b->nama));
+                                                        @endphp
+                                                        <option value="{{ $slug }}" 
+                                                            data-dept-slug="{{ $deptSlug }}"
+                                                            data-dept-kode="{{ $deptKode }}"
+                                                            {{ $isSelected ? 'selected' : '' }}>
+                                                            {{ $b->nama }} {{ $b->kode ? '('.$b->kode.')' : '' }} {{ $b->departemen ? ' - ['.$b->departemen->nama.']' : '' }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                @error('bagian')
+                                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Jabatan</label>
+                                                <input type="text" class="form-control bg-light" value="{{ ucwords(str_replace('_', ' ', $user->jabatan)) }}" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Departemen</label>
+                                                <input type="text" class="form-control bg-light" value="{{ ucfirst(str_replace('_', ' ', $user->departemen)) }}" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Bagian</label>
+                                                <input type="text" class="form-control bg-light text-capitalize" value="{{ str_replace('_', ' ', $user->bagian) }}" readonly>
                                             </div>
                                         </div>
                                     @endif
@@ -493,6 +421,37 @@
                     reader.readAsDataURL(file);
                 }
             });
+
+            // Dynamic Filter Bagian berdasarkan Departemen yang dipilih
+            function filterBagianEditProfile(currentVal = '') {
+                const selectedDept = ($('#departemen').val() || '').toLowerCase().replace(/[\s_]+/g, '');
+                const selectedKode = ($('#departemen option:selected').data('kode') || '').toLowerCase();
+
+                $('#bagian option').each(function() {
+                    const $opt = $(this);
+                    const optVal = $opt.val();
+                    if (!optVal) return;
+
+                    const deptSlug = ($opt.data('dept-slug') || '').toLowerCase().replace(/[\s_]+/g, '');
+                    const deptKode = ($opt.data('dept-kode') || '').toLowerCase();
+
+                    if (!selectedDept || deptSlug === selectedDept || deptKode === selectedKode) {
+                        $opt.show().prop('disabled', false);
+                    } else {
+                        $opt.hide().prop('disabled', true);
+                    }
+                });
+
+                if (currentVal) {
+                    $('#bagian').val(currentVal);
+                }
+            }
+
+            $('#departemen').on('change', function() {
+                filterBagianEditProfile();
+            });
+
+            filterBagianEditProfile($('#bagian').val());
 
             $("#editProfileForm").submit(function(e) {
                 const rawSignature = document.getElementById('signatureData') ? document.getElementById(
