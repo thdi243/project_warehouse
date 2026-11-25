@@ -136,7 +136,7 @@
                                             <th>Waktu</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            @if ($canAdminWfg || $canPengawasWfg)
+                                            @if ($canAdminWfg)
                                                 <th>Item</th>
                                                 <th>No. SPB</th>
                                                 <th>Qty SPB</th>
@@ -148,7 +148,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="{{ ($canAdminWfg || $canPengawasWfg) ? 10 : 5 }}" class="text-center py-4 text-muted">Loading data...</td>
+                                            <td colspan="{{ $canAdminWfg ? 10 : 5 }}" class="text-center py-4 text-muted">Loading data...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -167,7 +167,7 @@
         $(document).ready(function() {
             const canPengawasWfg = {{ $canPengawasWfg ? 'true' : 'false' }};
             const canAdminWfg = {{ $canAdminWfg ? 'true' : 'false' }};
-            const totalCols = (canAdminWfg || canPengawasWfg) ? 10 : 5;
+            const totalCols = canAdminWfg ? 10 : 5;
 
             function formatDuration(diffSeconds) {
                 if (isNaN(diffSeconds) || diffSeconds < 0) return '0d';
@@ -314,14 +314,20 @@
 
                         let actionBtn = '';
                         const canOperateWfg = canPengawasWfg || canAdminWfg;
+                        const hasQueue = tx.no_antrian ? true : false;
+                        const waTitle = hasQueue ?
+                            'Kirim Notifikasi Panggilan WhatsApp Masuk Dock ke Nomor Pribadi Supir' :
+                            'Kirim Pengingat WhatsApp Segera Serahkan Dokumen ke Admin WFG';
                         const waBtn = `<button type="button" class="btn btn-sm btn-push-wa text-white" 
                             style="background-color: #25D366; border-color: #21ba5b;"
                             data-id="${tx.id}" 
                             data-nopol="${tx.no_pol}"
                             data-driver="${tx.nama_driver || ''}"
                             data-phone="${tx.no_hp_driver || ''}"
+                            data-has-queue="${hasQueue ? '1' : '0'}"
+                            data-antrian="${tx.no_antrian || ''}"
                             data-area="WFG"
-                            title="Kirim Notifikasi Panggilan WhatsApp ke Nomor Pribadi Supir">
+                            title="${waTitle}">
                             <i class="ri-whatsapp-line align-middle"></i>
                         </button>`;
 
@@ -459,7 +465,7 @@
                         }
 
                         let detailsHtml = '';
-                        if (canAdminWfg || canPengawasWfg) {
+                        if (canAdminWfg) {
                             detailsHtml = `
                                 <td>${tx.item_name || '-'}</td>
                                 <td>${tx.no_spb || '-'}</td>
@@ -761,20 +767,31 @@
                 const driver = $(this).data('driver') || 'Supir';
                 const phone = $(this).data('phone') || '-';
                 const area = $(this).data('area') || 'WFG';
+                const hasQueue = $(this).data('has-queue') == '1' || $(this).data('has-queue') === 1 || $(this).data('has-queue') === true;
+                const antrian = $(this).data('antrian') || '';
+
+                const modalTitle = hasQueue ? 'Panggil Supir Masuk Dock via WhatsApp?' : 'Kirim Pengingat Serah Dokumen via WhatsApp?';
+                const actionDesc = hasQueue ?
+                    `Kirim notifikasi panggilan ke <b>Nomor WhatsApp Pribadi Supir</b> untuk truk <strong>${nopol}</strong> (Antrian <strong>#${antrian}</strong>) agar segera merapat ke Loading Dock ${area}?` :
+                    `Truk <strong>${nopol}</strong> saat ini <b>belum memiliki nomor antrian</b>.<br>Kirim pesan via WhatsApp agar supir <b>segera menyerahkan dokumen / surat jalan ke Admin WFG</b>?`;
+                const btnConfirmText = hasQueue ?
+                    '<i class="ri-whatsapp-line me-1"></i> Ya, Panggil Supir!' :
+                    '<i class="ri-file-text-line me-1"></i> Ya, Kirim Pengingat Dokumen!';
 
                 Swal.fire({
-                    title: 'Panggil Supir via WhatsApp?',
-                    html: `Kirim notifikasi panggilan ke <b>Nomor WhatsApp Pribadi Supir</b> untuk truk <strong>${nopol}</strong>?<br><br>
+                    title: modalTitle,
+                    html: `${actionDesc}<br><br>
                            <div class="text-start bg-light p-3 rounded border small">
                                <div class="mb-1"><strong>👤 Supir:</strong> ${driver}</div>
                                <div class="mb-1"><strong>📱 No. HP:</strong> ${phone}</div>
-                               <div><strong>📍 Area:</strong> Dock ${area}</div>
+                               <div class="mb-1"><strong>📍 Area:</strong> Dock ${area}</div>
+                               <div><strong>🎫 Status:</strong> ${hasQueue ? `<span class="badge bg-success">Antrian #${antrian}</span>` : '<span class="badge bg-secondary">Belum Antri</span>'}</div>
                            </div>`,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#25D366',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: '<i class="ri-whatsapp-line me-1"></i> Ya, Kirim Notifikasi!',
+                    confirmButtonText: btnConfirmText,
                     cancelButtonText: 'Batal'
                 }).then((result) => {
                     if (result.isConfirmed) {
