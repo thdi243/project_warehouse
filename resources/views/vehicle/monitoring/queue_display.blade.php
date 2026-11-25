@@ -1200,7 +1200,7 @@
                 if (window.EduTicker) {
                     EduTicker.init({
                         areaLabel: getAreaDisplayLabel(currentArea),
-                        intervalMinutes: 10,
+                        intervalMinutes: 5,
                         smartDelayMinutes: 5,
                         cooldownMinutes: 3,
                         onNotif: playChime

@@ -34,7 +34,7 @@
     var DEFAULTS = {
         mountTo: null,           // elemen induk (default: document.body)
         top: null,               // offset px dari atas layar (default CSS: 38px, di bawah navbar)
-        intervalMinutes: 10,     // putar rutin setiap X menit (0 = nonaktif)
+        intervalMinutes: 5,      // putar rutin setiap X menit saat kondisi normal (0 = nonaktif)
         smartDelayMinutes: 5,    // truk sudah dipanggil >= X menit tapi belum merapat → putar
         cooldownMinutes: 3,      // jeda minimal antar pemutaran
         maxPlaysPerTruck: 3,     // batas pemutaran smart trigger untuk truk yang sama
