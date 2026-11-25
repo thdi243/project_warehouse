@@ -47,10 +47,12 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="alert alert-soft-info border-0 d-flex align-items-center py-2 px-3 mb-3 fs-13" role="alert">
+                            <div class="alert alert-info border-0 d-flex align-items-center py-2 px-3 mb-3 fs-13"
+                                role="alert">
                                 <i class="ri-information-line fs-17 me-2 text-info"></i>
                                 <div>
-                                    Klik pada <strong>No. Polisi</strong> untuk melihat rincian lengkap kendaraan (waktu, item, no SPB, status, durasi, dll).
+                                    Klik pada <strong>No. Polisi</strong> untuk melihat rincian lengkap kendaraan (waktu,
+                                    item, no SPB, status, durasi, dll).
                                 </div>
                             </div>
                             <div class="table-responsive">
@@ -92,7 +94,8 @@
                 <div class="modal-header bg-light border-0 py-3">
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-warning fs-14 px-3 py-2 fw-semibold text-dark" id="dtNopol">-</span>
-                        <h5 class="modal-title fw-bold text-dark mb-0" id="modalDetailTruckLabel">Detail Rincian Kendaraan (SMU)</h5>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="modalDetailTruckLabel">Detail Rincian Kendaraan
+                            (SMU)</h5>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -100,7 +103,8 @@
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <div class="p-3 rounded bg-light border h-100">
-                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i class="ri-truck-line me-1"></i>Kendaraan & Vendor</h6>
+                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i
+                                        class="ri-truck-line me-1"></i>Kendaraan & Vendor</h6>
                                 <table class="table table-sm table-borderless mb-0 fs-13">
                                     <tr>
                                         <td class="text-muted ps-0" style="width: 110px;">Vendor:</td>
@@ -119,7 +123,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="p-3 rounded bg-light border h-100">
-                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i class="ri-file-list-3-line me-1"></i>Dokumen & Item</h6>
+                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i
+                                        class="ri-file-list-3-line me-1"></i>Dokumen & Item</h6>
                                 <table class="table table-sm table-borderless mb-0 fs-13">
                                     <tr>
                                         <td class="text-muted ps-0" style="width: 110px;">Nama Item:</td>
@@ -161,7 +166,8 @@
 
                     <div class="card border mb-0">
                         <div class="card-header bg-soft-light py-2 px-3 border-bottom">
-                            <h6 class="mb-0 fs-12 fw-bold text-muted text-uppercase"><i class="ri-time-line me-1"></i>Timeline Waktu & Durasi</h6>
+                            <h6 class="mb-0 fs-12 fw-bold text-muted text-uppercase"><i
+                                    class="ri-time-line me-1"></i>Timeline Waktu & Durasi</h6>
                         </div>
                         <div class="card-body p-3">
                             <div class="row g-3 fs-13">
@@ -1052,35 +1058,52 @@
                 $('#dtNopol').text(tx.no_pol);
                 $('#dtVendor').text(tx.vendor || '-');
                 $('#dtDriver').text(`${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})`);
-                $('#dtJenis').html(`<span class="badge bg-soft-warning text-dark text-capitalize">${tx.jenis || 'Muat'}</span> <span class="badge bg-soft-primary text-primary">Area SMU</span>`);
+                $('#dtJenis').html(
+                    `<span class="badge bg-soft-warning text-dark text-capitalize">${tx.jenis || 'Muat'}</span> <span class="badge bg-soft-primary text-primary">Area SMU</span>`
+                    );
                 $('#dtItem').text(tx.item_name || '-');
                 $('#dtNoSpb').text(tx.no_spb || '-');
                 $('#dtQtySpb').text(tx.qty_spb || '-');
 
                 // Antrian
                 if (tx.no_antrian) {
-                    $('#dtAntrianBadge').html(`<span class="badge bg-soft-success text-success fs-14 px-3 py-1">Antrian #${tx.no_antrian}</span>`);
+                    $('#dtAntrianBadge').html(
+                        `<span class="badge bg-soft-success text-success fs-14 px-3 py-1">Antrian #${tx.no_antrian}</span>`
+                        );
                 } else {
-                    $('#dtAntrianBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Belum Antri</span>`);
+                    $('#dtAntrianBadge').html(
+                        `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Belum Antri</span>`
+                        );
                 }
 
                 // Status Aktivitas
                 const isProcess = tx.unloading_status === 'process';
                 const actionLabel = (tx.jenis || '').toLowerCase() === 'bongkaran' ? 'Bongkar' : 'Muat';
                 if (!tx.no_antrian) {
-                    $('#dtStatusBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Menunggu Antrian</span>`);
+                    $('#dtStatusBadge').html(
+                        `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Menunggu Antrian</span>`
+                        );
                 } else if (!isProcess) {
-                    $('#dtStatusBadge').html(`<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">Antrian #${tx.no_antrian}</span>`);
+                    $('#dtStatusBadge').html(
+                        `<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">Antrian #${tx.no_antrian}</span>`
+                        );
                 } else {
-                    $('#dtStatusBadge').html(`<span class="badge bg-soft-info text-info fs-13 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1"></i>Proses ${actionLabel}</span>`);
+                    $('#dtStatusBadge').html(
+                        `<span class="badge bg-soft-info text-info fs-13 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1"></i>Proses ${actionLabel}</span>`
+                        );
                 }
 
                 // QC Status (SMU default N/A)
                 if (tx.qc_status) {
-                    let qcColor = (tx.qc_status === 'passed' || tx.qc_status === 'released') ? 'success' : (tx.qc_status === 'rejected' ? 'danger' : 'warning');
-                    $('#dtQcBadge').html(`<span class="badge bg-soft-${qcColor} text-${qcColor} fs-13 px-2 py-1 text-uppercase">${tx.qc_status}</span>`);
+                    let qcColor = (tx.qc_status === 'passed' || tx.qc_status === 'released') ? 'success' : (
+                        tx.qc_status === 'rejected' ? 'danger' : 'warning');
+                    $('#dtQcBadge').html(
+                        `<span class="badge bg-soft-${qcColor} text-${qcColor} fs-13 px-2 py-1 text-uppercase">${tx.qc_status}</span>`
+                        );
                 } else {
-                    $('#dtQcBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">N/A</span>`);
+                    $('#dtQcBadge').html(
+                        `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">N/A</span>`
+                        );
                 }
 
                 // Timelines
@@ -1093,19 +1116,30 @@
                 const nowTs = Math.floor(Date.now() / 1000);
                 if (!tx.no_antrian) {
                     const diff = Math.max(0, nowTs - (tx.arrival_timestamp || nowTs));
-                    $('#dtLiveDuration').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-muted">(Tunggu Antri)</span>`);
+                    $('#dtLiveDuration').html(
+                        `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-muted">(Tunggu Antri)</span>`
+                        );
                     $('#dtDurationBreakdown').text('');
                 } else if (!isProcess) {
-                    const waitSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx.arrival_timestamp) : 0;
-                    const diff = Math.max(0, nowTs - (tx.queue_taken_timestamp || tx.arrival_timestamp || nowTs));
-                    $('#dtLiveDuration').html(`<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-warning fw-medium">(Durasi Antri)</span>`);
-                    $('#dtDurationBreakdown').text(waitSec > 0 ? `Waktu Tunggu s/d Antri: ${formatDuration(waitSec)}` : '');
+                    const waitSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx
+                        .arrival_timestamp) : 0;
+                    const diff = Math.max(0, nowTs - (tx.queue_taken_timestamp || tx.arrival_timestamp ||
+                        nowTs));
+                    $('#dtLiveDuration').html(
+                        `<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-warning fw-medium">(Durasi Antri)</span>`
+                        );
+                    $('#dtDurationBreakdown').text(waitSec > 0 ?
+                        `Waktu Tunggu s/d Antri: ${formatDuration(waitSec)}` : '');
                 } else {
                     const startTs = tx.start_loading_timestamp || tx.arrival_timestamp || nowTs;
                     const diff = Math.max(0, nowTs - startTs);
-                    const antriSec = (tx.start_loading_timestamp && tx.queue_taken_timestamp) ? Math.max(0, tx.start_loading_timestamp - tx.queue_taken_timestamp) : 0;
-                    $('#dtLiveDuration').html(`<span class="badge bg-soft-info text-info fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-info fw-medium">(Durasi ${actionLabel})</span>`);
-                    $('#dtDurationBreakdown').text(antriSec > 0 ? `Durasi Antri sebelumnya: ${formatDuration(antriSec)}` : '');
+                    const antriSec = (tx.start_loading_timestamp && tx.queue_taken_timestamp) ? Math.max(0,
+                        tx.start_loading_timestamp - tx.queue_taken_timestamp) : 0;
+                    $('#dtLiveDuration').html(
+                        `<span class="badge bg-soft-info text-info fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-info fw-medium">(Durasi ${actionLabel})</span>`
+                        );
+                    $('#dtDurationBreakdown').text(antriSec > 0 ?
+                        `Durasi Antri sebelumnya: ${formatDuration(antriSec)}` : '');
                 }
 
                 const modal = new bootstrap.Modal(document.getElementById('modalDetailTruck'));

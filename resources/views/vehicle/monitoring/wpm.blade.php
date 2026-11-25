@@ -47,10 +47,12 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="alert alert-soft-info border-0 d-flex align-items-center py-2 px-3 mb-3 fs-13" role="alert">
+                            <div class="alert alert-info border-0 d-flex align-items-center py-2 px-3 mb-3 fs-13"
+                                role="alert">
                                 <i class="ri-information-line fs-17 me-2 text-info"></i>
                                 <div>
-                                    Klik pada <strong>No. Polisi</strong> untuk melihat rincian lengkap kendaraan (waktu, item, no SPB, status QC, status aktivitas, durasi, dll).
+                                    Klik pada <strong>No. Polisi</strong> untuk melihat rincian lengkap kendaraan (waktu,
+                                    item, no SPB, status QC, status aktivitas, durasi, dll).
                                 </div>
                             </div>
                             <div class="table-responsive">
@@ -73,7 +75,8 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="{{ $canAdminWpm ? 10 : 5 }}" class="text-center py-4 text-muted">Loading data...</td>
+                                            <td colspan="{{ $canAdminWpm ? 10 : 5 }}" class="text-center py-4 text-muted">
+                                                Loading data...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -92,7 +95,8 @@
                 <div class="modal-header bg-light border-0 py-3">
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-primary fs-14 px-3 py-2 fw-semibold" id="dtNopol">-</span>
-                        <h5 class="modal-title fw-bold text-dark mb-0" id="modalDetailTruckLabel">Detail Rincian Kendaraan (WPM)</h5>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="modalDetailTruckLabel">Detail Rincian Kendaraan
+                            (WPM)</h5>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -100,7 +104,8 @@
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <div class="p-3 rounded bg-light border h-100">
-                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i class="ri-truck-line me-1"></i>Kendaraan & Vendor</h6>
+                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i
+                                        class="ri-truck-line me-1"></i>Kendaraan & Vendor</h6>
                                 <table class="table table-sm table-borderless mb-0 fs-13">
                                     <tr>
                                         <td class="text-muted ps-0" style="width: 110px;">Vendor:</td>
@@ -119,7 +124,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="p-3 rounded bg-light border h-100">
-                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i class="ri-file-list-3-line me-1"></i>Dokumen & Item</h6>
+                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i
+                                        class="ri-file-list-3-line me-1"></i>Dokumen & Item</h6>
                                 <table class="table table-sm table-borderless mb-0 fs-13">
                                     <tr>
                                         <td class="text-muted ps-0" style="width: 110px;">Nama Item:</td>
@@ -161,7 +167,8 @@
 
                     <div class="card border mb-0">
                         <div class="card-header bg-soft-light py-2 px-3 border-bottom">
-                            <h6 class="mb-0 fs-12 fw-bold text-muted text-uppercase"><i class="ri-time-line me-1"></i>Timeline Waktu & Durasi</h6>
+                            <h6 class="mb-0 fs-12 fw-bold text-muted text-uppercase"><i
+                                    class="ri-time-line me-1"></i>Timeline Waktu & Durasi</h6>
                         </div>
                         <div class="card-body p-3">
                             <div class="row g-3 fs-13">
@@ -203,6 +210,7 @@
             const canPengawasWpm = {{ $canPengawasWpm ? 'true' : 'false' }};
             const canAdminWpm = {{ $canAdminWpm ? 'true' : 'false' }};
             const totalCols = canAdminWpm ? 10 : 5;
+
             function formatDuration(diffSeconds) {
                 if (isNaN(diffSeconds) || diffSeconds < 0) return '0d';
                 const hours = Math.floor(diffSeconds / 3600);
@@ -688,7 +696,9 @@
                                 loadWpmData();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON.message : 'Gagal membatalkan aktivitas.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON ? xhr.responseJSON
+                                    .message : 'Gagal membatalkan aktivitas.',
+                                    'error');
                             }
                         });
                     }
@@ -745,14 +755,18 @@
                                         showConfirmButton: true
                                     });
                                 } else {
-                                    Swal.fire('Gagal', res.message || 'Gagal mengirim pesan WhatsApp.', 'error');
+                                    Swal.fire('Gagal', res.message ||
+                                        'Gagal mengirim pesan WhatsApp.', 'error');
                                 }
                             },
                             error: function(xhr) {
-                                const isCooldown = xhr.status === 429 || xhr.responseJSON?.is_cooldown;
-                                const title = isCooldown ? 'Perhatian (Anti-Spam)' : 'Error';
+                                const isCooldown = xhr.status === 429 || xhr
+                                    .responseJSON?.is_cooldown;
+                                const title = isCooldown ? 'Perhatian (Anti-Spam)' :
+                                    'Error';
                                 const icon = isCooldown ? 'warning' : 'error';
-                                const msg = xhr.responseJSON?.message || 'Terjadi kesalahan sistem saat mengirim WhatsApp.';
+                                const msg = xhr.responseJSON?.message ||
+                                    'Terjadi kesalahan sistem saat mengirim WhatsApp.';
                                 Swal.fire(title, msg, icon);
                             }
                         });
@@ -901,7 +915,9 @@
                 $('#dtDriver').text(`${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})`);
                 const isBongkar = (tx.jenis || '').toLowerCase() === 'bongkaran';
                 const actionLabel = isBongkar ? 'Bongkar' : 'Muat';
-                $('#dtJenis').html(`<span class="badge bg-soft-${isBongkar ? 'primary' : 'success'} text-${isBongkar ? 'primary' : 'success'} text-capitalize">${actionLabel} (${tx.jenis || 'Packaging'})</span> <span class="badge bg-soft-warning text-dark">Area WPM</span>`);
+                $('#dtJenis').html(
+                    `<span class="badge bg-soft-${isBongkar ? 'primary' : 'success'} text-${isBongkar ? 'primary' : 'success'} text-capitalize">${actionLabel} (${tx.jenis || 'Packaging'})</span> <span class="badge bg-soft-warning text-dark">Area WPM</span>`
+                    );
                 $('#dtItem').text(tx.item_name || '-');
                 $('#dtNoSpb').text(tx.no_spb || '-');
                 $('#dtQtySpb').text(tx.qty_spb || '-');
@@ -909,21 +925,32 @@
                 // Status Aktivitas
                 const isProcess = tx.unloading_status === 'process';
                 if (!isProcess) {
-                    $('#dtStatusBadge').html(`<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1"><i class="ri-time-line me-1"></i>Menunggu ${actionLabel}</span>`);
+                    $('#dtStatusBadge').html(
+                        `<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1"><i class="ri-time-line me-1"></i>Menunggu ${actionLabel}</span>`
+                        );
                 } else {
-                    $('#dtStatusBadge').html(`<span class="badge bg-soft-info text-info fs-13 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1"></i>Proses ${actionLabel}</span>`);
+                    $('#dtStatusBadge').html(
+                        `<span class="badge bg-soft-info text-info fs-13 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1"></i>Proses ${actionLabel}</span>`
+                        );
                 }
 
                 // QC Status
                 if (tx.qc_status) {
-                    let qcColor = (tx.qc_status === 'released' || tx.qc_status === 'passed') ? 'success' : (tx.qc_status === 'rejected' ? 'danger' : 'warning');
-                    $('#dtQcBadge').html(`<span class="badge bg-soft-${qcColor} text-${qcColor} fs-13 px-2 py-1 text-uppercase">${tx.qc_status}</span>`);
+                    let qcColor = (tx.qc_status === 'released' || tx.qc_status === 'passed') ? 'success' : (
+                        tx.qc_status === 'rejected' ? 'danger' : 'warning');
+                    $('#dtQcBadge').html(
+                        `<span class="badge bg-soft-${qcColor} text-${qcColor} fs-13 px-2 py-1 text-uppercase">${tx.qc_status}</span>`
+                        );
                 } else {
-                    $('#dtQcBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">N/A</span>`);
+                    $('#dtQcBadge').html(
+                        `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">N/A</span>`
+                        );
                 }
 
                 // Target SLoc
-                $('#dtSlocBadge').html(`<span class="badge bg-soft-info text-info">${tx.sloc || tx.target_sloc || 'C001 (WPM)'}</span>`);
+                $('#dtSlocBadge').html(
+                    `<span class="badge bg-soft-info text-info">${tx.sloc || tx.target_sloc || 'C001 (WPM)'}</span>`
+                    );
 
                 // Timelines
                 $('#dtTimeArrival').text(tx.arrival_time || '-');
@@ -934,14 +961,20 @@
                 const nowTs = Math.floor(Date.now() / 1000);
                 if (!isProcess) {
                     const diff = Math.max(0, nowTs - (tx.arrival_timestamp || nowTs));
-                    $('#dtLiveDuration').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-muted">(Tunggu ${actionLabel})</span>`);
+                    $('#dtLiveDuration').html(
+                        `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-muted">(Tunggu ${actionLabel})</span>`
+                        );
                     $('#dtDurationBreakdown').text('');
                 } else {
                     const startTs = tx.start_loading_timestamp || tx.arrival_timestamp || nowTs;
                     const diff = Math.max(0, nowTs - startTs);
-                    const waitSec = (tx.start_loading_timestamp && tx.arrival_timestamp) ? Math.max(0, tx.start_loading_timestamp - tx.arrival_timestamp) : 0;
-                    $('#dtLiveDuration').html(`<span class="badge bg-soft-info text-info fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-info fw-medium">(Durasi ${actionLabel})</span>`);
-                    $('#dtDurationBreakdown').text(waitSec > 0 ? `Durasi Tunggu sebelumnya: ${formatDuration(waitSec)}` : '');
+                    const waitSec = (tx.start_loading_timestamp && tx.arrival_timestamp) ? Math.max(0, tx
+                        .start_loading_timestamp - tx.arrival_timestamp) : 0;
+                    $('#dtLiveDuration').html(
+                        `<span class="badge bg-soft-info text-info fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-info fw-medium">(Durasi ${actionLabel})</span>`
+                        );
+                    $('#dtDurationBreakdown').text(waitSec > 0 ?
+                        `Durasi Tunggu sebelumnya: ${formatDuration(waitSec)}` : '');
                 }
 
                 const modal = new bootstrap.Modal(document.getElementById('modalDetailTruck'));
