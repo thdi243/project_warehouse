@@ -2835,15 +2835,15 @@ class VehicleTrackingController extends Controller
                     ->orWhereNull('jenis')
                     ->orWhere('jenis', '');
             })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
         } elseif ($category === 'curah') {
             // Group 2: WFG - curah
             $query->where(function ($q) {
                 $q->where('status', 'wfg')
                     ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
             })->where('jenis', 'curah')
-              ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
         } else {
             // Group 3: WFG - bongkaran == SMU bongkaran
             $query->where(function ($q) {
@@ -2852,16 +2852,16 @@ class VehicleTrackingController extends Controller
                     $smuQ->where('status', 'smu')
                         ->orWhereHas('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU']));
                 })
-                // 2. ATAU Area WFG khusus jenis bongkaran
-                ->orWhere(function ($wfgQ) {
-                    $wfgQ->where(function ($w) {
-                        $w->where('status', 'wfg')
-                            ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
-                    })->where('jenis', 'bongkaran');
-                });
+                    // 2. ATAU Area WFG khusus jenis bongkaran
+                    ->orWhere(function ($wfgQ) {
+                        $wfgQ->where(function ($w) {
+                            $w->where('status', 'wfg')
+                                ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
+                        })->where('jenis', 'bongkaran');
+                    });
             })
-            ->whereNotIn('status', ['wrm', 'wpm'])
-            ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
+                ->whereNotIn('status', ['wrm', 'wpm'])
+                ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
         }
 
         $maxAntrian = $query->get()
@@ -2904,14 +2904,14 @@ class VehicleTrackingController extends Controller
                 })->where(function ($q) {
                     $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
                 })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } elseif ($cat === 'curah') {
                 $query->where(function ($q) {
                     $q->where('status', 'wfg')
                         ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
                 })->where('jenis', 'curah')
-                  ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                    ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } elseif ($cat === 'bongkaran') {
                 // Group 3: WFG Bongkaran == SMU Bongkaran
                 $query->where(function ($q) {
@@ -2925,7 +2925,7 @@ class VehicleTrackingController extends Controller
                         })->where('jenis', 'bongkaran');
                     });
                 })->whereNotIn('status', ['wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
             } else { // QC
                 $query->whereIn('qc_status', ['waiting_dokumen', 'waiting_sampling', 'on_check'])
                     ->whereNull('finish_sampling_time');
@@ -4133,13 +4133,13 @@ class VehicleTrackingController extends Controller
             })->where(function ($q) {
                 $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
             })->where('status', '!=', 'smu')
-              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
         } elseif ($cat === 'curah') {
             $query->where(function ($q) {
                 $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
             })->where('jenis', 'curah')
-              ->where('status', '!=', 'smu')
-              ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                ->where('status', '!=', 'smu')
+                ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
         } elseif (in_array($cat, ['bongkaran', 'smu'])) {
             // HANYA Area SMU ATAU Area WFG khusus jenis Bongkaran (slot 2/2)
             // TIDAK boleh menghitung truk di WRM (B006), WPM (C001), QC, dll.
@@ -4154,8 +4154,8 @@ class VehicleTrackingController extends Controller
                     })->where('jenis', 'bongkaran');
                 });
             })
-            ->whereNotIn('status', ['wrm', 'wpm'])
-            ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
+                ->whereNotIn('status', ['wrm', 'wpm'])
+                ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
         }
 
         return $query->count();
@@ -4231,15 +4231,15 @@ class VehicleTrackingController extends Controller
                 })->where(function ($q) {
                     $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
                 })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } elseif ($category === 'curah') {
                 // Group 2: WFG - curah
                 $waitingAheadQuery->where(function ($q) {
                     $q->where('status', 'wfg')
                         ->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
                 })->where('jenis', 'curah')
-                  ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                    ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } else {
                 // Group 3: WFG - bongkaran == SMU bongkaran
                 $waitingAheadQuery->where(function ($q) {
@@ -4253,7 +4253,7 @@ class VehicleTrackingController extends Controller
                         })->where('jenis', 'bongkaran');
                     });
                 })->whereNotIn('status', ['wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
             }
 
             $currentDate = $transaction->queue_taken_time ? $transaction->queue_taken_time->toDateString() : ($transaction->created_at ? $transaction->created_at->toDateString() : date('Y-m-d'));
@@ -4389,14 +4389,14 @@ class VehicleTrackingController extends Controller
                 })->where(function ($q) {
                     $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
                 })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } elseif ($currentCategory === 'curah') {
                 // Group 2: WFG - curah
                 $nextQuery->where(function ($q) {
                     $q->where('status', 'wfg')->orWhereHas('targetLocation', fn($tl) => $tl->where('s_loc', 'A001'));
                 })->where('jenis', 'curah')
-                  ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                    ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } else {
                 // Group 3: WFG - bongkaran == SMU bongkaran
                 $nextQuery->where(function ($q) {
@@ -4410,7 +4410,7 @@ class VehicleTrackingController extends Controller
                         })->where('jenis', 'bongkaran');
                     });
                 })->whereNotIn('status', ['wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
             }
 
             // Utamakan antrian hari sebelumnya yang belum selesai (Carry-Over), lalu urutan antrian berikutnya
@@ -4743,7 +4743,7 @@ class VehicleTrackingController extends Controller
                 })->where(function ($q) {
                     $q->where('jenis', 'slipsheet')->orWhereNull('jenis')->orWhere('jenis', '');
                 })->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } elseif ($category === 'curah') {
                 // Group 2: WFG - curah
                 $query->where(function ($q) {
@@ -4752,8 +4752,8 @@ class VehicleTrackingController extends Controller
                             $tl->where('s_loc', 'A001');
                         });
                 })->where('jenis', 'curah')
-                  ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
+                    ->whereNotIn('status', ['smu', 'wrm', 'wpm'])
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['A002', 'SMU', 'B006', 'C001']));
             } elseif ($category === 'bongkaran') {
                 // Group 3: WFG - bongkaran == SMU bongkaran
                 $query->where(function ($q) {
@@ -4767,7 +4767,7 @@ class VehicleTrackingController extends Controller
                         })->where('jenis', 'bongkaran');
                     });
                 })->whereNotIn('status', ['wrm', 'wpm'])
-                  ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
+                    ->whereDoesntHave('targetLocation', fn($tl) => $tl->whereIn('s_loc', ['B006', 'C001']));
             }
 
             // Prioritaskan carry-over (hari kemarin) terlebih dahulu, lalu urutan no antrian ASC
@@ -5692,41 +5692,62 @@ class VehicleTrackingController extends Controller
 
     /**
      * Generate visual image report (JPEG) untuk Daily Report Overdue Duration (> 7 Jam).
+     * Didesain dengan tema Clean White / Modern Dashboard yang rapi, profesional, dan kontras tinggi.
      */
     public function generateDailyOverdueReportImage(array $overdueList, string $formattedDate, int $closedCount, int $openCount, string $targetDateStr): ?string
     {
         try {
-            $width = 920;
+            $width = 960;
             $hasData = !empty($overdueList);
             $rowCount = count($overdueList);
-            $rowHeight = 44;
-            $tableHeight = $hasData ? (45 + ($rowCount * $rowHeight)) : 140;
-            $height = 250 + $tableHeight + 115;
+            $rowHeight = 42;
+            $tableHeight = $hasData ? (44 + ($rowCount * $rowHeight)) : 140;
+            $height = 245 + $tableHeight + 105;
 
             $im = imagecreatetruecolor($width, $height);
 
-            // Colors
-            $cBg = imagecolorallocate($im, 15, 23, 42);           // #0f172a slate-900
-            $cCard = imagecolorallocate($im, 30, 41, 59);         // #1e293b slate-800
-            $cCardBorder = imagecolorallocate($im, 51, 65, 85);   // #334155 slate-700
-            $cWhite = imagecolorallocate($im, 255, 255, 255);
-            $cTextMuted = imagecolorallocate($im, 148, 163, 184); // #94a3b8 slate-400
-            $cGold = imagecolorallocate($im, 245, 158, 11);       // #f59e0b amber-500
-            $cRed = imagecolorallocate($im, 239, 68, 68);         // #ef4444 red-500
-            $cRedSoft = imagecolorallocate($im, 254, 202, 202);   // #fecaca
-            $cGreen = imagecolorallocate($im, 16, 185, 129);      // #10b981 emerald-500
-            $cGreenBg = imagecolorallocate($im, 6, 78, 59);       // #064e3b
-            $cGreenText = imagecolorallocate($im, 110, 231, 183); // #6ee7b7
-            $cBlue = imagecolorallocate($im, 59, 130, 246);       // #3b82f6 blue-500
-            $cRowAlt = imagecolorallocate($im, 24, 34, 53);
-            $cHeaderBg = imagecolorallocate($im, 39, 53, 77);
+            // Clean White Palette
+            $cCanvasBg    = imagecolorallocate($im, 248, 250, 252); // #f8fafc slate-50
+            $cCardBg      = imagecolorallocate($im, 255, 255, 255); // #ffffff pure white
+            $cCardBorder  = imagecolorallocate($im, 226, 232, 240); // #e2e8f0 slate-200
+            $cHeaderBg    = imagecolorallocate($im, 241, 245, 249); // #f1f5f9 slate-100
+            $cRowAlt      = imagecolorallocate($im, 248, 250, 252); // #f8fafc
+            $cRowBorder   = imagecolorallocate($im, 241, 245, 249); // #f1f5f9
 
-            // Fill background
-            imagefilledrectangle($im, 0, 0, $width, $height, $cBg);
+            $cTextDark    = imagecolorallocate($im, 15, 23, 42);    // #0f172a slate-900 (High contrast)
+            $cTextBody    = imagecolorallocate($im, 51, 65, 85);    // #334155 slate-700
+            $cTextMuted   = imagecolorallocate($im, 100, 116, 139); // #64748b slate-500
+            $cTextLight   = imagecolorallocate($im, 148, 163, 184); // #94a3b8 slate-400
+
+            // Brand & Accent Colors
+            $cBasRed      = imagecolorallocate($im, 220, 38, 38);   // #dc2626 red-600
+            $cRedSoftBg   = imagecolorallocate($im, 254, 242, 242); // #fef2f2 red-50
+            $cRedBorder   = imagecolorallocate($im, 254, 202, 202); // #fecaca red-200
+
+            $cGreen       = imagecolorallocate($im, 5, 150, 105);   // #059669 emerald-600
+            $cGreenBg     = imagecolorallocate($im, 240, 253, 244); // #f0fdf4 emerald-50
+            $cGreenBorder = imagecolorallocate($im, 187, 247, 208); // #bbf7d0 emerald-200
+            $cGreenDark   = imagecolorallocate($im, 21, 128, 61);   // #15803d emerald-700
+
+            $cAmber       = imagecolorallocate($im, 217, 119, 6);   // #d97706 amber-600
+            $cAmberBg     = imagecolorallocate($im, 255, 251, 235); // #fffbeb amber-50
+            $cAmberBorder = imagecolorallocate($im, 253, 230, 138); // #fde68a amber-200
+            $cAmberDark   = imagecolorallocate($im, 180, 83, 9);    // #b45309 amber-700
+
+            $cBlue        = imagecolorallocate($im, 37, 99, 235);   // #2563eb blue-600
+            $cBlueBg      = imagecolorallocate($im, 239, 246, 255); // #eff6ff blue-50
+            $cBlueBorder  = imagecolorallocate($im, 191, 219, 254); // #bfdbfe blue-200
+
+            $cPurple      = imagecolorallocate($im, 126, 34, 206);  // #7e22ce purple-700
+            $cPurpleBg    = imagecolorallocate($im, 250, 245, 255); // #faf5ff purple-50
+            $cPurpleBorder= imagecolorallocate($im, 233, 213, 255); // #e9d5ff purple-200
+
+            // Fill canvas
+            imagefilledrectangle($im, 0, 0, $width, $height, $cCanvasBg);
 
             // Determine fonts
             $fontBold = 'C:\\Windows\\Fonts\\arialbd.ttf';
-            $fontReg = 'C:\\Windows\\Fonts\\arial.ttf';
+            $fontReg  = 'C:\\Windows\\Fonts\\arial.ttf';
             if (!file_exists($fontBold)) {
                 $fontBold = public_path('material/assets/fonts/hkgrotesk-bold.ttf');
             }
@@ -5746,68 +5767,70 @@ class VehicleTrackingController extends Controller
                 }
             };
 
-            // 1. Top Header Banner
-            imagefilledrectangle($im, 30, 25, $width - 30, 105, $cCard);
-            imagerectangle($im, 30, 25, $width - 30, 105, $cCardBorder);
-            imagefilledrectangle($im, 30, 25, $width - 30, 29, $hasData ? $cRed : $cGreen);
+            // 1. Top Header Card (Clean White with Red Accent Stripe)
+            imagefilledrectangle($im, 30, 25, $width - 30, 108, $cCardBg);
+            imagerectangle($im, 30, 25, $width - 30, 108, $cCardBorder);
+            // Red accent stripe on top of card
+            imagefilledrectangle($im, 30, 25, $width - 30, 29, $hasData ? $cBasRed : $cGreen);
 
-            $drawText(11, 50, 52, $cGold, "PT BUMI ALAM SEGAR • WAREHOUSE & LOGISTICS", true);
-            $drawText(16, 50, 78, $cWhite, "DAILY REPORT: OVERDUE KENDARAAN (> 7 JAM)", true);
-            $drawText(10, 50, 97, $cTextMuted, "Periode Evaluasi: " . $formattedDate . "  |  Dibuat: " . date('d/m/Y H:i') . " WIB", false);
+            // Header Texts (Tanpa "LOGISTICS", hanya WAREHOUSE)
+            $drawText(11, 52, 54, $cBasRed, "PT BUMI ALAM SEGAR • WAREHOUSE", true);
+            $drawText(17, 52, 80, $cTextDark, "DAILY REPORT: OVERDUE KENDARAAN (> 7 JAM)", true);
+            $drawText(10, 52, 100, $cTextMuted, "Periode Evaluasi: " . $formattedDate . "   |   Dibuat: " . date('d/m/Y H:i') . " WIB", false);
 
-            // 2. Three KPI Summary Cards
+            // 2. Three KPI Summary Cards (Clean White with colored left accent bars)
             $cardW = (int)(($width - 60 - 30) / 3);
-            $kpiY = 120;
-            $kpiH = 75;
+            $kpiY = 122;
+            $kpiH = 78;
 
             // Card 1: Total Overdue
             $x1 = 30;
-            imagefilledrectangle($im, $x1, $kpiY, $x1 + $cardW, $kpiY + $kpiH, $cCard);
+            imagefilledrectangle($im, $x1, $kpiY, $x1 + $cardW, $kpiY + $kpiH, $cCardBg);
             imagerectangle($im, $x1, $kpiY, $x1 + $cardW, $kpiY + $kpiH, $cCardBorder);
-            imagefilledrectangle($im, $x1, $kpiY, $x1 + 4, $kpiY + $kpiH, $hasData ? $cRed : $cGreen);
-            $drawText(9, $x1 + 18, $kpiY + 24, $cTextMuted, "TOTAL OVERDUE (>7 JAM)", true);
-            $drawText(22, $x1 + 18, $kpiY + 60, $hasData ? $cRed : $cGreen, (string)$rowCount . " Truk", true);
+            imagefilledrectangle($im, $x1, $kpiY, $x1 + 4, $kpiY + $kpiH, $hasData ? $cBasRed : $cGreen);
+            $drawText(9, $x1 + 18, $kpiY + 26, $cTextMuted, "TOTAL OVERDUE (> 7 JAM)", true);
+            $drawText(22, $x1 + 18, $kpiY + 62, $hasData ? $cBasRed : $cGreen, (string)$rowCount . " Truk", true);
 
             // Card 2: Closed
             $x2 = $x1 + $cardW + 15;
-            imagefilledrectangle($im, $x2, $kpiY, $x2 + $cardW, $kpiY + $kpiH, $cCard);
+            imagefilledrectangle($im, $x2, $kpiY, $x2 + $cardW, $kpiY + $kpiH, $cCardBg);
             imagerectangle($im, $x2, $kpiY, $x2 + $cardW, $kpiY + $kpiH, $cCardBorder);
-            imagefilledrectangle($im, $x2, $kpiY, $x2 + 4, $kpiY + $kpiH, $cBlue);
-            $drawText(9, $x2 + 18, $kpiY + 24, $cTextMuted, "STATUS CLOSED (KELUAR)", true);
-            $drawText(22, $x2 + 18, $kpiY + 60, $cBlue, (string)$closedCount . " Truk", true);
+            imagefilledrectangle($im, $x2, $kpiY, $x2 + 4, $kpiY + $kpiH, $cGreen);
+            $drawText(9, $x2 + 18, $kpiY + 26, $cTextMuted, "STATUS CLOSED (KELUAR)", true);
+            $drawText(22, $x2 + 18, $kpiY + 62, $cGreen, (string)$closedCount . " Truk", true);
 
             // Card 3: Open
             $x3 = $x2 + $cardW + 15;
-            imagefilledrectangle($im, $x3, $kpiY, $x3 + $cardW, $kpiY + $kpiH, $cCard);
+            imagefilledrectangle($im, $x3, $kpiY, $x3 + $cardW, $kpiY + $kpiH, $cCardBg);
             imagerectangle($im, $x3, $kpiY, $x3 + $cardW, $kpiY + $kpiH, $cCardBorder);
-            imagefilledrectangle($im, $x3, $kpiY, $x3 + 4, $kpiY + $kpiH, $cGold);
-            $drawText(9, $x3 + 18, $kpiY + 24, $cTextMuted, "STATUS OPEN (DI PABRIK)", true);
-            $drawText(22, $x3 + 18, $kpiY + 60, $cGold, (string)$openCount . " Truk", true);
+            imagefilledrectangle($im, $x3, $kpiY, $x3 + 4, $kpiY + $kpiH, $cAmber);
+            $drawText(9, $x3 + 18, $kpiY + 26, $cTextMuted, "STATUS OPEN (DI PABRIK)", true);
+            $drawText(22, $x3 + 18, $kpiY + 62, $cAmber, (string)$openCount . " Truk", true);
 
-            // 3. Table / Banner Container
-            $tableY = 215;
-            imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cCard);
+            // 3. Table Container (Clean White Box)
+            $tableY = 216;
+            imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cCardBg);
             imagerectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cCardBorder);
 
             if (!$hasData) {
-                // Normal State Banner
+                // Normal State Banner (Clean Light Green Box)
                 imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cGreenBg);
-                imagerectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cGreen);
-                $drawText(15, 60, $tableY + 55, $cWhite, "✓ KONDISI OPERASIONAL NORMAL (SLA AMAN)", true);
-                $drawText(11, 60, $tableY + 85, $cGreenText, "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7 Jam pada periode ini.", false);
-                $drawText(10, 60, $tableY + 110, $cGreenText, "Semua proses bongkar dan muat kendaraan berjalan sesuai standar operasional pabrik.", false);
+                imagerectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cGreenBorder);
+                $drawText(15, 60, $tableY + 55, $cGreenDark, "✓ KONDISI OPERASIONAL NORMAL (SLA AMAN)", true);
+                $drawText(11, 60, $tableY + 85, $cGreenDark, "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7 Jam pada periode ini.", false);
+                $drawText(10, 60, $tableY + 110, $cTextMuted, "Semua proses bongkar dan muat kendaraan berjalan sesuai standar operasional pabrik.", false);
                 $currY = $tableY + $tableHeight;
             } else {
-                // Table Header
+                // Table Header (Soft Slate 100)
                 imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + 40, $cHeaderBg);
                 imageline($im, 30, $tableY + 40, $width - 30, $tableY + 40, $cCardBorder);
 
-                $drawText(10, 50, $tableY + 26, $cWhite, "NO", true);
-                $drawText(10, 95, $tableY + 26, $cWhite, "NO. POLISI", true);
-                $drawText(10, 260, $tableY + 26, $cWhite, "AREA DOCK", true);
-                $drawText(10, 400, $tableY + 26, $cWhite, "JAM MASUK", true);
-                $drawText(10, 560, $tableY + 26, $cWhite, "STATUS", true);
-                $drawText(10, 725, $tableY + 26, $cWhite, "TOTAL DURASI", true);
+                $drawText(10, 52, $tableY + 26, $cTextBody, "NO", true);
+                $drawText(10, 100, $tableY + 26, $cTextBody, "NO. POLISI", true);
+                $drawText(10, 275, $tableY + 26, $cTextBody, "AREA DOCK", true);
+                $drawText(10, 420, $tableY + 26, $cTextBody, "JAM MASUK", true);
+                $drawText(10, 580, $tableY + 26, $cTextBody, "STATUS", true);
+                $drawText(10, 745, $tableY + 26, $cTextBody, "TOTAL DURASI", true);
 
                 // Table Rows
                 $currY = $tableY + 40;
@@ -5815,48 +5838,51 @@ class VehicleTrackingController extends Controller
                     if ($idx % 2 === 1) {
                         imagefilledrectangle($im, 31, $currY, $width - 31, $currY + $rowHeight - 1, $cRowAlt);
                     }
-                    imageline($im, 30, $currY + $rowHeight, $width - 30, $currY + $rowHeight, $cCardBorder);
+                    imageline($im, 30, $currY + $rowHeight, $width - 30, $currY + $rowHeight, $cRowBorder);
 
                     $textY = $currY + 27;
 
                     // Col 1: No
-                    $drawText(10, 52, $textY, $cTextMuted, (string)($idx + 1), true);
+                    $drawText(10, 54, $textY, $cTextMuted, (string)($idx + 1), false);
 
-                    // Col 2: Nopol
-                    $drawText(12, 95, $textY, $cWhite, $row['nopol'], true);
+                    // Col 2: Nopol (Bold Dark Text)
+                    $drawText(12, 100, $textY, $cTextDark, $row['nopol'], true);
 
-                    // Col 3: Area Badge
-                    $areaColor = match($row['area']) {
-                        'WRM' => $cGreen,
-                        'SMU' => $cGold,
-                        'WPM' => $cBlue,
-                        default => imagecolorallocate($im, 168, 85, 247), // WFG Purple
+                    // Col 3: Area Badge (Soft Pill Style)
+                    [$areaBg, $areaBrd, $areaTxt] = match ($row['area']) {
+                        'WRM' => [$cGreenBg, $cGreenBorder, $cGreenDark],
+                        'SMU' => [$cAmberBg, $cAmberBorder, $cAmberDark],
+                        'WPM' => [$cBlueBg, $cBlueBorder, $cBlue],
+                        default => [$cPurpleBg, $cPurpleBorder, $cPurple], // WFG
                     };
-                    imagefilledrectangle($im, 258, $currY + 10, 335, $currY + 32, $cBg);
-                    imagerectangle($im, 258, $currY + 10, 335, $currY + 32, $areaColor);
-                    $drawText(10, 275, $textY - 2, $areaColor, $row['area'], true);
+                    imagefilledrectangle($im, 270, $currY + 9, 345, $currY + 31, $areaBg);
+                    imagerectangle($im, 270, $currY + 9, 345, $currY + 31, $areaBrd);
+                    $drawText(10, 288, $textY - 2, $areaTxt, $row['area'], true);
 
                     // Col 4: Jam Masuk
-                    $drawText(10, 400, $textY, $cTextMuted, $row['check_in'], false);
+                    $drawText(10, 420, $textY, $cTextBody, $row['check_in'], false);
 
-                    // Col 5: Status Badge
-                    $statusBg = ($row['status'] === 'Closed') ? imagecolorallocate($im, 22, 78, 99) : imagecolorallocate($im, 120, 53, 15);
-                    $statusText = ($row['status'] === 'Closed') ? imagecolorallocate($im, 103, 232, 249) : imagecolorallocate($im, 253, 186, 116);
-                    imagefilledrectangle($im, 558, $currY + 10, 645, $currY + 32, $statusBg);
-                    imagerectangle($im, 558, $currY + 10, 645, $currY + 32, $statusText);
-                    $drawText(10, 575, $textY - 2, $statusText, strtoupper($row['status']), true);
+                    // Col 5: Status Badge (Soft Pill Style)
+                    $isClosed = ($row['status'] === 'Closed');
+                    $statusBg  = $isClosed ? $cGreenBg : $cRedSoftBg;
+                    $statusBrd = $isClosed ? $cGreenBorder : $cRedBorder;
+                    $statusTxt = $isClosed ? $cGreenDark : $cBasRed;
 
-                    // Col 6: Durasi (Red bold)
-                    $drawText(12, 725, $textY, $cRedSoft, "⏱ " . $row['duration_str'], true);
+                    imagefilledrectangle($im, 575, $currY + 9, 660, $currY + 31, $statusBg);
+                    imagerectangle($im, 575, $currY + 9, 660, $currY + 31, $statusBrd);
+                    $drawText(10, 592, $textY - 2, $statusTxt, strtoupper($row['status']), true);
+
+                    // Col 6: Durasi (Bersih tanpa icon missing glyph emoji)
+                    $drawText(12, 745, $textY, $cBasRed, $row['duration_str'], true);
 
                     $currY += $rowHeight;
                 }
             }
 
             // 4. Legend & Footer Notes
-            $footerY = $currY + 28;
-            $drawText(9, 40, $footerY, $cTextMuted, "Catatan: Standar SLA kendaraan di pabrik maksimal 7 Jam. Data di atas dilaporkan otomatis kepada Dept Head Warehouse.", false);
-            $drawText(9, 40, $footerY + 22, $cGold, "PT BAS Warehouse Management System • Auto-Notification Engine", true);
+            $footerY = $currY + 26;
+            $drawText(9, 35, $footerY, $cTextMuted, "Catatan: Standar SLA kendaraan di area pabrik maksimal 7 Jam. Data dilaporkan otomatis kepada Dept Head Warehouse.", false);
+            $drawText(9, 35, $footerY + 20, $cTextLight, "PT BAS Warehouse Management System • Auto-Notification Engine", true);
 
             // Ensure directory exists
             $dir = storage_path('app/public/reports/overdue');
@@ -5867,13 +5893,14 @@ class VehicleTrackingController extends Controller
             $fileName = "daily_overdue_{$targetDateStr}_" . time() . ".jpg";
             $fullPath = $dir . DIRECTORY_SEPARATOR . $fileName;
 
-            imagejpeg($im, $fullPath, 82);
+            imagejpeg($im, $fullPath, 85);
             imagedestroy($im);
 
-            Log::info("[VehicleTracking] Report image berhasil digenerate: {$fullPath}");
+            Log::info("[VehicleTracking] Sukses generate infographic report clean white (JPEG): {$fullPath}");
+
             return $fullPath;
         } catch (\Throwable $e) {
-            Log::error("[VehicleTracking] Gagal generate report image: " . $e->getMessage());
+            Log::error("[VehicleTracking] Gagal generate infographic report image: " . $e->getMessage());
             return null;
         }
     }

@@ -158,6 +158,7 @@ class FonnteService
                 $options['proxy'] = false;
             }
 
+            $filePath = $extraParams['file'] ?? null;
             $hasFile = !empty($filePath) && file_exists($filePath);
             $timeout = $hasFile ? max((int)config('services.fonnte.timeout', 25), 60) : (int)config('services.fonnte.timeout', 25);
             $connectTimeout = (int)config('services.fonnte.connect_timeout', 10);
