@@ -47,6 +47,12 @@
                             </div>
                         </div>
                         <div class="card-body">
+                            <div class="alert alert-soft-info border-0 d-flex align-items-center py-2 px-3 mb-3 fs-13" role="alert">
+                                <i class="ri-information-line fs-17 me-2 text-info"></i>
+                                <div>
+                                    Klik pada <strong>No. Polisi</strong> untuk melihat rincian lengkap kendaraan (waktu, item, no SPB, status QC, status aktivitas, durasi, dll).
+                                </div>
+                            </div>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle text-nowrap" id="wpmTable">
                                     <thead class="table-light">
