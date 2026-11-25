@@ -160,6 +160,120 @@
         </div>
     </div>
 
+    {{-- Modal Detail Kendaraan & Aktivitas (Dapat diakses Pengawas & Admin dengan klik No. Polisi) --}}
+    <div class="modal fade" id="modalDetailTruck" tabindex="-1" aria-labelledby="modalDetailTruckLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light border-0 py-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary fs-14 px-3 py-2 fw-semibold" id="dtNopol">-</span>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="modalDetailTruckLabel">Detail Rincian Kendaraan</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 rounded bg-light border h-100">
+                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i class="ri-truck-line me-1"></i>Kendaraan & Vendor</h6>
+                                <table class="table table-sm table-borderless mb-0 fs-13">
+                                    <tr>
+                                        <td class="text-muted ps-0" style="width: 110px;">Vendor:</td>
+                                        <td class="fw-semibold text-dark" id="dtVendor">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0">Driver:</td>
+                                        <td class="text-dark" id="dtDriver">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0">Area / Jenis:</td>
+                                        <td class="text-dark" id="dtJenis">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded bg-light border h-100">
+                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i class="ri-file-list-3-line me-1"></i>Dokumen & Item</h6>
+                                <table class="table table-sm table-borderless mb-0 fs-13">
+                                    <tr>
+                                        <td class="text-muted ps-0" style="width: 110px;">Nama Item:</td>
+                                        <td class="fw-semibold text-primary" id="dtItem">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0">No. SPB:</td>
+                                        <td class="fw-semibold text-dark" id="dtNoSpb">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0">Qty SPB:</td>
+                                        <td class="fw-bold text-success" id="dtQtySpb">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border text-center bg-white shadow-sm">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Nomor Antrian</span>
+                                <div id="dtAntrianBadge">-</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border text-center bg-white shadow-sm">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Status Aktivitas</span>
+                                <div id="dtStatusBadge">-</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border text-center bg-white shadow-sm">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Status QC</span>
+                                <div id="dtQcBadge"><span class="badge bg-soft-secondary text-secondary">N/A</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border mb-0">
+                        <div class="card-header bg-soft-light py-2 px-3 border-bottom">
+                            <h6 class="mb-0 fs-12 fw-bold text-muted text-uppercase"><i class="ri-time-line me-1"></i>Timeline Waktu & Durasi</h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row g-3 fs-13">
+                                <div class="col-sm-6 col-md-3">
+                                    <div class="text-muted small">Jam Tiba</div>
+                                    <div class="fw-bold text-dark mt-1" id="dtTimeArrival">-</div>
+                                </div>
+                                <div class="col-sm-6 col-md-3">
+                                    <div class="text-muted small">Ambil Antrian</div>
+                                    <div class="fw-bold text-warning mt-1" id="dtTimeQueue">-</div>
+                                </div>
+                                <div class="col-sm-6 col-md-3">
+                                    <div class="text-muted small">Mulai Bongkar/Muat</div>
+                                    <div class="fw-bold text-info mt-1" id="dtTimeStart">-</div>
+                                </div>
+                                <div class="col-sm-6 col-md-3">
+                                    <div class="text-muted small">Selesai</div>
+                                    <div class="fw-bold text-success mt-1" id="dtTimeFinish">-</div>
+                                </div>
+                            </div>
+                            <hr class="my-3">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="fs-12 text-muted fw-semibold">Durasi Saat Ini:</span>
+                                    <span class="fs-13 fw-bold" id="dtLiveDuration">-</span>
+                                </div>
+                                <div id="dtDurationBreakdown" class="small text-muted"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light py-2">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -478,7 +592,14 @@
                         html += `<tr id="row-${tx.id}">
                             <td class="text-center">${antrianBadge}</td>
                             <td>${timelineHtml}</td>
-                            <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
+                            <td>
+                                <span class="badge bg-soft-primary text-primary fs-12 btn-detail-truck" 
+                                      data-id="${tx.id}" 
+                                      style="cursor: pointer;" 
+                                      title="Klik untuk melihat rincian detail kendaraan & aktivitas">
+                                    <i class="ri-truck-line me-1"></i><strong>${tx.no_pol}</strong>
+                                </span>
+                            </td>
                             <td>
                                 <strong>${tx.vendor || '-'}</strong><br>
                                 <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
@@ -1024,6 +1145,76 @@
                         });
                     }
                 });
+            });
+
+            // Handler Modal Detail Kendaraan saat No. Polisi diklik (berlaku untuk Pengawas & Admin)
+            $(document).on('click', '.btn-detail-truck', function(e) {
+                e.preventDefault();
+                const id = $(this).data('id');
+                const tx = allWfgData.find(item => item.id == id);
+                if (!tx) return;
+
+                $('#dtNopol').text(tx.no_pol);
+                $('#dtVendor').text(tx.vendor || '-');
+                $('#dtDriver').text(`${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})`);
+                $('#dtJenis').html(`<span class="badge bg-soft-info text-info text-capitalize">${tx.jenis || 'Muat'}</span> <span class="badge bg-soft-primary text-primary">Area WFG</span>`);
+                $('#dtItem').text(tx.item_name || '-');
+                $('#dtNoSpb').text(tx.no_spb || '-');
+                $('#dtQtySpb').text(tx.qty_spb || '-');
+
+                // Antrian
+                if (tx.no_antrian) {
+                    $('#dtAntrianBadge').html(`<span class="badge bg-soft-success text-success fs-14 px-3 py-1">Antrian #${tx.no_antrian}</span>`);
+                } else {
+                    $('#dtAntrianBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Belum Antri</span>`);
+                }
+
+                // Status Aktivitas
+                const isProcess = tx.unloading_status === 'process';
+                const actionLabel = (tx.jenis || '').toLowerCase() === 'bongkaran' ? 'Bongkar' : 'Muat';
+                if (!tx.no_antrian) {
+                    $('#dtStatusBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Menunggu Antrian</span>`);
+                } else if (!isProcess) {
+                    $('#dtStatusBadge').html(`<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">Antrian #${tx.no_antrian}</span>`);
+                } else {
+                    $('#dtStatusBadge').html(`<span class="badge bg-soft-info text-info fs-13 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1"></i>Proses ${actionLabel}</span>`);
+                }
+
+                // QC Status (WFG default N/A)
+                if (tx.qc_status) {
+                    let qcColor = (tx.qc_status === 'passed' || tx.qc_status === 'released') ? 'success' : (tx.qc_status === 'rejected' ? 'danger' : 'warning');
+                    $('#dtQcBadge').html(`<span class="badge bg-soft-${qcColor} text-${qcColor} fs-13 px-2 py-1 text-uppercase">${tx.qc_status}</span>`);
+                } else {
+                    $('#dtQcBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">N/A</span>`);
+                }
+
+                // Timelines
+                $('#dtTimeArrival').text(tx.arrival_time || '-');
+                $('#dtTimeQueue').text(tx.queue_taken_time || '-');
+                $('#dtTimeStart').text(tx.start_loading_time || '-');
+                $('#dtTimeFinish').text(tx.finish_loading_time || '-');
+
+                // Durasi Live
+                const nowTs = Math.floor(Date.now() / 1000);
+                if (!tx.no_antrian) {
+                    const diff = Math.max(0, nowTs - (tx.arrival_timestamp || nowTs));
+                    $('#dtLiveDuration').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-muted">(Tunggu Antri)</span>`);
+                    $('#dtDurationBreakdown').text('');
+                } else if (!isProcess) {
+                    const waitSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx.arrival_timestamp) : 0;
+                    const diff = Math.max(0, nowTs - (tx.queue_taken_timestamp || tx.arrival_timestamp || nowTs));
+                    $('#dtLiveDuration').html(`<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-warning fw-medium">(Durasi Antri)</span>`);
+                    $('#dtDurationBreakdown').text(waitSec > 0 ? `Waktu Tunggu s/d Antri: ${formatDuration(waitSec)}` : '');
+                } else {
+                    const startTs = tx.start_loading_timestamp || tx.arrival_timestamp || nowTs;
+                    const diff = Math.max(0, nowTs - startTs);
+                    const antriSec = (tx.start_loading_timestamp && tx.queue_taken_timestamp) ? Math.max(0, tx.start_loading_timestamp - tx.queue_taken_timestamp) : 0;
+                    $('#dtLiveDuration').html(`<span class="badge bg-soft-info text-info fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-info fw-medium">(Durasi ${actionLabel})</span>`);
+                    $('#dtDurationBreakdown').text(antriSec > 0 ? `Durasi Antri sebelumnya: ${formatDuration(antriSec)}` : '');
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('modalDetailTruck'));
+                modal.show();
             });
         });
     </script>

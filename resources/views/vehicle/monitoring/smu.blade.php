@@ -52,12 +52,12 @@
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width: 120px;">No. Antrian</th>
+                                            <th>Waktu</th>
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
-                                            @if ($canAdminSmu || $canPengawasSmu)
+                                            @if ($canAdminSmu)
                                                 <th>Item</th>
                                                 <th>No. SPB / Qty</th>
-                                                <th>Waktu</th>
                                                 <th>Status</th>
                                                 <th>Durasi Aktivitas</th>
                                             @endif
@@ -66,8 +66,8 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="{{ $canAdminSmu || $canPengawasSmu ? 9 : 4 }}"
-                                                class="text-center py-4 text-muted">Loading data...</td>
+                                            <td colspan="{{ $canAdminSmu ? 9 : 5 }}" class="text-center py-4 text-muted">
+                                                Loading data...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -79,6 +79,120 @@
         </div>
     </div>
 
+    {{-- Modal Detail Kendaraan & Aktivitas (Dapat diakses Pengawas & Admin dengan klik No. Polisi) --}}
+    <div class="modal fade" id="modalDetailTruck" tabindex="-1" aria-labelledby="modalDetailTruckLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light border-0 py-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-warning fs-14 px-3 py-2 fw-semibold text-dark" id="dtNopol">-</span>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="modalDetailTruckLabel">Detail Rincian Kendaraan (SMU)</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 rounded bg-light border h-100">
+                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i class="ri-truck-line me-1"></i>Kendaraan & Vendor</h6>
+                                <table class="table table-sm table-borderless mb-0 fs-13">
+                                    <tr>
+                                        <td class="text-muted ps-0" style="width: 110px;">Vendor:</td>
+                                        <td class="fw-semibold text-dark" id="dtVendor">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0">Driver:</td>
+                                        <td class="text-dark" id="dtDriver">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0">Area / Jenis:</td>
+                                        <td class="text-dark" id="dtJenis">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded bg-light border h-100">
+                                <h6 class="text-muted text-uppercase fs-11 fw-bold mb-2"><i class="ri-file-list-3-line me-1"></i>Dokumen & Item</h6>
+                                <table class="table table-sm table-borderless mb-0 fs-13">
+                                    <tr>
+                                        <td class="text-muted ps-0" style="width: 110px;">Nama Item:</td>
+                                        <td class="fw-semibold text-primary" id="dtItem">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0">No. SPB:</td>
+                                        <td class="fw-semibold text-dark" id="dtNoSpb">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted ps-0">Qty SPB:</td>
+                                        <td class="fw-bold text-success" id="dtQtySpb">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border text-center bg-white shadow-sm">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Nomor Antrian</span>
+                                <div id="dtAntrianBadge">-</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border text-center bg-white shadow-sm">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Status Aktivitas</span>
+                                <div id="dtStatusBadge">-</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border text-center bg-white shadow-sm">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Status QC</span>
+                                <div id="dtQcBadge"><span class="badge bg-soft-secondary text-secondary">N/A</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border mb-0">
+                        <div class="card-header bg-soft-light py-2 px-3 border-bottom">
+                            <h6 class="mb-0 fs-12 fw-bold text-muted text-uppercase"><i class="ri-time-line me-1"></i>Timeline Waktu & Durasi</h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row g-3 fs-13">
+                                <div class="col-sm-6 col-md-3">
+                                    <div class="text-muted small">Jam Tiba</div>
+                                    <div class="fw-bold text-dark mt-1" id="dtTimeArrival">-</div>
+                                </div>
+                                <div class="col-sm-6 col-md-3">
+                                    <div class="text-muted small">Ambil Antrian</div>
+                                    <div class="fw-bold text-warning mt-1" id="dtTimeQueue">-</div>
+                                </div>
+                                <div class="col-sm-6 col-md-3">
+                                    <div class="text-muted small">Mulai Bongkar/Muat</div>
+                                    <div class="fw-bold text-info mt-1" id="dtTimeStart">-</div>
+                                </div>
+                                <div class="col-sm-6 col-md-3">
+                                    <div class="text-muted small">Selesai</div>
+                                    <div class="fw-bold text-success mt-1" id="dtTimeFinish">-</div>
+                                </div>
+                            </div>
+                            <hr class="my-3">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="fs-12 text-muted fw-semibold">Durasi Saat Ini:</span>
+                                    <span class="fs-13 fw-bold" id="dtLiveDuration">-</span>
+                                </div>
+                                <div id="dtDurationBreakdown" class="small text-muted"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light py-2">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -86,7 +200,7 @@
         $(document).ready(function() {
             const canPengawasSmu = {{ $canPengawasSmu ? 'true' : 'false' }};
             const canAdminSmu = {{ $canAdminSmu ? 'true' : 'false' }};
-            const totalCols = (canAdminSmu || canPengawasSmu) ? 9 : 4;
+            const totalCols = canAdminSmu ? 9 : 5;
 
             function formatDuration(diffSeconds) {
                 if (isNaN(diffSeconds) || diffSeconds < 0) return '0d';
@@ -149,7 +263,9 @@
 
                         let antrianBadge = '';
                         if (tx.no_antrian) {
-                            const overnightTag = tx.is_overnight ? '<span class="badge bg-danger ms-1" title="Truk antrian dari hari sebelumnya (Prioritas)"><i class="ri-history-line me-1"></i>Kemarin</span>' : '';
+                            const overnightTag = tx.is_overnight ?
+                                '<span class="badge bg-danger ms-1" title="Truk antrian dari hari sebelumnya (Prioritas)"><i class="ri-history-line me-1"></i>Kemarin</span>' :
+                                '';
                             antrianBadge =
                                 `<span class="badge bg-soft-success text-success fs-13 px-3 py-2">#${tx.no_antrian}</span>${overnightTag}`;
                         } else {
@@ -177,14 +293,20 @@
 
                         let actionBtn = '';
                         const canOperateSmu = canPengawasSmu || canAdminSmu;
+                        const hasQueue = tx.no_antrian ? true : false;
+                        const waTitle = hasQueue ?
+                            'Kirim Notifikasi Panggilan WhatsApp Masuk Dock ke Nomor Pribadi Supir' :
+                            'Kirim Pengingat WhatsApp Segera Serahkan Dokumen ke Admin';
                         const waBtn = `<button type="button" class="btn btn-sm btn-push-wa text-white" 
                             style="background-color: #25D366; border-color: #21ba5b;"
                             data-id="${tx.id}" 
                             data-nopol="${tx.no_pol}"
                             data-driver="${tx.nama_driver || ''}"
                             data-phone="${tx.no_hp_driver || ''}"
+                            data-has-queue="${hasQueue ? '1' : '0'}"
+                            data-antrian="${tx.no_antrian || ''}"
                             data-area="SMU"
-                            title="Kirim Notifikasi Panggilan WhatsApp ke Nomor Pribadi Supir">
+                            title="${waTitle}">
                             <i class="ri-whatsapp-line align-middle"></i>
                         </button>`;
 
@@ -324,14 +446,9 @@
                             `;
                         }
 
-                        html += `<tr id="row-${tx.id}">
-                            <td class="text-center">${antrianBadge}</td>
-                            <td><span class="badge bg-soft-primary text-primary fs-12">${tx.no_pol}</span></td>
-                            <td>
-                                <strong>${tx.vendor || '-'}</strong><br>
-                                <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
-                            </td>
-                            @if ($canAdminSmu || $canPengawasSmu)
+                        let detailsHtml = '';
+                        if (canAdminSmu) {
+                            detailsHtml = `
                                 <td>
                                     <strong>${tx.item_name}</strong><br>
                                     <small class="text-muted">${tx.jenis}</small>
@@ -340,10 +457,27 @@
                                     <strong>${tx.no_spb}</strong><br>
                                     <small class="text-muted">${tx.qty_spb}</small>
                                 </td>
-                                <td>${timelineHtml}</td>
                                 <td>${statusBadge}</td>
                                 <td>${durasiHtml}</td>
-                            @endif
+                            `;
+                        }
+
+                        html += `<tr id="row-${tx.id}">
+                            <td class="text-center">${antrianBadge}</td>
+                            <td>${timelineHtml}</td>
+                            <td>
+                                <span class="badge bg-soft-primary text-primary fs-12 btn-detail-truck" 
+                                      data-id="${tx.id}" 
+                                      style="cursor: pointer;" 
+                                      title="Klik untuk melihat rincian detail kendaraan & aktivitas">
+                                    <i class="ri-truck-line me-1"></i><strong>${tx.no_pol}</strong>
+                                </span>
+                            </td>
+                            <td>
+                                <strong>${tx.vendor || '-'}</strong><br>
+                                <small class="text-muted">Driver: ${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})</small>
+                            </td>
+                            ${detailsHtml}
                             <td class="text-center">
                                 ${actionBtn}
                             </td>
@@ -587,20 +721,33 @@
                 const driver = $(this).data('driver') || 'Supir';
                 const phone = $(this).data('phone') || '-';
                 const area = $(this).data('area') || 'SMU';
+                const hasQueue = $(this).data('has-queue') == '1' || $(this).data('has-queue') === 1 || $(
+                    this).data('has-queue') === true;
+                const antrian = $(this).data('antrian') || '';
+
+                const modalTitle = hasQueue ? 'Panggil Supir Masuk Dock via WhatsApp?' :
+                    'Kirim Pengingat Serah Dokumen via WhatsApp?';
+                const actionDesc = hasQueue ?
+                    `Kirim notifikasi panggilan ke <b>Nomor WhatsApp Pribadi Supir</b> untuk truk <strong>${nopol}</strong> (Antrian <strong>#${antrian}</strong>) agar segera masuk Loading Dock ${area}?` :
+                    `Truk <strong>${nopol}</strong> saat ini <b>belum memiliki nomor antrian</b>.<br>Kirim pesan via WhatsApp agar supir <b>segera menyerahkan dokumen / surat jalan ke Admin</b>?`;
+                const btnConfirmText = hasQueue ?
+                    '<i class="ri-whatsapp-line me-1"></i> Ya, Panggil Supir!' :
+                    '<i class="ri-file-text-line me-1"></i> Ya, Kirim Pengingat Dokumen!';
 
                 Swal.fire({
-                    title: 'Panggil Supir via WhatsApp?',
-                    html: `Kirim notifikasi panggilan ke <b>Nomor WhatsApp Pribadi Supir</b> untuk truk <strong>${nopol}</strong>?<br><br>
+                    title: modalTitle,
+                    html: `${actionDesc}<br><br>
                            <div class="text-start bg-light p-3 rounded border small">
                                <div class="mb-1"><strong>👤 Supir:</strong> ${driver}</div>
                                <div class="mb-1"><strong>📱 No. HP:</strong> ${phone}</div>
-                               <div><strong>📍 Area:</strong> Dock ${area}</div>
+                               <div class="mb-1"><strong>📍 Area:</strong> Dock ${area}</div>
+                               <div><strong>🎫 Status:</strong> ${hasQueue ? `<span class="badge bg-success">Antrian #${antrian}</span>` : '<span class="badge bg-secondary">Belum Antri</span>'}</div>
                            </div>`,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#25D366',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: '<i class="ri-whatsapp-line me-1"></i> Ya, Kirim Notifikasi!',
+                    confirmButtonText: btnConfirmText,
                     cancelButtonText: 'Batal'
                 }).then((result) => {
                     if (result.isConfirmed) {
@@ -630,14 +777,18 @@
                                         showConfirmButton: true
                                     });
                                 } else {
-                                    Swal.fire('Gagal', res.message || 'Gagal mengirim pesan WhatsApp.', 'error');
+                                    Swal.fire('Gagal', res.message ||
+                                        'Gagal mengirim pesan WhatsApp.', 'error');
                                 }
                             },
                             error: function(xhr) {
-                                const isCooldown = xhr.status === 429 || xhr.responseJSON?.is_cooldown;
-                                const title = isCooldown ? 'Perhatian (Anti-Spam)' : 'Error';
+                                const isCooldown = xhr.status === 429 || xhr
+                                    .responseJSON?.is_cooldown;
+                                const title = isCooldown ? 'Perhatian (Anti-Spam)' :
+                                    'Error';
                                 const icon = isCooldown ? 'warning' : 'error';
-                                const msg = xhr.responseJSON?.message || 'Terjadi kesalahan sistem saat mengirim WhatsApp.';
+                                const msg = xhr.responseJSON?.message ||
+                                    'Terjadi kesalahan sistem saat mengirim WhatsApp.';
                                 Swal.fire(title, msg, icon);
                             }
                         });
@@ -748,7 +899,8 @@
                                 loadSmuData();
                             },
                             error: function(xhr) {
-                                Swal.fire('Error!', xhr.responseJSON?.message || 'Gagal membatalkan aktivitas.', 'error');
+                                Swal.fire('Error!', xhr.responseJSON?.message ||
+                                    'Gagal membatalkan aktivitas.', 'error');
                             }
                         });
                     }
@@ -882,6 +1034,76 @@
                         });
                     }
                 });
+            });
+
+            // Handler Modal Detail Kendaraan saat No. Polisi diklik (berlaku untuk Pengawas & Admin)
+            $(document).on('click', '.btn-detail-truck', function(e) {
+                e.preventDefault();
+                const id = $(this).data('id');
+                const tx = allSmuData.find(item => item.id == id);
+                if (!tx) return;
+
+                $('#dtNopol').text(tx.no_pol);
+                $('#dtVendor').text(tx.vendor || '-');
+                $('#dtDriver').text(`${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})`);
+                $('#dtJenis').html(`<span class="badge bg-soft-warning text-dark text-capitalize">${tx.jenis || 'Muat'}</span> <span class="badge bg-soft-primary text-primary">Area SMU</span>`);
+                $('#dtItem').text(tx.item_name || '-');
+                $('#dtNoSpb').text(tx.no_spb || '-');
+                $('#dtQtySpb').text(tx.qty_spb || '-');
+
+                // Antrian
+                if (tx.no_antrian) {
+                    $('#dtAntrianBadge').html(`<span class="badge bg-soft-success text-success fs-14 px-3 py-1">Antrian #${tx.no_antrian}</span>`);
+                } else {
+                    $('#dtAntrianBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Belum Antri</span>`);
+                }
+
+                // Status Aktivitas
+                const isProcess = tx.unloading_status === 'process';
+                const actionLabel = (tx.jenis || '').toLowerCase() === 'bongkaran' ? 'Bongkar' : 'Muat';
+                if (!tx.no_antrian) {
+                    $('#dtStatusBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Menunggu Antrian</span>`);
+                } else if (!isProcess) {
+                    $('#dtStatusBadge').html(`<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">Antrian #${tx.no_antrian}</span>`);
+                } else {
+                    $('#dtStatusBadge').html(`<span class="badge bg-soft-info text-info fs-13 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1"></i>Proses ${actionLabel}</span>`);
+                }
+
+                // QC Status (SMU default N/A)
+                if (tx.qc_status) {
+                    let qcColor = (tx.qc_status === 'passed' || tx.qc_status === 'released') ? 'success' : (tx.qc_status === 'rejected' ? 'danger' : 'warning');
+                    $('#dtQcBadge').html(`<span class="badge bg-soft-${qcColor} text-${qcColor} fs-13 px-2 py-1 text-uppercase">${tx.qc_status}</span>`);
+                } else {
+                    $('#dtQcBadge').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">N/A</span>`);
+                }
+
+                // Timelines
+                $('#dtTimeArrival').text(tx.arrival_time || '-');
+                $('#dtTimeQueue').text(tx.queue_taken_time || '-');
+                $('#dtTimeStart').text(tx.start_loading_time || '-');
+                $('#dtTimeFinish').text(tx.finish_loading_time || '-');
+
+                // Durasi Live
+                const nowTs = Math.floor(Date.now() / 1000);
+                if (!tx.no_antrian) {
+                    const diff = Math.max(0, nowTs - (tx.arrival_timestamp || nowTs));
+                    $('#dtLiveDuration').html(`<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-muted">(Tunggu Antri)</span>`);
+                    $('#dtDurationBreakdown').text('');
+                } else if (!isProcess) {
+                    const waitSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx.arrival_timestamp) : 0;
+                    const diff = Math.max(0, nowTs - (tx.queue_taken_timestamp || tx.arrival_timestamp || nowTs));
+                    $('#dtLiveDuration').html(`<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-warning fw-medium">(Durasi Antri)</span>`);
+                    $('#dtDurationBreakdown').text(waitSec > 0 ? `Waktu Tunggu s/d Antri: ${formatDuration(waitSec)}` : '');
+                } else {
+                    const startTs = tx.start_loading_timestamp || tx.arrival_timestamp || nowTs;
+                    const diff = Math.max(0, nowTs - startTs);
+                    const antriSec = (tx.start_loading_timestamp && tx.queue_taken_timestamp) ? Math.max(0, tx.start_loading_timestamp - tx.queue_taken_timestamp) : 0;
+                    $('#dtLiveDuration').html(`<span class="badge bg-soft-info text-info fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-info fw-medium">(Durasi ${actionLabel})</span>`);
+                    $('#dtDurationBreakdown').text(antriSec > 0 ? `Durasi Antri sebelumnya: ${formatDuration(antriSec)}` : '');
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('modalDetailTruck'));
+                modal.show();
             });
         });
     </script>
