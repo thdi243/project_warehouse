@@ -104,14 +104,14 @@ return new class extends Migration
 
         // Seeding Data Awal Jabatan
         $initialJabatans = [
-            ['kode' => 'OPR', 'nama' => 'Operator', 'level_hierarki' => 1, 'deskripsi' => 'Pelaksana teknis lapangan'],
-            ['kode' => 'STF', 'nama' => 'Staff / Admin', 'level_hierarki' => 1, 'deskripsi' => 'Administrasi dan staf operasional'],
-            ['kode' => 'FRM', 'nama' => 'Foreman', 'level_hierarki' => 2, 'deskripsi' => 'Pengawas lini kerja'],
-            ['kode' => 'SPV', 'nama' => 'Supervisor', 'level_hierarki' => 3, 'deskripsi' => 'Penyelia bagian / shift'],
-            ['kode' => 'AST', 'nama' => 'Asisten Manager', 'level_hierarki' => 4, 'deskripsi' => 'Asisten kepala departemen'],
-            ['kode' => 'DH', 'nama' => 'Dept Head', 'level_hierarki' => 5, 'deskripsi' => 'Kepala departemen'],
-            ['kode' => 'MGR', 'nama' => 'Manager', 'level_hierarki' => 5, 'deskripsi' => 'Manajer divisi / departemen'],
-            ['kode' => 'ADM', 'nama' => 'Administrator', 'level_hierarki' => 5, 'deskripsi' => 'Administrator sistem'],
+            ['kode' => 'OPR', 'nama' => 'Operator', 'deskripsi' => 'Pelaksana teknis lapangan'],
+            ['kode' => 'STF', 'nama' => 'Staff / Admin', 'deskripsi' => 'Administrasi dan staf operasional'],
+            ['kode' => 'FRM', 'nama' => 'Foreman', 'deskripsi' => 'Pengawas lini kerja'],
+            ['kode' => 'SPV', 'nama' => 'Supervisor', 'deskripsi' => 'Penyelia bagian / shift'],
+            ['kode' => 'AST', 'nama' => 'Asisten Manager', 'deskripsi' => 'Asisten kepala departemen'],
+            ['kode' => 'DH', 'nama' => 'Dept Head', 'deskripsi' => 'Kepala departemen'],
+            ['kode' => 'MGR', 'nama' => 'Manager', 'deskripsi' => 'Manajer divisi / departemen'],
+            ['kode' => 'ADM', 'nama' => 'Administrator', 'deskripsi' => 'Administrator sistem'],
         ];
 
         foreach ($initialJabatans as $j) {
