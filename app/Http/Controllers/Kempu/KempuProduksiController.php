@@ -1155,7 +1155,7 @@ class KempuProduksiController extends Controller
             // Auto-insert step "Transfer Out To Produksi" di WPM jika kempu bypass langsung dari QC PM Release
             if ($isBypassWpm) {
                 // User ID 93 adalah akun dari database project_warehouse (BUKAN ID dari aplikasi/portal produksi)
-                $wpmWarehouseUserId = 93;
+                $wpmWarehouseUserId = 48;
                 $wpmWarehouseUser   = User::find($wpmWarehouseUserId);
 
                 if (!$wpmWarehouseUser) {
@@ -1179,7 +1179,7 @@ class KempuProduksiController extends Controller
                 $wpmOperatorName = $wpmWarehouseUser?->nama_lengkap
                     ?? $wpmWarehouseUser?->username
                     ?? $wpmWarehouseUser?->name
-                    ?? 'Eni';
+                    ?? 'Foreman';
 
                 KempuTrackingHistoryModel::create([
                     'kempu_master_id' => $kempu->id,
@@ -1191,7 +1191,7 @@ class KempuProduksiController extends Controller
                     'to_location'     => MasterKempuModel::LOC_PRODUKSI,
                     'reused_count'    => $currentReused,
                     'condition'       => $condition,
-                    'notes'           => '[Auto Generated - Bypass Transfer In Produksi]',
+                    'notes'           => '[Fisik: Barcode: Ada, RFID: Ada, Kitir: Ada] [Input Manual] [Supervisi: Bypass Alur Status PAS]',
                     'metadata'        => [
                         'app_source'        => 'warehouse', // Sumber aplikasi adalah Warehouse (project_warehouse), bukan produksi
                         'operator_name'     => $wpmOperatorName,

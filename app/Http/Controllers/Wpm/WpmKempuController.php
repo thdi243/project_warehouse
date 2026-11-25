@@ -171,7 +171,7 @@ class WpmKempuController extends Controller
         if (strcasecmp($currentStatus, MasterKempuModel::STATUS_SCRAPPED) === 0) {
             return [
                 'valid'   => false,
-                'message' => "Kempu {$idKempu} berstatus SCRAP / Afkir dan tidak dapat diproses.",
+                'message' => "Flow Salah! Kempu berstatus SCRAP dan tidak dapat diproses.",
             ];
         }
 
@@ -184,7 +184,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Kempu {$idKempu} sudah berstatus 'Transfer In From PAS' (duplikat scan). Silakan lanjutkan ke tahap pemeriksaan 'QC PM'.",
+                        'message' => "Flow Salah! Kempu sudah scan Transfer In From PAS. Silakan lanjutkan ke tahap QC PM.",
                     ];
                 }
 
@@ -201,7 +201,7 @@ class WpmKempuController extends Controller
                 if (in_array(strtolower($currentStatus), $qcPmReleaseStatuses)) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} saat ini sudah berstatus '{$currentStatus}' (Lolos QC PM). Kempu tidak dapat di-Transfer In From PAS lagi dan harus dilanjutkan ke tahap 'Transfer Out to Produksi'.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}' (Lolos QC PM). Silakan scan Transfer Out to Produksi.",
                     ];
                 }
 
@@ -215,7 +215,7 @@ class WpmKempuController extends Controller
                 if (in_array(strtolower($currentStatus), $qcPmPendingStatuses)) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus '{$currentStatus}'. Kempu sedang dalam antrean/pemeriksaan QC PM dan tidak dapat di-Transfer In From PAS. Silakan selesaikan pemeriksaan QC PM terlebih dahulu.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan oleh Tim QC PM.",
                     ];
                 }
 
@@ -226,7 +226,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus REPAIR di Workshop Engineering. Kempu harus diselesaikan perbaikannya terlebih dahulu.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu perbaikan oleh Tim Engineering.",
                     ];
                 }
 
@@ -237,7 +237,7 @@ class WpmKempuController extends Controller
                 if (!$isOldKempu && $reusedCount <= 0) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} merupakan kempu baru (siklus Reused masih 0x). Kempu baru belum pernah dikirim ke Produksi/PAS, sehingga hanya dapat diproses pada tahap 'Transfer Out To Produksi'.",
+                        'message' => "Flow Salah! Kempu baru (Reused: 0x), hanya dapat diproses pada tahap 'Transfer Out to Produksi'.",
                     ];
                 }
 
@@ -253,7 +253,7 @@ class WpmKempuController extends Controller
                 if (!$isOldKempu && in_array(strtolower($currentStatus), $initialStatuses) && !$kempu->hasPassedWfg()) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} masih berada pada tahap awal (status: '{$currentStatus}') dan belum pernah dikirim ke Produksi/PAS. Kempu harus melalui 'Transfer Out To Produksi' terlebih dahulu.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}'. Kempu baru harus melalui 'Transfer Out to Produksi'.",
                     ];
                 }
 
@@ -266,7 +266,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus 'Transfer Out to PAS' (sedang dalam perjalanan menuju PT PAS) dan belum diterima di PT PAS ('Transfer in From BAS'). Kempu harus menyelesaikan siklus penerimaan dan pengembalian di PT PAS terlebih dahulu sebelum dapat di-Transfer In ke WPM.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan oleh Tim PAS.",
                     ];
                 }
 
@@ -278,7 +278,7 @@ class WpmKempuController extends Controller
                 ])) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} saat ini masih berada di area WFG (status: '{$currentStatus}'). Kempu harus dikirim ke PT PAS terlebih dahulu.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', masih berada di area Tim WFG.",
                     ];
                 }
 
@@ -295,7 +295,7 @@ class WpmKempuController extends Controller
                     if (!self::canSupervisi($user)) {
                         return [
                             'valid'   => false,
-                            'message' => "Urutan salah: Kempu {$idKempu} masih berada di Warehouse PT PAS (status: 'Transfer in From BAS'). Kempu harus menyelesaikan pengiriman 'Transfer Out to BAS' dari PAS terlebih dahulu sebelum dapat di-Transfer In ke WPM.",
+                            'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan Transfer Out oleh Tim PAS. Anda tidak memiliki permission 'wpm-kempu-supervisi' untuk melakukan bypass step.",
                         ];
                     }
                 }
@@ -308,7 +308,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} saat ini berstatus 'Transfer Out To Produksi' (sedang menuju Produksi/WFG). Harus menyelesaikan siklus hingga PAS sebelum dapat di-Transfer In ke WPM.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu menyelesaikan pengiriman ke Tim PAS.",
                     ];
                 }
 
@@ -327,7 +327,7 @@ class WpmKempuController extends Controller
                 ])) {
                     return [
                         'valid'   => false,
-                        'message' => "Urutan salah: Kempu {$idKempu} saat ini masih berada di area Produksi (status: '{$currentStatus}').",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', masih berada di area Tim Produksi.",
                     ];
                 }
 
@@ -357,11 +357,14 @@ class WpmKempuController extends Controller
                 $isSupervisiAllowed = ($isPasReceived && self::canSupervisi($user));
 
                 if (!$isFromPas && !$isOldKempuInitialAllowed && !$isSupervisiAllowed) {
-                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
-                    return [
-                        'valid'   => false,
-                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan Transfer Out to BAS oleh Tim PAS.",
-                    ];
+                    if (!self::canSupervisi($user)) {
+                        $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
+                        return [
+                            'valid'   => false,
+                            'message' => $flowMsg ?? "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan oleh Tim PAS. Anda tidak memiliki permission 'wpm-kempu-supervisi' untuk melakukan bypass step.",
+                        ];
+                    }
+                    $isSupervisiAllowed = true;
                 }
 
                 if ($isSupervisiAllowed) {
@@ -391,7 +394,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan Transfer In From PAS oleh Tim WPM.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan Transfer In oleh Tim WPM.",
                     ];
                 }
 
@@ -405,7 +408,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan QC PM oleh Tim QC.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan oleh Tim QC PM.",
                     ];
                 }
 
@@ -420,7 +423,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu belum scan QC PM oleh Tim QC.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan oleh Tim QC PM.",
                     ];
                 }
 
@@ -432,7 +435,7 @@ class WpmKempuController extends Controller
                 ])) {
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu saat ini masih berada di area WFG.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', masih berada di area Tim WFG.",
                     ];
                 }
 
@@ -452,7 +455,7 @@ class WpmKempuController extends Controller
                 ])) {
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu saat ini masih berada di area Produksi.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', masih berada di area Tim Produksi.",
                     ];
                 }
 
@@ -464,7 +467,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Kempu sedang berstatus REPAIR di Workshop Engineering.",
+                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu perbaikan oleh Tim Engineering.",
                     ];
                 }
 
@@ -489,12 +492,16 @@ class WpmKempuController extends Controller
                 }
 
                 if (!$isQcPmReleased) {
-                    $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
-                    return [
-                        'valid'   => false,
-                        'message' => $flowMsg ?? "Flow Salah! Kempu belum scan QC PM oleh Tim QC.",
-                    ];
+                    if (!self::canSupervisi($user)) {
+                        $flowMsg = MasterKempuModel::getNextRequiredStepMessage($currentStatus);
+                        return [
+                            'valid'   => false,
+                            'message' => $flowMsg ?? "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan oleh Tim QC PM. Anda tidak memiliki permission 'wpm-kempu-supervisi' untuk melakukan bypass step.",
+                        ];
+                    }
+                    $isSupervisi = true;
                 }
+                break;
                 break;
         }
 
