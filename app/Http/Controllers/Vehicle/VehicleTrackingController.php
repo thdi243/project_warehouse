@@ -5670,9 +5670,6 @@ class VehicleTrackingController extends Controller
                 if (!empty($imagePath) && file_exists($imagePath)) {
                     $extraParams['file'] = $imagePath;
                     $extraParams['filename'] = "Laporan_Overdue_7Jam_{$targetDateStr}.jpg";
-                    if ($imageUrl) {
-                        $extraParams['url'] = $imageUrl;
-                    }
                 }
 
                 // Dispatch via Global Queue Pacing (jeda 1 - 5 menit antar pesan)
@@ -5870,7 +5867,7 @@ class VehicleTrackingController extends Controller
             $fileName = "daily_overdue_{$targetDateStr}_" . time() . ".jpg";
             $fullPath = $dir . DIRECTORY_SEPARATOR . $fileName;
 
-            imagejpeg($im, $fullPath, 92);
+            imagejpeg($im, $fullPath, 82);
             imagedestroy($im);
 
             Log::info("[VehicleTracking] Report image berhasil digenerate: {$fullPath}");

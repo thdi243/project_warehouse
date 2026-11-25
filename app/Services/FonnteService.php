@@ -158,14 +158,15 @@ class FonnteService
                 $options['proxy'] = false;
             }
 
-            $timeout = (int)config('services.fonnte.timeout', 25);
+            $hasFile = !empty($filePath) && file_exists($filePath);
+            $timeout = $hasFile ? max((int)config('services.fonnte.timeout', 25), 60) : (int)config('services.fonnte.timeout', 25);
             $connectTimeout = (int)config('services.fonnte.connect_timeout', 10);
 
             // Handle file attachment jika ada file lokal yang valid
-            $filePath = $extraParams['file'] ?? null;
-            if (!empty($filePath) && file_exists($filePath)) {
+            if ($hasFile) {
                 $filename = $extraParams['filename'] ?? basename($filePath);
                 unset($payload['file']);
+                unset($payload['url']); // Pastikan 'url' tidak dikirimkan saat file binary dilampirkan agar Fonnte tidak mencoba fetch ke internal IP (yang menyebabkan timeout)
 
                 $response = Http::withHeaders([
                     'Authorization' => $this->token,
@@ -176,6 +177,20 @@ class FonnteService
                     ->attach('file', file_get_contents($filePath), $filename)
                     ->post($this->url, $payload);
             } else {
+                // Cegah Fonnte hang jika ada parameter 'url' yang mengarah ke internal/private IP
+                if (!empty($payload['url'])) {
+                    $urlHost = parse_url($payload['url'], PHP_URL_HOST);
+                    if ($urlHost && (
+                        in_array($urlHost, ['localhost', '127.0.0.1'])
+                        || str_starts_with($urlHost, '10.')
+                        || str_starts_with($urlHost, '192.168.')
+                        || preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $urlHost)
+                    )) {
+                        Log::warning("[FonnteService] URL lampiran '{$payload['url']}' merupakan private/local IP yang tidak dapat diakses Fonnte dari internet. Parameter 'url' dihapus agar tidak timeout.");
+                        unset($payload['url']);
+                    }
+                }
+
                 $response = Http::withHeaders([
                     'Authorization' => $this->token,
                 ])
