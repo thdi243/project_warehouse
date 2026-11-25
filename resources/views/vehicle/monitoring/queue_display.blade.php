@@ -17,6 +17,7 @@
 
         <link href="{{ asset('material/assets/css/bootstrap.min.css') }}" rel="stylesheet" type="text/css" />
         <link href="{{ asset('material/assets/css/icons.min.css') }}" rel="stylesheet" type="text/css" />
+        <link href="{{ asset('assets/vehicle/edu-ticker/edu-ticker.css') }}" rel="stylesheet" type="text/css" />
 
         <!-- Laravel Reverb & Echo (Realtime WebSocket) -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
@@ -364,6 +365,13 @@
                         <small id="live-date" class="text-secondary d-none d-xl-inline" style="font-size: 10px;">--</small>
                     </div>
 
+                    <!-- Edu Motion Trigger -->
+                    <button type="button" class="btn-ctrl edu-play-btn" id="btn-edu-motion" onclick="triggerEduMotion()"
+                        title="Putar Animasi Panduan Alur Panggilan Supir">
+                        <i class="ri-film-line" style="font-size: 12px;"></i>
+                        <span>Panduan</span>
+                    </button>
+
                     <!-- Chime Audio Toggle -->
                     <button type="button" class="btn-ctrl" id="btn-audio-toggle" onclick="toggleAudio()"
                         title="Suara Panggilan">
@@ -655,16 +663,40 @@
             </div>
         </footer>
 
-        <!-- Bootstrap & Icons JS -->
-        <script src="{{ asset('material/assets/js/bootstrap.bundle.min.js') }}"></script>
+        <!-- Bootstrap, GSAP & EduTicker JS -->
+        <script src="{{ asset('material/assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+        <script src="{{ asset('assets/vendor/gsap/gsap.min.js') }}"></script>
+        <script src="{{ asset('assets/vehicle/edu-ticker/edu-ticker.js') }}"></script>
 
         <script>
             // State variables
             let currentArea = "{{ $area ?? 'wfg' }}";
             let previousCalledIds = new Set();
+            let latestCallingList = [];
             let soundEnabled = true;
             let refreshSeconds = 5;
             let refreshTimerInterval = null;
+
+            function getAreaDisplayLabel(area) {
+                return area === 'wfg' ? 'WFG & SMU' : 'WRM & WPM';
+            }
+
+            // Putar / hentikan animasi panduan supir secara manual
+            function triggerEduMotion() {
+                if (!window.EduTicker) return;
+                if (EduTicker.isPlaying()) {
+                    EduTicker.stop();
+                    return;
+                }
+                const first = latestCallingList.length > 0 ? latestCallingList[0] : null;
+                EduTicker.play({
+                    force: true,
+                    nopol: first ? first.no_pol : 'Truk Anda',
+                    dock: first ? (first.category_label || first.area || getAreaDisplayLabel(currentArea)) : getAreaDisplayLabel(currentArea),
+                    targets: latestCallingList,
+                    reason: 'manual'
+                });
+            }
 
             // Clock & Date updater
             function updateClock() {
@@ -769,6 +801,10 @@
                     document.getElementById('view-wrm').style.display = 'block';
                 }
 
+                if (window.EduTicker) {
+                    EduTicker.setArea(getAreaDisplayLabel(newArea));
+                }
+
                 // Immediately fetch data
                 fetchQueueData();
             }
@@ -788,7 +824,13 @@
                     }
 
                     // Check for new calls & play chime
-                    handleCallingAlerts(data.calling || []);
+                    latestCallingList = Array.isArray(data.calling) ? data.calling : [];
+                    handleCallingAlerts(latestCallingList);
+
+                    // Smart trigger EduTicker jika ada truk dipanggil >= 5 menit belum merapat
+                    if (window.EduTicker) {
+                        EduTicker.evaluate(latestCallingList);
+                    }
 
                 } catch (err) {
                     console.error('Error fetching queue data:', err);
@@ -1155,6 +1197,15 @@
 
             // Initialize on DOM load
             document.addEventListener('DOMContentLoaded', () => {
+                if (window.EduTicker) {
+                    EduTicker.init({
+                        areaLabel: getAreaDisplayLabel(currentArea),
+                        intervalMinutes: 10,
+                        smartDelayMinutes: 5,
+                        cooldownMinutes: 3,
+                        onNotif: playChime
+                    });
+                }
                 fetchQueueData();
                 initReverb();
                 startPollingTimer();

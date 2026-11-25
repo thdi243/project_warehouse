@@ -5364,6 +5364,11 @@ class VehicleTrackingController extends Controller
             // Lempar ke Queue dengan Global Sequential Pacing (jeda 1 - 5 menit antar pesan di seluruh sistem)
             app(FonnteService::class)->queueMessage($cleanPhone, $message, 120, [], "Panggilan Manual Truk {$noPol}");
 
+            // Catat waktu panggilan di transaksi agar terbaca sebagai DIPANGGIL di Display TV & Smart Trigger EduTicker
+            if (empty($transaction->notif_prepare_at) || Carbon::parse($transaction->notif_prepare_at)->diffInMinutes(Carbon::now(), true) > 30) {
+                $transaction->update(['notif_prepare_at' => Carbon::now()]);
+            }
+
             $currentUser = Auth::user();
             $userName = $currentUser ? ($currentUser->nama_lengkap ?: $currentUser->username) : 'Pengawas';
             Cache::put($cooldownKey, [
@@ -6313,6 +6318,7 @@ class VehicleTrackingController extends Controller
                     'is_overnight' => $isOvernight,
                     'is_called' => $isCalled,
                     'called_at' => $tx->notif_prepare_at ? Carbon::parse($tx->notif_prepare_at)->format('H:i') : null,
+                    'called_minutes' => $tx->notif_prepare_at ? (int) Carbon::parse($tx->notif_prepare_at)->diffInMinutes($now, true) : null,
                     'queue_time' => $tx->queue_taken_time ? Carbon::parse($tx->queue_taken_time)->format('H:i') : ($tx->check_in_time ? Carbon::parse($tx->check_in_time)->format('H:i') : '-'),
                 ];
 
@@ -6386,6 +6392,7 @@ class VehicleTrackingController extends Controller
                         'is_overnight' => $isOvernight,
                         'is_called' => $isCalled,
                         'called_at' => $tx->notif_prepare_at ? Carbon::parse($tx->notif_prepare_at)->format('H:i') : null,
+                        'called_minutes' => $tx->notif_prepare_at ? (int) Carbon::parse($tx->notif_prepare_at)->diffInMinutes($now, true) : null,
                         'queue_time' => $tx->queue_taken_time ? Carbon::parse($tx->queue_taken_time)->format('H:i') : ($tx->check_in_time ? Carbon::parse($tx->check_in_time)->format('H:i') : '-'),
                     ];
                 }),
@@ -6454,6 +6461,7 @@ class VehicleTrackingController extends Controller
                         'is_overnight' => $isOvernight,
                         'is_called' => $isCalled,
                         'called_at' => $tx->notif_prepare_at ? Carbon::parse($tx->notif_prepare_at)->format('H:i') : null,
+                        'called_minutes' => $tx->notif_prepare_at ? (int) Carbon::parse($tx->notif_prepare_at)->diffInMinutes($now, true) : null,
                         'queue_time' => $tx->check_in_time ? Carbon::parse($tx->check_in_time)->format('H:i') : '-',
                     ];
                 });
@@ -6516,6 +6524,7 @@ class VehicleTrackingController extends Controller
                         'is_overnight' => $isOvernight,
                         'is_called' => $isCalled,
                         'called_at' => $tx->notif_prepare_at ? Carbon::parse($tx->notif_prepare_at)->format('H:i') : null,
+                        'called_minutes' => $tx->notif_prepare_at ? (int) Carbon::parse($tx->notif_prepare_at)->diffInMinutes($now, true) : null,
                         'queue_time' => $tx->check_in_time ? Carbon::parse($tx->check_in_time)->format('H:i') : '-',
                     ];
                 });

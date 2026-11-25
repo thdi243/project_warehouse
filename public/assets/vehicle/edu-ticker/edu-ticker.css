@@ -1,0 +1,57 @@
+/* ==========================================================================
+   Edu Ticker — Motion edukasi alur panggilan supir (TV Display Antrian)
+   Overlay strip di bawah navbar, hanya tampil saat diputar (display:none saat idle).
+   ========================================================================== */
+
+.edu-ticker {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: var(--edu-top, 38px);
+    z-index: 90;
+    display: none;
+    padding: 6px 12px 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+.edu-ticker__inner {
+    max-width: 1900px;
+    margin: 0 auto;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #0b1220;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.35);
+}
+
+.edu-ticker__svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1600 / 220;
+}
+
+.edu-ticker text {
+    font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Typography (unit = viewBox 1600x220) */
+.edu-t-chip      { font-size: 13px; font-weight: 800; letter-spacing: 0.8px; fill: #e0f2fe; }
+.edu-t-step      { font-size: 14px; font-weight: 800; letter-spacing: 1px; fill: #94a3b8; }
+.edu-t-title     { font-size: 20px; font-weight: 800; fill: #f8fafc; }
+.edu-t-sub       { font-size: 14px; font-weight: 500; fill: #94a3b8; }
+.edu-t-num       { font-size: 12px; font-weight: 900; fill: #0b1220; }
+.edu-t-p         { font-size: 24px; font-weight: 900; fill: #ffffff; }
+.edu-t-truck     { font-size: 10px; font-weight: 900; letter-spacing: 1px; fill: #dc2626; }
+.edu-t-wa-name   { font-size: 12px; font-weight: 700; fill: #e9edef; }
+.edu-t-wa-status { font-size: 10px; font-weight: 500; fill: #8696a0; }
+.edu-t-wa-strong { font-size: 12.5px; font-weight: 800; fill: #ffffff; }
+.edu-t-wa-body   { font-size: 11.5px; font-weight: 500; fill: #d1d7db; }
+.edu-t-wa-reply  { font-size: 12px; font-weight: 700; fill: #ffffff; }
+.edu-t-cta-title { font-size: 46px; font-weight: 900; letter-spacing: 0.5px; fill: #ffffff; }
+.edu-t-cta-sub   { font-size: 21px; font-weight: 600; fill: #fff7ed; }
+.edu-t-cta-target{ font-size: 19px; font-weight: 800; fill: #fef08a; }
+
+/* Tombol putar manual (opsional, di navbar) */
+.edu-play-btn .ri-film-line { color: #7c3aed; }
