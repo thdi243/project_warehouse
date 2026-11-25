@@ -5632,6 +5632,10 @@ class VehicleTrackingController extends Controller
             ];
         }
 
+        // Hitung pembagian per section
+        $wfgSmuCount = count(array_filter($overdueList, fn($r) => in_array($r['area'], ['WFG', 'SMU'])));
+        $wrmWpmCount = count(array_filter($overdueList, fn($r) => in_array($r['area'], ['WRM', 'WPM'])));
+
         // Generate Infographic Image Report (JPEG)
         $imagePath = $this->generateDailyOverdueReportImage($overdueList, $formattedDate, $closedCount, $openCount, $targetDateStr);
         $imageUrl = $imagePath ? asset('storage/reports/overdue/' . basename($imagePath)) : null;
@@ -5657,7 +5661,10 @@ class VehicleTrackingController extends Controller
                         . "• Total Overdue : *" . count($overdueList) . " Truk* (> 7 Jam)\n"
                         . "• Status Closed : *{$closedCount} Truk* (Sudah Keluar)\n"
                         . "• Status Open   : *{$openCount} Truk* (Masih di Pabrik)\n\n"
-                        . "📎 *Rincian unit kendaraan terlampir lengkap pada gambar di atas.*\n\n";
+                        . "🏢 *Klasifikasi Section:*\n"
+                        . "• WFG & SMU : *{$wfgSmuCount} Truk*\n"
+                        . "• WRM & WPM : *{$wrmWpmCount} Truk*\n\n"
+                        . "📎 *Rincian unit kendaraan per section terlampir lengkap pada gambar di atas.*\n\n";
                 }
 
                 $rawMessage .= "{Demikian laporan ini kami sampaikan, terima kasih banyak atas arahan dan perhatiannya Bapak/Ibu|Laporan disampaikan untuk menjadi periksa, terima kasih banyak atas arahan dan bimbingannya}. 🙏"
@@ -5700,9 +5707,28 @@ class VehicleTrackingController extends Controller
             $width = 960;
             $hasData = !empty($overdueList);
             $rowCount = count($overdueList);
-            $rowHeight = 42;
-            $tableHeight = $hasData ? (44 + ($rowCount * $rowHeight)) : 140;
-            $height = 245 + $tableHeight + 105;
+
+            // Klasifikasi data per section: WFG & SMU vs WRM & WPM
+            $wfgSmuList = array_values(array_filter($overdueList, fn($row) => in_array($row['area'], ['WFG', 'SMU'])));
+            $wrmWpmList = array_values(array_filter($overdueList, fn($row) => in_array($row['area'], ['WRM', 'WPM'])));
+
+            $countWfgSmu = count($wfgSmuList);
+            $countWrmWpm = count($wrmWpmList);
+
+            $secHeaderH = 38;
+            $colHeaderH = 36;
+            $rowHeight  = 40;
+            $emptyH     = 46;
+
+            $sec1BodyH  = ($countWfgSmu > 0) ? ($colHeaderH + ($countWfgSmu * $rowHeight)) : $emptyH;
+            $sec1TotalH = $secHeaderH + $sec1BodyH;
+
+            $sec2BodyH  = ($countWrmWpm > 0) ? ($colHeaderH + ($countWrmWpm * $rowHeight)) : $emptyH;
+            $sec2TotalH = $secHeaderH + $sec2BodyH;
+
+            $secSpacing = 20;
+            $tableTotalH = $hasData ? ($sec1TotalH + $secSpacing + $sec2TotalH) : 140;
+            $height = 216 + $tableTotalH + 85;
 
             $im = imagecreatetruecolor($width, $height);
 
@@ -5770,7 +5796,7 @@ class VehicleTrackingController extends Controller
             // 1. Top Header Card (Clean White with Red Accent Stripe)
             imagefilledrectangle($im, 30, 25, $width - 30, 108, $cCardBg);
             imagerectangle($im, 30, 25, $width - 30, 108, $cCardBorder);
-            // Red accent stripe on top of card
+            // Accent stripe on top of card
             imagefilledrectangle($im, 30, 25, $width - 30, 29, $hasData ? $cBasRed : $cGreen);
 
             // Header Texts (Tanpa "LOGISTICS", hanya WAREHOUSE)
@@ -5807,82 +5833,160 @@ class VehicleTrackingController extends Controller
             $drawText(9, $x3 + 18, $kpiY + 26, $cTextMuted, "STATUS OPEN (DI PABRIK)", true);
             $drawText(22, $x3 + 18, $kpiY + 62, $cAmber, (string)$openCount . " Truk", true);
 
-            // 3. Table Container (Clean White Box)
-            $tableY = 216;
-            imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cCardBg);
-            imagerectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cCardBorder);
+            // 3. Section Table Renderer Helper
+            $renderSectionTable = function (
+                string $title,
+                int $accentColor,
+                array $rows,
+                int $startY,
+                string $emptyText
+            ) use (
+                $im, $width, $drawText, $rowHeight, $colHeaderH, $secHeaderH,
+                $cCardBg, $cCardBorder, $cHeaderBg, $cCanvasBg, $cRowAlt, $cRowBorder,
+                $cTextDark, $cTextBody, $cTextMuted, $cBasRed, $cRedSoftBg, $cRedBorder,
+                $cGreen, $cGreenBg, $cGreenBorder, $cGreenDark,
+                $cAmber, $cAmberBg, $cAmberBorder, $cAmberDark,
+                $cBlue, $cBlueBg, $cBlueBorder,
+                $cPurple, $cPurpleBg, $cPurpleBorder
+            ): int {
+                $count = count($rows);
+                $emptyH = 46;
+                $bodyH = ($count > 0) ? ($colHeaderH + ($count * $rowHeight)) : $emptyH;
+                $totalH = $secHeaderH + $bodyH;
+
+                // Box Container
+                imagefilledrectangle($im, 30, $startY, $width - 30, $startY + $totalH, $cCardBg);
+                imagerectangle($im, 30, $startY, $width - 30, $startY + $totalH, $cCardBorder);
+
+                // Section Header Bar
+                imagefilledrectangle($im, 30, $startY, $width - 30, $startY + $secHeaderH, $cHeaderBg);
+                imageline($im, 30, $startY + $secHeaderH, $width - 30, $startY + $secHeaderH, $cCardBorder);
+
+                // Left accent bar (5px)
+                imagefilledrectangle($im, 30, $startY, 35, $startY + $secHeaderH, $accentColor);
+
+                // Title
+                $drawText(11, 48, $startY + 24, $cTextDark, $title, true);
+
+                // Right Badge
+                if ($count > 0) {
+                    $badgeTxt = "{$count} Truk Overdue";
+                    $bx2 = $width - 45;
+                    $bx1 = $bx2 - 125;
+                    imagefilledrectangle($im, $bx1, $startY + 7, $bx2, $startY + 30, $cRedSoftBg);
+                    imagerectangle($im, $bx1, $startY + 7, $bx2, $startY + 30, $cRedBorder);
+                    $drawText(9, $bx1 + 14, $startY + 22, $cBasRed, $badgeTxt, true);
+                } else {
+                    $badgeTxt = "0 Truk (Aman)";
+                    $bx2 = $width - 45;
+                    $bx1 = $bx2 - 105;
+                    imagefilledrectangle($im, $bx1, $startY + 7, $bx2, $startY + 30, $cGreenBg);
+                    imagerectangle($im, $bx1, $startY + 7, $bx2, $startY + 30, $cGreenBorder);
+                    $drawText(9, $bx1 + 14, $startY + 22, $cGreenDark, $badgeTxt, true);
+                }
+
+                if ($count === 0) {
+                    // Empty message row
+                    $drawText(10, 52, $startY + $secHeaderH + 28, $cGreenDark, $emptyText, false);
+                } else {
+                    // Column Header Bar
+                    $chY = $startY + $secHeaderH;
+                    imagefilledrectangle($im, 31, $chY, $width - 31, $chY + $colHeaderH, $cCanvasBg);
+                    imageline($im, 30, $chY + $colHeaderH, $width - 30, $chY + $colHeaderH, $cCardBorder);
+
+                    $drawText(10, 52, $chY + 23, $cTextBody, "NO", true);
+                    $drawText(10, 100, $chY + 23, $cTextBody, "NO. POLISI", true);
+                    $drawText(10, 275, $chY + 23, $cTextBody, "AREA DOCK", true);
+                    $drawText(10, 420, $chY + 23, $cTextBody, "JAM MASUK", true);
+                    $drawText(10, 580, $chY + 23, $cTextBody, "STATUS", true);
+                    $drawText(10, 745, $chY + 23, $cTextBody, "TOTAL DURASI", true);
+
+                    // Data Rows
+                    $currRowY = $chY + $colHeaderH;
+                    foreach ($rows as $idx => $row) {
+                        if ($idx % 2 === 1) {
+                            imagefilledrectangle($im, 31, $currRowY, $width - 31, $currRowY + $rowHeight - 1, $cRowAlt);
+                        }
+                        imageline($im, 30, $currRowY + $rowHeight, $width - 30, $currRowY + $rowHeight, $cRowBorder);
+
+                        $textY = $currRowY + 26;
+
+                        // Col 1: No
+                        $drawText(10, 54, $textY, $cTextMuted, (string)($idx + 1), false);
+
+                        // Col 2: Nopol
+                        $drawText(12, 100, $textY, $cTextDark, $row['nopol'], true);
+
+                        // Col 3: Area Badge
+                        [$areaBg, $areaBrd, $areaTxt] = match ($row['area']) {
+                            'WRM' => [$cGreenBg, $cGreenBorder, $cGreenDark],
+                            'SMU' => [$cAmberBg, $cAmberBorder, $cAmberDark],
+                            'WPM' => [$cBlueBg, $cBlueBorder, $cBlue],
+                            default => [$cPurpleBg, $cPurpleBorder, $cPurple], // WFG
+                        };
+                        imagefilledrectangle($im, 270, $currRowY + 8, 345, $currRowY + 30, $areaBg);
+                        imagerectangle($im, 270, $currRowY + 8, 345, $currRowY + 30, $areaBrd);
+                        $drawText(10, 288, $textY - 2, $areaTxt, $row['area'], true);
+
+                        // Col 4: Jam Masuk
+                        $drawText(10, 420, $textY, $cTextBody, $row['check_in'], false);
+
+                        // Col 5: Status Badge
+                        $isClosed = ($row['status'] === 'Closed');
+                        $statusBg  = $isClosed ? $cGreenBg : $cRedSoftBg;
+                        $statusBrd = $isClosed ? $cGreenBorder : $cRedBorder;
+                        $statusTxt = $isClosed ? $cGreenDark : $cBasRed;
+
+                        imagefilledrectangle($im, 575, $currRowY + 8, 660, $currRowY + 30, $statusBg);
+                        imagerectangle($im, 575, $currRowY + 8, 660, $currRowY + 30, $statusBrd);
+                        $drawText(10, 592, $textY - 2, $statusTxt, strtoupper($row['status']), true);
+
+                        // Col 6: Durasi
+                        $drawText(12, 745, $textY, $cBasRed, $row['duration_str'], true);
+
+                        $currRowY += $rowHeight;
+                    }
+                }
+
+                return $totalH;
+            };
+
+            $currY = 216;
 
             if (!$hasData) {
                 // Normal State Banner (Clean Light Green Box)
-                imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cGreenBg);
-                imagerectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cGreenBorder);
-                $drawText(15, 60, $tableY + 55, $cGreenDark, "✓ KONDISI OPERASIONAL NORMAL (SLA AMAN)", true);
-                $drawText(11, 60, $tableY + 85, $cGreenDark, "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7 Jam pada periode ini.", false);
-                $drawText(10, 60, $tableY + 110, $cTextMuted, "Semua proses bongkar dan muat kendaraan berjalan sesuai standar operasional pabrik.", false);
-                $currY = $tableY + $tableHeight;
+                imagefilledrectangle($im, 30, $currY, $width - 30, $currY + $tableTotalH, $cGreenBg);
+                imagerectangle($im, 30, $currY, $width - 30, $currY + $tableTotalH, $cGreenBorder);
+                $drawText(15, 60, $currY + 55, $cGreenDark, "✓ KONDISI OPERASIONAL NORMAL (SLA AMAN)", true);
+                $drawText(11, 60, $currY + 85, $cGreenDark, "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7 Jam pada periode ini.", false);
+                $drawText(10, 60, $currY + 110, $cTextMuted, "Semua proses bongkar dan muat kendaraan berjalan sesuai standar operasional pabrik.", false);
+                $currY += $tableTotalH;
             } else {
-                // Table Header (Soft Slate 100)
-                imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + 40, $cHeaderBg);
-                imageline($im, 30, $tableY + 40, $width - 30, $tableY + 40, $cCardBorder);
+                // Section 1: WFG & SMU
+                $sec1Height = $renderSectionTable(
+                    "SECTION 1 • AREA WFG & SMU (FINISH GOODS)",
+                    $cPurple,
+                    $wfgSmuList,
+                    $currY,
+                    "✓ Kondisi Aman: Tidak ada kendaraan overdue (> 7 Jam) di area WFG & SMU."
+                );
+                $currY += $sec1Height + $secSpacing;
 
-                $drawText(10, 52, $tableY + 26, $cTextBody, "NO", true);
-                $drawText(10, 100, $tableY + 26, $cTextBody, "NO. POLISI", true);
-                $drawText(10, 275, $tableY + 26, $cTextBody, "AREA DOCK", true);
-                $drawText(10, 420, $tableY + 26, $cTextBody, "JAM MASUK", true);
-                $drawText(10, 580, $tableY + 26, $cTextBody, "STATUS", true);
-                $drawText(10, 745, $tableY + 26, $cTextBody, "TOTAL DURASI", true);
-
-                // Table Rows
-                $currY = $tableY + 40;
-                foreach ($overdueList as $idx => $row) {
-                    if ($idx % 2 === 1) {
-                        imagefilledrectangle($im, 31, $currY, $width - 31, $currY + $rowHeight - 1, $cRowAlt);
-                    }
-                    imageline($im, 30, $currY + $rowHeight, $width - 30, $currY + $rowHeight, $cRowBorder);
-
-                    $textY = $currY + 27;
-
-                    // Col 1: No
-                    $drawText(10, 54, $textY, $cTextMuted, (string)($idx + 1), false);
-
-                    // Col 2: Nopol (Bold Dark Text)
-                    $drawText(12, 100, $textY, $cTextDark, $row['nopol'], true);
-
-                    // Col 3: Area Badge (Soft Pill Style)
-                    [$areaBg, $areaBrd, $areaTxt] = match ($row['area']) {
-                        'WRM' => [$cGreenBg, $cGreenBorder, $cGreenDark],
-                        'SMU' => [$cAmberBg, $cAmberBorder, $cAmberDark],
-                        'WPM' => [$cBlueBg, $cBlueBorder, $cBlue],
-                        default => [$cPurpleBg, $cPurpleBorder, $cPurple], // WFG
-                    };
-                    imagefilledrectangle($im, 270, $currY + 9, 345, $currY + 31, $areaBg);
-                    imagerectangle($im, 270, $currY + 9, 345, $currY + 31, $areaBrd);
-                    $drawText(10, 288, $textY - 2, $areaTxt, $row['area'], true);
-
-                    // Col 4: Jam Masuk
-                    $drawText(10, 420, $textY, $cTextBody, $row['check_in'], false);
-
-                    // Col 5: Status Badge (Soft Pill Style)
-                    $isClosed = ($row['status'] === 'Closed');
-                    $statusBg  = $isClosed ? $cGreenBg : $cRedSoftBg;
-                    $statusBrd = $isClosed ? $cGreenBorder : $cRedBorder;
-                    $statusTxt = $isClosed ? $cGreenDark : $cBasRed;
-
-                    imagefilledrectangle($im, 575, $currY + 9, 660, $currY + 31, $statusBg);
-                    imagerectangle($im, 575, $currY + 9, 660, $currY + 31, $statusBrd);
-                    $drawText(10, 592, $textY - 2, $statusTxt, strtoupper($row['status']), true);
-
-                    // Col 6: Durasi (Bersih tanpa icon missing glyph emoji)
-                    $drawText(12, 745, $textY, $cBasRed, $row['duration_str'], true);
-
-                    $currY += $rowHeight;
-                }
+                // Section 2: WRM & WPM
+                $sec2Height = $renderSectionTable(
+                    "SECTION 2 • AREA WRM & WPM (RAW & PACKAGING MATERIAL)",
+                    $cBlue,
+                    $wrmWpmList,
+                    $currY,
+                    "✓ Kondisi Aman: Tidak ada kendaraan overdue (> 7 Jam) di area WRM & WPM."
+                );
+                $currY += $sec2Height;
             }
 
             // 4. Legend & Footer Notes
-            $footerY = $currY + 26;
+            $footerY = $currY + 24;
             $drawText(9, 35, $footerY, $cTextMuted, "Catatan: Standar SLA kendaraan di area pabrik maksimal 7 Jam. Data dilaporkan otomatis kepada Dept Head Warehouse.", false);
-            $drawText(9, 35, $footerY + 20, $cTextLight, "PT BAS Warehouse Management System • Auto-Notification Engine", true);
+            $drawText(9, 35, $footerY + 18, $cTextLight, "PT BAS Warehouse Management System • Auto-Notification Engine", true);
 
             // Ensure directory exists
             $dir = storage_path('app/public/reports/overdue');
