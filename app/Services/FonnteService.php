@@ -161,14 +161,30 @@ class FonnteService
             $timeout = (int)config('services.fonnte.timeout', 25);
             $connectTimeout = (int)config('services.fonnte.connect_timeout', 10);
 
-            $response = Http::withHeaders([
-                'Authorization' => $this->token,
-            ])
-                ->withOptions($options)
-                ->timeout($timeout)
-                ->connectTimeout($connectTimeout)
-                ->asForm()
-                ->post($this->url, $payload);
+            // Handle file attachment jika ada file lokal yang valid
+            $filePath = $extraParams['file'] ?? null;
+            if (!empty($filePath) && file_exists($filePath)) {
+                $filename = $extraParams['filename'] ?? basename($filePath);
+                unset($payload['file']);
+
+                $response = Http::withHeaders([
+                    'Authorization' => $this->token,
+                ])
+                    ->withOptions($options)
+                    ->timeout($timeout)
+                    ->connectTimeout($connectTimeout)
+                    ->attach('file', file_get_contents($filePath), $filename)
+                    ->post($this->url, $payload);
+            } else {
+                $response = Http::withHeaders([
+                    'Authorization' => $this->token,
+                ])
+                    ->withOptions($options)
+                    ->timeout($timeout)
+                    ->connectTimeout($connectTimeout)
+                    ->asForm()
+                    ->post($this->url, $payload);
+            }
 
             $data = $response->json();
 

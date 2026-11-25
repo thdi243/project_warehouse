@@ -44,7 +44,7 @@ Schedule::call(function () {
     ->between('07:00', '23:59')
     ->withoutOverlapping();
 
-// Daily Report SLA Kendaraan: Truck Duration > 7.5 jam ke Dept Head Warehouse
+// Daily Report SLA Kendaraan: Truck Duration > 7 jam ke Dept Head Warehouse
 // Berjalan setiap hari pukul 07:00 pagi (merekap hari sebelumnya & truk yang masih open)
 Schedule::call(function () {
     app(\App\Http\Controllers\Vehicle\VehicleTrackingController::class)->sendDailyOverdueDurationReport();
@@ -52,10 +52,10 @@ Schedule::call(function () {
     ->dailyAt('07:00')
     ->withoutOverlapping();
 
-// Command manual untuk menjalankan atau test Daily Report Truck Duration > 7.5 jam
+// Command manual untuk menjalankan atau test Daily Report Truck Duration > 7 jam
 Artisan::command('vehicle:report-duration {--date= : Tanggal periode evaluasi (format: YYYY-MM-DD, default: kemarin)}', function () {
     $date = $this->option('date');
-    $this->info("Menjalankan Daily Report Truck Duration (>7.5h) untuk tanggal: " . ($date ?: 'kemarin'));
+    $this->info("Menjalankan Daily Report Truck Duration (>7 jam) untuk tanggal: " . ($date ?: 'kemarin'));
     $result = app(\App\Http\Controllers\Vehicle\VehicleTrackingController::class)->sendDailyOverdueDurationReport($date);
     $this->info("Hasil: " . json_encode($result, JSON_PRETTY_PRINT));
-})->purpose('Kirim Daily Report Truck Duration > 7.5 jam ke Dept Head Warehouse');
+})->purpose('Kirim Daily Report Truck Duration > 7 jam ke Dept Head Warehouse');

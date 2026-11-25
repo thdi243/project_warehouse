@@ -5531,8 +5531,9 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * 4. Daily Report: Overdue Truck Duration (> 7.5 Jam) untuk Dept Head Warehouse.
+     * 4. Daily Report: Overdue Truck Duration (> 7 Jam) untuk Dept Head Warehouse.
      * Dijalankan setiap jam 07:00 pagi untuk merekap kendaraan hari sebelumnya (atau yang masih Open).
+     * Disertai attachment infografis gambar (JPEG) hasil generate otomatis.
      */
     public function sendDailyOverdueDurationReport(?string $date = null): array
     {
@@ -5541,7 +5542,7 @@ class VehicleTrackingController extends Controller
         $targetDateStr = $targetDate->toDateString();
         $formattedDate = $targetDate->translatedFormat('d F Y');
 
-        Log::info("[VehicleTracking] Memulai Daily Report Truck Duration (>7.5h) untuk periode: {$targetDateStr}");
+        Log::info("[VehicleTracking] Memulai Daily Report Truck Duration (>7h) untuk periode: {$targetDateStr}");
 
         // Ambil transaksi yang beroperasi pada targetDate ATAU yang saat ini masih Open
         $txs = VehicleTransaction::with(['vehicle', 'targetLocation', 'currentLocation'])
@@ -5583,7 +5584,7 @@ class VehicleTrackingController extends Controller
                 $statusLabel = 'Open';
             }
 
-            if ($durationMinutes >= 450) { // >= 7.5 jam
+            if ($durationMinutes >= 420) { // >= 7.0 jam (420 menit)
                 $hours = floor($durationMinutes / 60);
                 $mins = (int) $durationMinutes % 60;
 
@@ -5631,9 +5632,12 @@ class VehicleTrackingController extends Controller
             ];
         }
 
+        // Generate Infographic Image Report (JPEG)
+        $imagePath = $this->generateDailyOverdueReportImage($overdueList, $formattedDate, $closedCount, $openCount, $targetDateStr);
+        $imageUrl = $imagePath ? asset('storage/reports/overdue/' . basename($imagePath)) : null;
+
         $fonnte = app(FonnteService::class);
         $sentCount = 0;
-        $delayAccumulative = 0;
         $greetingHour = (Carbon::now()->format('H') < 12) ? '{Selamat pagi|Pagi}' : '{Selamat siang|Siang}';
 
         foreach ($deptHeads as $dh) {
@@ -5642,30 +5646,18 @@ class VehicleTrackingController extends Controller
                 $footer = $this->dynamicMessageFooter('REPORT-DH');
 
                 $rawMessage = "{$greetingHour} Bapak/Ibu *{$dhName}*,\n\n"
-                    . "Izin menyampaikan laporan ringkasan harian kendaraan dengan durasi di area pabrik melebihi 7.5 Jam untuk periode *{$formattedDate}*:\n\n";
+                    . "Izin menyampaikan laporan ringkasan harian kendaraan dengan durasi di area pabrik melebihi 7 Jam untuk periode *{$formattedDate}*:\n\n";
 
                 if (empty($overdueList)) {
                     $rawMessage .= "✅ *Kondisi Operasional Normal (SLA Aman)*\n"
-                        . "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7.5 Jam pada periode ini. Semua alur berjalan sesuai standar operasional.\n\n";
+                        . "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7 Jam pada periode ini. Semua alur berjalan sesuai standar operasional.\n\n"
+                        . "Infografis status terlampir pada gambar di atas.\n\n";
                 } else {
-                    $rawMessage .= "Daftar unit kendaraan durasi > 7.5 Jam:\n\n"
-                        . "```\n"
-                        . str_pad("TRUCK", 13) . str_pad("STATUS", 9) . str_pad("DURASI", 10) . "AREA\n"
-                        . str_repeat("-", 38) . "\n";
-
-                    foreach ($overdueList as $item) {
-                        $line = str_pad($item['nopol'], 13)
-                            . str_pad($item['status'], 9)
-                            . str_pad($item['duration_str'], 10)
-                            . $item['area'];
-                        $rawMessage .= $line . "\n";
-                    }
-
-                    $rawMessage .= "```\n\n"
-                        . "*Keterangan Status:*\n"
-                        . "• *Closed* : Truk sudah selesai & timbang keluar.\n"
-                        . "• *Open*   : Truk masih berada di dalam pabrik.\n\n"
-                        . "Total tercatat *" . count($overdueList) . " mobil* ({$closedCount} Closed, {$openCount} Masih Open).\n\n";
+                    $rawMessage .= "📊 *Ringkasan Evaluasi:*\n"
+                        . "• Total Overdue : *" . count($overdueList) . " Truk* (> 7 Jam)\n"
+                        . "• Status Closed : *{$closedCount} Truk* (Sudah Keluar)\n"
+                        . "• Status Open   : *{$openCount} Truk* (Masih di Pabrik)\n\n"
+                        . "📎 *Rincian unit kendaraan terlampir lengkap pada gambar di atas.*\n\n";
                 }
 
                 $rawMessage .= "{Demikian laporan ini kami sampaikan, terima kasih banyak atas arahan dan perhatiannya Bapak/Ibu|Laporan disampaikan untuk menjadi periksa, terima kasih banyak atas arahan dan bimbingannya}. 🙏"
@@ -5674,8 +5666,17 @@ class VehicleTrackingController extends Controller
                 $message = $this->parseSpintax($rawMessage);
                 $cleanPhone = preg_replace('/[^0-9]/', '', $dh->no_hp);
 
+                $extraParams = [];
+                if (!empty($imagePath) && file_exists($imagePath)) {
+                    $extraParams['file'] = $imagePath;
+                    $extraParams['filename'] = "Laporan_Overdue_7Jam_{$targetDateStr}.jpg";
+                    if ($imageUrl) {
+                        $extraParams['url'] = $imageUrl;
+                    }
+                }
+
                 // Dispatch via Global Queue Pacing (jeda 1 - 5 menit antar pesan)
-                $fonnte->queueMessage($cleanPhone, $message, 120, [], "Daily Report Dept Head - {$dhName}");
+                $fonnte->queueMessage($cleanPhone, $message, 120, $extraParams, "Daily Report Dept Head - {$dhName}");
                 $sentCount++;
             }
         }
@@ -5686,8 +5687,198 @@ class VehicleTrackingController extends Controller
             'status' => true,
             'sent_count' => $sentCount,
             'overdue_count' => count($overdueList),
-            'target_date' => $targetDateStr
+            'target_date' => $targetDateStr,
+            'image_path' => $imagePath,
+            'image_url' => $imageUrl
         ];
+    }
+
+    /**
+     * Generate visual image report (JPEG) untuk Daily Report Overdue Duration (> 7 Jam).
+     */
+    public function generateDailyOverdueReportImage(array $overdueList, string $formattedDate, int $closedCount, int $openCount, string $targetDateStr): ?string
+    {
+        try {
+            $width = 920;
+            $hasData = !empty($overdueList);
+            $rowCount = count($overdueList);
+            $rowHeight = 44;
+            $tableHeight = $hasData ? (45 + ($rowCount * $rowHeight)) : 140;
+            $height = 250 + $tableHeight + 115;
+
+            $im = imagecreatetruecolor($width, $height);
+
+            // Colors
+            $cBg = imagecolorallocate($im, 15, 23, 42);           // #0f172a slate-900
+            $cCard = imagecolorallocate($im, 30, 41, 59);         // #1e293b slate-800
+            $cCardBorder = imagecolorallocate($im, 51, 65, 85);   // #334155 slate-700
+            $cWhite = imagecolorallocate($im, 255, 255, 255);
+            $cTextMuted = imagecolorallocate($im, 148, 163, 184); // #94a3b8 slate-400
+            $cGold = imagecolorallocate($im, 245, 158, 11);       // #f59e0b amber-500
+            $cRed = imagecolorallocate($im, 239, 68, 68);         // #ef4444 red-500
+            $cRedSoft = imagecolorallocate($im, 254, 202, 202);   // #fecaca
+            $cGreen = imagecolorallocate($im, 16, 185, 129);      // #10b981 emerald-500
+            $cGreenBg = imagecolorallocate($im, 6, 78, 59);       // #064e3b
+            $cGreenText = imagecolorallocate($im, 110, 231, 183); // #6ee7b7
+            $cBlue = imagecolorallocate($im, 59, 130, 246);       // #3b82f6 blue-500
+            $cRowAlt = imagecolorallocate($im, 24, 34, 53);
+            $cHeaderBg = imagecolorallocate($im, 39, 53, 77);
+
+            // Fill background
+            imagefilledrectangle($im, 0, 0, $width, $height, $cBg);
+
+            // Determine fonts
+            $fontBold = 'C:\\Windows\\Fonts\\arialbd.ttf';
+            $fontReg = 'C:\\Windows\\Fonts\\arial.ttf';
+            if (!file_exists($fontBold)) {
+                $fontBold = public_path('material/assets/fonts/hkgrotesk-bold.ttf');
+            }
+            if (!file_exists($fontReg)) {
+                $fontReg = $fontBold;
+            }
+            $useTtf = file_exists($fontBold);
+
+            // Helper text renderer
+            $drawText = function ($size, $x, $y, $color, $text, $isBold = false) use ($im, $useTtf, $fontBold, $fontReg) {
+                if ($useTtf) {
+                    $font = $isBold ? $fontBold : $fontReg;
+                    imagettftext($im, $size, 0, $x, $y, $color, $font, $text);
+                } else {
+                    $gdFont = $isBold ? 5 : 4;
+                    imagestring($im, $gdFont, $x, $y - 12, $text, $color);
+                }
+            };
+
+            // 1. Top Header Banner
+            imagefilledrectangle($im, 30, 25, $width - 30, 105, $cCard);
+            imagerectangle($im, 30, 25, $width - 30, 105, $cCardBorder);
+            imagefilledrectangle($im, 30, 25, $width - 30, 29, $hasData ? $cRed : $cGreen);
+
+            $drawText(11, 50, 52, $cGold, "PT BUMI ALAM SEGAR • WAREHOUSE & LOGISTICS", true);
+            $drawText(16, 50, 78, $cWhite, "DAILY REPORT: OVERDUE KENDARAAN (> 7 JAM)", true);
+            $drawText(10, 50, 97, $cTextMuted, "Periode Evaluasi: " . $formattedDate . "  |  Dibuat: " . date('d/m/Y H:i') . " WIB", false);
+
+            // 2. Three KPI Summary Cards
+            $cardW = (int)(($width - 60 - 30) / 3);
+            $kpiY = 120;
+            $kpiH = 75;
+
+            // Card 1: Total Overdue
+            $x1 = 30;
+            imagefilledrectangle($im, $x1, $kpiY, $x1 + $cardW, $kpiY + $kpiH, $cCard);
+            imagerectangle($im, $x1, $kpiY, $x1 + $cardW, $kpiY + $kpiH, $cCardBorder);
+            imagefilledrectangle($im, $x1, $kpiY, $x1 + 4, $kpiY + $kpiH, $hasData ? $cRed : $cGreen);
+            $drawText(9, $x1 + 18, $kpiY + 24, $cTextMuted, "TOTAL OVERDUE (>7 JAM)", true);
+            $drawText(22, $x1 + 18, $kpiY + 60, $hasData ? $cRed : $cGreen, (string)$rowCount . " Truk", true);
+
+            // Card 2: Closed
+            $x2 = $x1 + $cardW + 15;
+            imagefilledrectangle($im, $x2, $kpiY, $x2 + $cardW, $kpiY + $kpiH, $cCard);
+            imagerectangle($im, $x2, $kpiY, $x2 + $cardW, $kpiY + $kpiH, $cCardBorder);
+            imagefilledrectangle($im, $x2, $kpiY, $x2 + 4, $kpiY + $kpiH, $cBlue);
+            $drawText(9, $x2 + 18, $kpiY + 24, $cTextMuted, "STATUS CLOSED (KELUAR)", true);
+            $drawText(22, $x2 + 18, $kpiY + 60, $cBlue, (string)$closedCount . " Truk", true);
+
+            // Card 3: Open
+            $x3 = $x2 + $cardW + 15;
+            imagefilledrectangle($im, $x3, $kpiY, $x3 + $cardW, $kpiY + $kpiH, $cCard);
+            imagerectangle($im, $x3, $kpiY, $x3 + $cardW, $kpiY + $kpiH, $cCardBorder);
+            imagefilledrectangle($im, $x3, $kpiY, $x3 + 4, $kpiY + $kpiH, $cGold);
+            $drawText(9, $x3 + 18, $kpiY + 24, $cTextMuted, "STATUS OPEN (DI PABRIK)", true);
+            $drawText(22, $x3 + 18, $kpiY + 60, $cGold, (string)$openCount . " Truk", true);
+
+            // 3. Table / Banner Container
+            $tableY = 215;
+            imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cCard);
+            imagerectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cCardBorder);
+
+            if (!$hasData) {
+                // Normal State Banner
+                imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cGreenBg);
+                imagerectangle($im, 30, $tableY, $width - 30, $tableY + $tableHeight, $cGreen);
+                $drawText(15, 60, $tableY + 55, $cWhite, "✓ KONDISI OPERASIONAL NORMAL (SLA AMAN)", true);
+                $drawText(11, 60, $tableY + 85, $cGreenText, "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7 Jam pada periode ini.", false);
+                $drawText(10, 60, $tableY + 110, $cGreenText, "Semua proses bongkar dan muat kendaraan berjalan sesuai standar operasional pabrik.", false);
+                $currY = $tableY + $tableHeight;
+            } else {
+                // Table Header
+                imagefilledrectangle($im, 30, $tableY, $width - 30, $tableY + 40, $cHeaderBg);
+                imageline($im, 30, $tableY + 40, $width - 30, $tableY + 40, $cCardBorder);
+
+                $drawText(10, 50, $tableY + 26, $cWhite, "NO", true);
+                $drawText(10, 95, $tableY + 26, $cWhite, "NO. POLISI", true);
+                $drawText(10, 260, $tableY + 26, $cWhite, "AREA DOCK", true);
+                $drawText(10, 400, $tableY + 26, $cWhite, "JAM MASUK", true);
+                $drawText(10, 560, $tableY + 26, $cWhite, "STATUS", true);
+                $drawText(10, 725, $tableY + 26, $cWhite, "TOTAL DURASI", true);
+
+                // Table Rows
+                $currY = $tableY + 40;
+                foreach ($overdueList as $idx => $row) {
+                    if ($idx % 2 === 1) {
+                        imagefilledrectangle($im, 31, $currY, $width - 31, $currY + $rowHeight - 1, $cRowAlt);
+                    }
+                    imageline($im, 30, $currY + $rowHeight, $width - 30, $currY + $rowHeight, $cCardBorder);
+
+                    $textY = $currY + 27;
+
+                    // Col 1: No
+                    $drawText(10, 52, $textY, $cTextMuted, (string)($idx + 1), true);
+
+                    // Col 2: Nopol
+                    $drawText(12, 95, $textY, $cWhite, $row['nopol'], true);
+
+                    // Col 3: Area Badge
+                    $areaColor = match($row['area']) {
+                        'WRM' => $cGreen,
+                        'SMU' => $cGold,
+                        'WPM' => $cBlue,
+                        default => imagecolorallocate($im, 168, 85, 247), // WFG Purple
+                    };
+                    imagefilledrectangle($im, 258, $currY + 10, 335, $currY + 32, $cBg);
+                    imagerectangle($im, 258, $currY + 10, 335, $currY + 32, $areaColor);
+                    $drawText(10, 275, $textY - 2, $areaColor, $row['area'], true);
+
+                    // Col 4: Jam Masuk
+                    $drawText(10, 400, $textY, $cTextMuted, $row['check_in'], false);
+
+                    // Col 5: Status Badge
+                    $statusBg = ($row['status'] === 'Closed') ? imagecolorallocate($im, 22, 78, 99) : imagecolorallocate($im, 120, 53, 15);
+                    $statusText = ($row['status'] === 'Closed') ? imagecolorallocate($im, 103, 232, 249) : imagecolorallocate($im, 253, 186, 116);
+                    imagefilledrectangle($im, 558, $currY + 10, 645, $currY + 32, $statusBg);
+                    imagerectangle($im, 558, $currY + 10, 645, $currY + 32, $statusText);
+                    $drawText(10, 575, $textY - 2, $statusText, strtoupper($row['status']), true);
+
+                    // Col 6: Durasi (Red bold)
+                    $drawText(12, 725, $textY, $cRedSoft, "⏱ " . $row['duration_str'], true);
+
+                    $currY += $rowHeight;
+                }
+            }
+
+            // 4. Legend & Footer Notes
+            $footerY = $currY + 28;
+            $drawText(9, 40, $footerY, $cTextMuted, "Catatan: Standar SLA kendaraan di pabrik maksimal 7 Jam. Data di atas dilaporkan otomatis kepada Dept Head Warehouse.", false);
+            $drawText(9, 40, $footerY + 22, $cGold, "PT BAS Warehouse Management System • Auto-Notification Engine", true);
+
+            // Ensure directory exists
+            $dir = storage_path('app/public/reports/overdue');
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            $fileName = "daily_overdue_{$targetDateStr}_" . time() . ".jpg";
+            $fullPath = $dir . DIRECTORY_SEPARATOR . $fileName;
+
+            imagejpeg($im, $fullPath, 92);
+            imagedestroy($im);
+
+            Log::info("[VehicleTracking] Report image berhasil digenerate: {$fullPath}");
+            return $fullPath;
+        } catch (\Throwable $e) {
+            Log::error("[VehicleTracking] Gagal generate report image: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**
@@ -5796,7 +5987,7 @@ class VehicleTrackingController extends Controller
     /**
      * Check and trigger SLA Overdue Alerts:
      * Loading/unloading exceeding 2 hours (120 mins).
-     * (Catatan: Truck duration > 7.5 jam dilaporkan via daily report setiap 07:00 pagi ke Dept Head).
+     * (Catatan: Truck duration > 7 jam dilaporkan via daily report setiap 07:00 pagi ke Dept Head dengan infografis gambar).
      */
     public function checkOverdueVehicles(): array
     {
