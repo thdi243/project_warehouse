@@ -291,14 +291,14 @@ class WpmKempuController extends Controller
                     strtolower(MasterKempuModel::STATUS_PAS_RECEIVED),
                 ]);
 
-                if ($isPasReceived) {
-                    if (!self::canSupervisi($user)) {
-                        return [
-                            'valid'   => false,
-                            'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan Transfer Out oleh Tim PAS. Anda tidak memiliki permission 'wpm-kempu-supervisi' untuk melakukan bypass step.",
-                        ];
-                    }
-                }
+                // if ($isPasReceived) {
+                //     if (!self::canSupervisi($user)) {
+                //         return [
+                //             'valid'   => false,
+                //             'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan Transfer Out oleh Tim PAS. Anda tidak memiliki permission 'wpm-kempu-supervisi' untuk melakukan bypass step.",
+                //         ];
+                //     }
+                // }
 
                 // 10. Cek jika masih di status Transfer Out To Produksi atau area Produksi
                 if (
@@ -354,7 +354,9 @@ class WpmKempuController extends Controller
                 $isOldKempuInitialAllowed = ($isOldKempu && $isInitialRegistration && $reusedCount <= 0 && !$kempu->hasPassedWfg());
 
                 // Pengecualian Supervisi: User dengan permission 'wpm-kempu-supervisi' dapat melewatkan validasi alur PAS
-                $isSupervisiAllowed = ($isPasReceived && self::canSupervisi($user));
+                // Di-comment pengecekan canSupervisi agar pengawas tanpa permission wpm-kempu-supervisi tetap bisa scan jika dari PAS belum scan out
+                // $isSupervisiAllowed = ($isPasReceived && self::canSupervisi($user));
+                $isSupervisiAllowed = $isPasReceived;
 
                 if (!$isFromPas && !$isOldKempuInitialAllowed && !$isSupervisiAllowed) {
                     if (!self::canSupervisi($user)) {
