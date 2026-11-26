@@ -5536,7 +5536,7 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * 4. Daily Report: Overdue Truck Duration (> 7 Jam) untuk Dept Head Warehouse.
+     * 4. Daily Report: Overdue Truck Duration (> 7.5 Jam) untuk Dept Head Warehouse.
      * Dijalankan setiap jam 07:00 pagi untuk merekap kendaraan hari sebelumnya (atau yang masih Open).
      * Disertai attachment infografis gambar (JPEG) hasil generate otomatis.
      */
@@ -5547,7 +5547,7 @@ class VehicleTrackingController extends Controller
         $targetDateStr = $targetDate->toDateString();
         $formattedDate = $targetDate->translatedFormat('d F Y');
 
-        Log::info("[VehicleTracking] Memulai Daily Report Truck Duration (>7h) untuk periode: {$targetDateStr}");
+        Log::info("[VehicleTracking] Memulai Daily Report Truck Duration (>7.5h) untuk periode: {$targetDateStr}");
 
         // Ambil transaksi yang beroperasi pada targetDate ATAU yang saat ini masih Open
         $txs = VehicleTransaction::with(['vehicle', 'targetLocation', 'currentLocation'])
@@ -5566,10 +5566,28 @@ class VehicleTrackingController extends Controller
         $overdueList = [];
         $closedCount = 0;
         $openCount = 0;
+        $totalProcessedWfgSmu = 0;
+        $totalProcessedWrmWpm = 0;
 
         foreach ($txs as $tx) {
             if (!$tx->check_in_time) {
                 continue;
+            }
+
+            // Tentukan area kendaraan
+            $area = 'WFG';
+            if (str_contains((string) $tx->status, 'wrm') || ($tx->targetLocation && $tx->targetLocation->s_loc === 'B006')) {
+                $area = 'WRM';
+            } elseif (str_contains((string) $tx->status, 'wpm') || ($tx->targetLocation && $tx->targetLocation->s_loc === 'C001')) {
+                $area = 'WPM';
+            } elseif (str_contains((string) $tx->status, 'smu') || ($tx->targetLocation && in_array($tx->targetLocation->s_loc, ['SMU', 'A002']))) {
+                $area = 'SMU';
+            }
+
+            if (in_array($area, ['WFG', 'SMU'])) {
+                $totalProcessedWfgSmu++;
+            } else {
+                $totalProcessedWrmWpm++;
             }
 
             $checkIn = Carbon::parse($tx->check_in_time);
@@ -5589,19 +5607,9 @@ class VehicleTrackingController extends Controller
                 $statusLabel = 'Open';
             }
 
-            if ($durationMinutes >= 420) { // >= 7.0 jam (420 menit)
+            if ($durationMinutes >= 450) { // >= 7.5 jam (450 menit)
                 $hours = floor($durationMinutes / 60);
                 $mins = (int) $durationMinutes % 60;
-
-                // Tentukan area
-                $area = 'WFG';
-                if (str_contains($tx->status, 'wrm') || ($tx->targetLocation && $tx->targetLocation->s_loc === 'B006')) {
-                    $area = 'WRM';
-                } elseif (str_contains($tx->status, 'wpm') || ($tx->targetLocation && $tx->targetLocation->s_loc === 'C001')) {
-                    $area = 'WPM';
-                } elseif (str_contains($tx->status, 'smu')) {
-                    $area = 'SMU';
-                }
 
                 $nopol = $tx->vehicle ? $tx->vehicle->no_pol : 'N/A';
 
@@ -5622,6 +5630,10 @@ class VehicleTrackingController extends Controller
             }
         }
 
+        $totalProcessedAll = $totalProcessedWfgSmu + $totalProcessedWrmWpm;
+        $wfgSmuCount = count(array_filter($overdueList, fn($r) => in_array($r['area'], ['WFG', 'SMU'])));
+        $wrmWpmCount = count(array_filter($overdueList, fn($r) => in_array($r['area'], ['WRM', 'WPM'])));
+
         // Ambil Dept Head Warehouse yang aktif
         $deptHeads = User::where('departemen', 'warehouse')
             ->where('jabatan', 'dept_head')
@@ -5633,13 +5645,12 @@ class VehicleTrackingController extends Controller
             return [
                 'status' => false,
                 'message' => 'Dept Head Warehouse tidak ditemukan',
-                'overdue_count' => count($overdueList)
+                'overdue_count' => count($overdueList),
+                'total_processed' => $totalProcessedAll,
+                'wfg_smu_processed' => $totalProcessedWfgSmu,
+                'wrm_wpm_processed' => $totalProcessedWrmWpm,
             ];
         }
-
-        // Hitung pembagian per section
-        $wfgSmuCount = count(array_filter($overdueList, fn($r) => in_array($r['area'], ['WFG', 'SMU'])));
-        $wrmWpmCount = count(array_filter($overdueList, fn($r) => in_array($r['area'], ['WRM', 'WPM'])));
 
         // Generate Infographic Image Report (JPEG)
         $imagePath = $this->generateDailyOverdueReportImage($overdueList, $formattedDate, $closedCount, $openCount, $targetDateStr);
@@ -5655,20 +5666,25 @@ class VehicleTrackingController extends Controller
                 $footer = $this->dynamicMessageFooter('REPORT-DH');
 
                 $rawMessage = "{$greetingHour} Bapak/Ibu *{$dhName}*,\n\n"
-                    . "Izin menyampaikan laporan ringkasan harian kendaraan dengan durasi di area pabrik melebihi 7 Jam untuk periode *{$formattedDate}*:\n\n";
+                    . "Izin menyampaikan laporan ringkasan harian kendaraan dengan durasi di area pabrik melebihi 7.5 Jam untuk periode *{$formattedDate}*:\n\n";
 
                 if (empty($overdueList)) {
                     $rawMessage .= "✅ *Kondisi Operasional Normal (SLA Aman)*\n"
-                        . "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7 Jam pada periode ini. Semua alur berjalan sesuai standar operasional.\n\n"
+                        . "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7.5 Jam pada periode ini. Semua alur berjalan sesuai standar operasional.\n\n"
+                        . "📊 *Ringkasan Evaluasi:*\n"
+                        . "• Total Truk Masuk & Diproses : *{$totalProcessedAll} Truk*\n"
+                        . "• *WFG & SMU* : Masuk/Diproses *{$totalProcessedWfgSmu} Truk* | Overdue *0 Truk*\n"
+                        . "• *WRM & WPM* : Masuk/Diproses *{$totalProcessedWrmWpm} Truk* | Overdue *0 Truk*\n"
+                        . "• Total Overdue (> 7.5 Jam)   : *0 Truk*\n\n"
                         . "Infografis status terlampir pada gambar di atas.\n\n";
                 } else {
                     $rawMessage .= "📊 *Ringkasan Evaluasi:*\n"
-                        . "• Total Overdue : *" . count($overdueList) . " Truk* (> 7 Jam)\n"
-                        . "• Status Closed : *{$closedCount} Truk* (Sudah Keluar)\n"
-                        . "• Status Open   : *{$openCount} Truk* (Masih di Pabrik)\n\n"
-                        . "🏢 *Klasifikasi Section:*\n"
-                        . "• WFG & SMU : *{$wfgSmuCount} Truk*\n"
-                        . "• WRM & WPM : *{$wrmWpmCount} Truk*\n\n"
+                        . "• Total Truk Masuk & Diproses : *{$totalProcessedAll} Truk*\n"
+                        . "• *WFG & SMU* : Masuk/Diproses *{$totalProcessedWfgSmu} Truk* | Overdue *{$wfgSmuCount} Truk*\n"
+                        . "• *WRM & WPM* : Masuk/Diproses *{$totalProcessedWrmWpm} Truk* | Overdue *{$wrmWpmCount} Truk*\n"
+                        . "• Total Overdue (> 7.5 Jam)   : *" . count($overdueList) . " Truk*\n"
+                        . "• Status Overdue Closed       : *{$closedCount} Truk* (Sudah Keluar)\n"
+                        . "• Status Overdue Open         : *{$openCount} Truk* (Masih di Pabrik)\n\n"
                         . "📎 *Rincian unit kendaraan per section terlampir lengkap pada gambar di atas.*\n\n";
                 }
 
@@ -5681,7 +5697,7 @@ class VehicleTrackingController extends Controller
                 $extraParams = [];
                 if (!empty($imagePath) && file_exists($imagePath)) {
                     $extraParams['file'] = $imagePath;
-                    $extraParams['filename'] = "Laporan_Overdue_7Jam_{$targetDateStr}.jpg";
+                    $extraParams['filename'] = "Laporan_Overdue_7.5Jam_{$targetDateStr}.jpg";
                 }
 
                 // Dispatch via Global Queue Pacing (jeda 1 - 5 menit antar pesan)
@@ -5690,12 +5706,17 @@ class VehicleTrackingController extends Controller
             }
         }
 
-        Log::info("[VehicleTracking] Daily Report Overdue Duration berhasil dikirim ke {$sentCount} Dept Head. Total overdue: " . count($overdueList));
+        Log::info("[VehicleTracking] Daily Report Overdue Duration berhasil dikirim ke {$sentCount} Dept Head. Total diproses: {$totalProcessedAll}, Total overdue: " . count($overdueList));
 
         return [
             'status' => true,
             'sent_count' => $sentCount,
+            'total_processed' => $totalProcessedAll,
+            'wfg_smu_processed' => $totalProcessedWfgSmu,
+            'wrm_wpm_processed' => $totalProcessedWrmWpm,
             'overdue_count' => count($overdueList),
+            'wfg_smu_overdue' => $wfgSmuCount,
+            'wrm_wpm_overdue' => $wrmWpmCount,
             'target_date' => $targetDateStr,
             'image_path' => $imagePath,
             'image_url' => $imageUrl
@@ -5703,7 +5724,7 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * Generate visual image report (JPEG) untuk Daily Report Overdue Duration (> 7 Jam).
+     * Generate visual image report (JPEG) untuk Daily Report Overdue Duration (> 7.5 Jam).
      * Didesain dengan tema Clean White / Modern Dashboard yang rapi, profesional, dan kontras tinggi.
      */
     public function generateDailyOverdueReportImage(array $overdueList, string $formattedDate, int $closedCount, int $openCount, string $targetDateStr): ?string
@@ -5806,7 +5827,7 @@ class VehicleTrackingController extends Controller
 
             // Header Texts (Tanpa "LOGISTICS", hanya WAREHOUSE)
             $drawText(11, 52, 54, $cBasRed, "PT BUMI ALAM SEGAR • WAREHOUSE", true);
-            $drawText(17, 52, 80, $cTextDark, "DAILY REPORT: OVERDUE KENDARAAN (> 7 JAM)", true);
+            $drawText(17, 52, 80, $cTextDark, "DAILY REPORT: OVERDUE KENDARAAN (> 7.5 JAM)", true);
             $drawText(10, 52, 100, $cTextMuted, "Periode Evaluasi: " . $formattedDate . "   |   Dibuat: " . date('d/m/Y H:i') . " WIB", false);
 
             // 2. Three KPI Summary Cards (Clean White with colored left accent bars)
@@ -5819,7 +5840,7 @@ class VehicleTrackingController extends Controller
             imagefilledrectangle($im, $x1, $kpiY, $x1 + $cardW, $kpiY + $kpiH, $cCardBg);
             imagerectangle($im, $x1, $kpiY, $x1 + $cardW, $kpiY + $kpiH, $cCardBorder);
             imagefilledrectangle($im, $x1, $kpiY, $x1 + 4, $kpiY + $kpiH, $hasData ? $cBasRed : $cGreen);
-            $drawText(9, $x1 + 18, $kpiY + 26, $cTextMuted, "TOTAL OVERDUE (> 7 JAM)", true);
+            $drawText(9, $x1 + 18, $kpiY + 26, $cTextMuted, "TOTAL OVERDUE (> 7.5 JAM)", true);
             $drawText(22, $x1 + 18, $kpiY + 62, $hasData ? $cBasRed : $cGreen, (string)$rowCount . " Truk", true);
 
             // Card 2: Closed
@@ -5963,7 +5984,7 @@ class VehicleTrackingController extends Controller
                 imagefilledrectangle($im, 30, $currY, $width - 30, $currY + $tableTotalH, $cGreenBg);
                 imagerectangle($im, 30, $currY, $width - 30, $currY + $tableTotalH, $cGreenBorder);
                 $drawText(15, 60, $currY + 55, $cGreenDark, "✓ KONDISI OPERASIONAL NORMAL (SLA AMAN)", true);
-                $drawText(11, 60, $currY + 85, $cGreenDark, "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7 Jam pada periode ini.", false);
+                $drawText(11, 60, $currY + 85, $cGreenDark, "Alhamdulillah tidak tercatat kendaraan yang melebihi batas durasi 7.5 Jam pada periode ini.", false);
                 $drawText(10, 60, $currY + 110, $cTextMuted, "Semua proses bongkar dan muat kendaraan berjalan sesuai standar operasional pabrik.", false);
                 $currY += $tableTotalH;
             } else {
@@ -5973,7 +5994,7 @@ class VehicleTrackingController extends Controller
                     $cPurple,
                     $wfgSmuList,
                     $currY,
-                    "✓ Kondisi Aman: Tidak ada kendaraan overdue (> 7 Jam) di area WFG & SMU."
+                    "✓ Kondisi Aman: Tidak ada kendaraan overdue (> 7.5 Jam) di area WFG & SMU."
                 );
                 $currY += $sec1Height + $secSpacing;
 
@@ -5983,14 +6004,14 @@ class VehicleTrackingController extends Controller
                     $cBlue,
                     $wrmWpmList,
                     $currY,
-                    "✓ Kondisi Aman: Tidak ada kendaraan overdue (> 7 Jam) di area WRM & WPM."
+                    "✓ Kondisi Aman: Tidak ada kendaraan overdue (> 7.5 Jam) di area WRM & WPM."
                 );
                 $currY += $sec2Height;
             }
 
             // 4. Legend & Footer Notes
             $footerY = $currY + 24;
-            $drawText(9, 35, $footerY, $cTextMuted, "Catatan: Standar SLA kendaraan di area pabrik maksimal 7 Jam. Data dilaporkan otomatis kepada Dept Head Warehouse.", false);
+            $drawText(9, 35, $footerY, $cTextMuted, "Catatan: Standar SLA kendaraan di area pabrik maksimal 7.5 Jam. Data dilaporkan otomatis kepada Dept Head Warehouse.", false);
             $drawText(9, 35, $footerY + 18, $cTextLight, "PT BAS Warehouse Management System • Auto-Notification Engine", true);
 
             // Ensure directory exists
