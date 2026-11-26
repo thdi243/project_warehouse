@@ -1254,13 +1254,17 @@
                     }
                 }
 
-                // 1.1 Stage Dwell Time Breakdown (Operasional murni tanpa QC)
+                // 1.1 Stage Dwell Time Breakdown (Operasional murni, QC Sampling muncul jika filter area spesifik)
                 function renderStageBreakdown(c1) {
                     const stages = c1.stages;
                     if (!stages) return;
                     const stageKeys = Object.keys(stages);
                     const categories = stageKeys.map(k => stages[k].name.toUpperCase());
                     const avgValues = stageKeys.map(k => stages[k].avg_min);
+
+                    const palette = stageKeys.includes('qc_sampling')
+                        ? ['#3b82f6', '#8b5cf6', '#0ea5e9', '#06b6d4', '#10b981']
+                        : ['#3b82f6', '#0ea5e9', '#06b6d4', '#10b981'];
 
                     const optionsStage = {
                         series: [{
@@ -1269,7 +1273,7 @@
                         }],
                         chart: {
                             type: 'bar',
-                            height: 250,
+                            height: stageKeys.length > 4 ? 275 : 250,
                             toolbar: {
                                 show: false
                             },
@@ -1279,14 +1283,14 @@
                             bar: {
                                 horizontal: true,
                                 borderRadius: 4,
-                                barHeight: '52%',
+                                barHeight: stageKeys.length > 4 ? '58%' : '52%',
                                 distributed: true,
                                 dataLabels: {
                                     position: 'bottom'
                                 }
                             }
                         },
-                        colors: ['#3b82f6', '#0ea5e9', '#06b6d4', '#10b981'],
+                        colors: palette,
                         dataLabels: {
                             enabled: true,
                             textAnchor: 'start',
@@ -1298,7 +1302,7 @@
                             },
                             formatter: function(val, opt) {
                                 const k = stageKeys[opt.dataPointIndex];
-                                return stages[k].avg_formatted || val + ' mnt';
+                                return stages[k]?.avg_formatted || (val + ' mnt');
                             },
                             offsetX: 6
                         },

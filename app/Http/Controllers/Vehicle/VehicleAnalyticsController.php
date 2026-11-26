@@ -445,6 +445,36 @@ class VehicleAnalyticsController extends Controller
     }
 
     /**
+     * Determine if specific area filter is active and if it represents SMU & WFG area.
+     *
+     * @return array{0: bool, 1: bool} [$isSpecificArea, $isSmuWfg]
+     */
+    private function resolveAreaFilter(Request $request): array
+    {
+        $locId = strtolower(trim((string) $request->input('location_id', 'all')));
+        $isSpecificArea = !empty($locId) && $locId !== 'all';
+        $isSmuWfg = false;
+
+        if ($isSpecificArea) {
+            if (in_array($locId, ['smu_wfg', '4,5', '4', '5'])) {
+                $isSmuWfg = true;
+            } elseif (is_numeric($locId)) {
+                $loc = Location::find($locId);
+                if ($loc) {
+                    $nameUpper = strtoupper($loc->name);
+                    $slocUpper = strtoupper((string) $loc->s_loc);
+                    $isSmuWfg = in_array((int) $loc->id, [4, 5])
+                        || in_array($slocUpper, ['A001', 'A002'])
+                        || str_contains($nameUpper, 'SMU')
+                        || str_contains($nameUpper, 'WFG');
+                }
+            }
+        }
+
+        return [$isSpecificArea, $isSmuWfg];
+    }
+
+    /**
      * 2. Section: Operations (Stage Durations, Real Loading Bay Time, Frequent Trucks)
      */
     private function getOperations(Request $request, Carbon $start, Carbon $end, int $slaThreshold)
@@ -453,12 +483,19 @@ class VehicleAnalyticsController extends Controller
             ->orderBy('check_in_time', 'asc')
             ->get();
 
+        [$isSpecificArea, $isSmuWfg] = $this->resolveAreaFilter($request);
+
         $stageDefs = [
             'pos1_ke_timbangan' => ['name' => 'POS 1 KE TIMBANGAN', 'desc' => 'Pos 1 Security ke Check-in Timbangan Masuk', 'durations' => []],
-            'antrian_dock' => ['name' => 'ANTRIAN MENUJU DOCK', 'desc' => 'Check-in Timbangan ke Ambil Antrian / Menuju Dock', 'durations' => []],
-            'bongkar_muat' => ['name' => 'BONGKAR / MUAT', 'desc' => 'Mulai Bongkar/Muat hingga Selesai di Dock', 'durations' => []],
-            'checkout_timbangan' => ['name' => 'CHECK-OUT TIMBANGAN', 'desc' => 'Timbangan Keluar ke Check-Out Timbangan', 'durations' => []],
         ];
+
+        if ($isSpecificArea) {
+            $stageDefs['qc_sampling'] = ['name' => 'QC SAMPLING', 'desc' => 'Sampling & Uji Mutu Bahan oleh Tim QC', 'durations' => []];
+        }
+
+        $stageDefs['antrian_dock'] = ['name' => 'ANTRIAN MENUJU DOCK', 'desc' => 'Check-in Timbangan ke Ambil Antrian / Menuju Dock', 'durations' => []];
+        $stageDefs['bongkar_muat'] = ['name' => 'BONGKAR / MUAT', 'desc' => 'Mulai Bongkar/Muat hingga Selesai di Dock', 'durations' => []];
+        $stageDefs['checkout_timbangan'] = ['name' => 'CHECK-OUT TIMBANGAN', 'desc' => 'Timbangan Keluar ke Check-Out Timbangan', 'durations' => []];
 
         $truckVisits = [];
         $loadingBayTimes = [];
@@ -475,6 +512,12 @@ class VehicleAnalyticsController extends Controller
 
             if ($pos1 && $tmbIn && $tmbIn->gte($pos1)) {
                 $stageDefs['pos1_ke_timbangan']['durations'][] = $pos1->diffInMinutes($tmbIn);
+            }
+
+            if ($isSpecificArea && !$isSmuWfg) {
+                if ($tx->start_sampling_time && $tx->finish_sampling_time && $tx->finish_sampling_time->gte($tx->start_sampling_time)) {
+                    $stageDefs['qc_sampling']['durations'][] = $tx->start_sampling_time->diffInMinutes($tx->finish_sampling_time);
+                }
             }
 
             $nextAfterTmb = $queueTime ?: $startLoad;
@@ -556,6 +599,19 @@ class VehicleAnalyticsController extends Controller
         $maxStageAvg = 0;
 
         foreach ($stageDefs as $k => $s) {
+            if ($k === 'qc_sampling' && $isSmuWfg) {
+                $stageResults[$k] = [
+                    'name' => $s['name'],
+                    'desc' => $s['desc'],
+                    'avg_min' => 0,
+                    'min_min' => 0,
+                    'max_min' => 0,
+                    'avg_formatted' => '0 Menit',
+                    'sample_count' => 0,
+                ];
+                continue;
+            }
+
             $vals = $s['durations'];
             $cnt = count($vals);
             $avg = $cnt > 0 ? round(array_sum($vals) / $cnt) : 0;
@@ -1034,8 +1090,10 @@ class VehicleAnalyticsController extends Controller
 
         $formatDur = fn($min) => $this->formatDuration($min);
 
+        [$isSpecificArea, $isSmuWfg] = $this->resolveAreaFilter($request);
+
         // =========================================================================
-        // 1. ANALISA WAKTU & BOTTLENECK (STAGE DURATIONS - TANPA SAMPLING QC)
+        // 1. ANALISA WAKTU & BOTTLENECK (STAGE DURATIONS)
         // =========================================================================
         $stageDefs = [
             'pos1_ke_timbangan' => [
@@ -1043,21 +1101,30 @@ class VehicleAnalyticsController extends Controller
                 'desc' => 'Pos 1 Security ke Check-in Timbangan Masuk',
                 'durations' => []
             ],
-            'antrian_dock' => [
-                'name' => 'ANTRIAN MENUJU DOCK',
-                'desc' => 'Check-in Timbangan ke Ambil Antrian / Menuju Dock',
+        ];
+
+        if ($isSpecificArea) {
+            $stageDefs['qc_sampling'] = [
+                'name' => 'QC SAMPLING',
+                'desc' => 'Sampling & Uji Mutu Bahan oleh Tim QC',
                 'durations' => []
-            ],
-            'bongkar_muat' => [
-                'name' => 'BONGKAR / MUAT',
-                'desc' => 'Mulai Bongkar/Muat hingga Selesai di Dock',
-                'durations' => []
-            ],
-            'checkout_timbangan' => [
-                'name' => 'CHECK-OUT TIMBANGAN',
-                'desc' => 'Timbangan Keluar ke Check-Out Timbangan',
-                'durations' => []
-            ],
+            ];
+        }
+
+        $stageDefs['antrian_dock'] = [
+            'name' => 'ANTRIAN MENUJU DOCK',
+            'desc' => 'Check-in Timbangan ke Ambil Antrian / Menuju Dock',
+            'durations' => []
+        ];
+        $stageDefs['bongkar_muat'] = [
+            'name' => 'BONGKAR / MUAT',
+            'desc' => 'Mulai Bongkar/Muat hingga Selesai di Dock',
+            'durations' => []
+        ];
+        $stageDefs['checkout_timbangan'] = [
+            'name' => 'CHECK-OUT TIMBANGAN',
+            'desc' => 'Timbangan Keluar ke Check-Out Timbangan',
+            'durations' => []
         ];
 
         // Hourly Check-ins Series for POS 1 (Jam 1 s/d 24)
@@ -1191,6 +1258,13 @@ class VehicleAnalyticsController extends Controller
             // 1. Pos 1 ke Timbangan Masuk: checkin_pos1 -> check_in_time
             if ($pos1 && $tmbIn && $tmbIn->gte($pos1)) {
                 $stageDefs['pos1_ke_timbangan']['durations'][] = $pos1->diffInMinutes($tmbIn);
+            }
+
+            // QC Sampling: start_sampling_time -> finish_sampling_time
+            if ($isSpecificArea && !$isSmuWfg) {
+                if ($tx->start_sampling_time && $tx->finish_sampling_time && $tx->finish_sampling_time->gte($tx->start_sampling_time)) {
+                    $stageDefs['qc_sampling']['durations'][] = $tx->start_sampling_time->diffInMinutes($tx->finish_sampling_time);
+                }
             }
 
             // 2. Antrian Menuju Dock: check_in_time -> queue_taken_time (fallback ke start_loading, tanpa sampling)
@@ -1409,6 +1483,19 @@ class VehicleAnalyticsController extends Controller
         $maxStageAvg = 0;
 
         foreach ($stageDefs as $k => $s) {
+            if ($k === 'qc_sampling' && $isSmuWfg) {
+                $stageResults[$k] = [
+                    'name' => $s['name'],
+                    'desc' => $s['desc'],
+                    'avg_min' => 0,
+                    'min_min' => 0,
+                    'max_min' => 0,
+                    'avg_formatted' => '0 Menit',
+                    'sample_count' => 0,
+                ];
+                continue;
+            }
+
             $vals = $s['durations'];
             $cnt = count($vals);
             $avg = $cnt > 0 ? round(array_sum($vals) / $cnt) : 0;
