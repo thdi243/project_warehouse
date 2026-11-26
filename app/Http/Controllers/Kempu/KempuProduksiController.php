@@ -478,7 +478,7 @@ class KempuProduksiController extends Controller
             if ($isReject) {
                 return [
                     'valid'   => false,
-                    'message' => "Flow Salah! Kempu belum scan Repair oleh Tim Engineering.",
+                    'message' => "Flow Salah! Kempu berstatus REPAIR. Silahkan scan oleh Tim QC PM untuk melanjutkan.",
                 ];
             }
 

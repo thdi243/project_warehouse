@@ -149,8 +149,10 @@ class WpmKempuController extends Controller
         }
 
         // Fallback pengecekan kolom atribut user
-        if (in_array(strtolower($user->role ?? ''), ['super-admin', 'superadmin', 'admin']) ||
-            in_array(strtolower($user->jabatan ?? ''), ['super-admin', 'superadmin', 'admin'])) {
+        if (
+            in_array(strtolower($user->role ?? ''), ['super-admin', 'superadmin', 'admin']) ||
+            in_array(strtolower($user->jabatan ?? ''), ['super-admin', 'superadmin', 'admin'])
+        ) {
             return true;
         }
 
@@ -201,7 +203,7 @@ class WpmKempuController extends Controller
                 if (in_array(strtolower($currentStatus), $qcPmReleaseStatuses)) {
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}' (Lolos QC PM). Silakan scan Transfer Out to Produksi.",
+                        'message' => "Flow Salah! Status kempu saat ini sudah Lolos QC PM. Silakan scan Transfer Out to Produksi.",
                     ];
                 }
 
@@ -215,7 +217,7 @@ class WpmKempuController extends Controller
                 if (in_array(strtolower($currentStatus), $qcPmPendingStatuses)) {
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan oleh Tim QC PM.",
+                        'message' => "Flow Salah! Status kempu saat ini sedang dalam antrian QC PM, perlu di-scan oleh Tim QC PM.",
                     ];
                 }
 
@@ -226,7 +228,7 @@ class WpmKempuController extends Controller
                 ) {
                     return [
                         'valid'   => false,
-                        'message' => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu perbaikan oleh Tim Engineering.",
+                        'message' => "Flow Salah! Status kempu saat ini REPAIR, perlu di-scan oleh Tim QC PM.",
                     ];
                 }
 

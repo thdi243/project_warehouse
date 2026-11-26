@@ -724,7 +724,9 @@ class KempuQcController extends Controller
 
                 // Cegah duplikat scan: jika kempu sudah berstatus QC_PM_RELEASE dan keputusannya tetap OK, lewati
                 $isAlreadyRelease = in_array($cleanStatus = preg_replace('/[^A-Z0-9]/', '_', $currentStatus), [
-                    'QC_PM_RELEASE', 'QC_PM_PASSED', 'RELEASE_QC_PM',
+                    'QC_PM_RELEASE',
+                    'QC_PM_PASSED',
+                    'RELEASE_QC_PM',
                 ]) || (str_contains($cleanStatus, 'QC_PM') && (str_contains($cleanStatus, 'RELEASE') || str_contains($cleanStatus, 'PASSED')));
 
                 if ($isOk && $isAlreadyRelease) {
@@ -888,7 +890,7 @@ class KempuQcController extends Controller
             ) {
                 return [
                     'valid'   => false,
-                    'message' => "Flow Salah! Kempu belum scan Repair oleh Tim Engineering.",
+                    'message' => "Flow Salah! Kempu belum scan Repair oleh Tim Engineering. Silakan scan di QC PM untuk melanjutkan.",
                 ];
             }
 
@@ -976,8 +978,8 @@ class KempuQcController extends Controller
             if (
                 !$isStillInPas &&
                 (strcasecmp($currentLocation, MasterKempuModel::LOC_PAS) === 0 ||
-                 strcasecmp($currentLocation, 'PAS') === 0 ||
-                 strcasecmp($currentLocation, 'WAREHOUSE_PAS') === 0)
+                    strcasecmp($currentLocation, 'PAS') === 0 ||
+                    strcasecmp($currentLocation, 'WAREHOUSE_PAS') === 0)
             ) {
                 $isStillInPas = true;
             }
@@ -986,7 +988,7 @@ class KempuQcController extends Controller
                 return [
                     'valid'          => false,
                     'is_pas_blocked' => true,
-                    'message'        => "Flow Salah! Kempu belum scan Transfer In From PAS oleh Tim WPM (Status saat ini: '{$currentStatus}'). Kempu yang masih di PAS tidak boleh di-bypass.",
+                    'message'        => "Flow Salah! Kempu belum scan Transfer In From PAS oleh Tim WPM. Kempu yang masih di PAS tidak boleh di-bypass.",
                 ];
             }
 
@@ -1065,8 +1067,12 @@ class KempuQcController extends Controller
         if (in_array($qcType, ['qc-pre-cuci', 'qc-proses'])) {
             $isPreCuciDone = (
                 in_array($cleanStatus, [
-                    'QC_PRE_CUCI_RELEASE', 'QC_PRE_CUCI_PASSED', 'RELEASE_QC_PRE_CUCI', 'QC_PROD_PASSED',
-                    'CEK_INCOMING_PRE_CUCI_LOLOS_RELEASE', 'CEK_PRE_CUCI_LOLOS_RELEASE',
+                    'QC_PRE_CUCI_RELEASE',
+                    'QC_PRE_CUCI_PASSED',
+                    'RELEASE_QC_PRE_CUCI',
+                    'QC_PROD_PASSED',
+                    'CEK_INCOMING_PRE_CUCI_LOLOS_RELEASE',
+                    'CEK_PRE_CUCI_LOLOS_RELEASE',
                 ]) ||
                 (str_contains($cleanStatus, 'PRE_CUCI') && (str_contains($cleanStatus, 'RELEASE') || str_contains($cleanStatus, 'PASSED') || str_contains($cleanStatus, 'LOLOS')))
             );
@@ -1094,7 +1100,9 @@ class KempuQcController extends Controller
         if ($qcType === 'qc-after-filling') {
             $isAfterFillingDone = (
                 in_array($cleanStatus, [
-                    'QC_AFTER_FILLING_RELEASE', 'QC_AFTER_FILLING_PASSED', 'RELEASE_QC_AFTER_FILLING',
+                    'QC_AFTER_FILLING_RELEASE',
+                    'QC_AFTER_FILLING_PASSED',
+                    'RELEASE_QC_AFTER_FILLING',
                     'AFTER_FILLING_LOLOS_RELEASE',
                 ]) ||
                 (str_contains($cleanStatus, 'AFTER_FILLING') && (str_contains($cleanStatus, 'RELEASE') || str_contains($cleanStatus, 'PASSED') || str_contains($cleanStatus, 'LOLOS')))
@@ -1115,8 +1123,12 @@ class KempuQcController extends Controller
 
             if (
                 in_array($cleanStatus, [
-                    'PROD_TRANSFER_OUT_TO_WFG', 'IN_TRANSIT_WFG', 'TRANSFER_OUT_TO_WFG',
-                    'WFG_TRANSFER_IN_FROM_PROD', 'WFG_TRANSFER_IN_PROD', 'WFG_RECEIVED',
+                    'PROD_TRANSFER_OUT_TO_WFG',
+                    'IN_TRANSIT_WFG',
+                    'TRANSFER_OUT_TO_WFG',
+                    'WFG_TRANSFER_IN_FROM_PROD',
+                    'WFG_TRANSFER_IN_PROD',
+                    'WFG_RECEIVED',
                 ]) ||
                 str_contains($cleanStatus, 'WFG') ||
                 $cleanLoc === strtoupper(MasterKempuModel::LOC_WFG)
@@ -1132,7 +1144,11 @@ class KempuQcController extends Controller
         if ($qcType === 'qc-pm') {
             $isPmDone = (
                 in_array($cleanStatus, [
-                    'QC_PM_RELEASE', 'QC_PM_PASSED', 'RELEASE_QC_PM', 'QC_PM_LOLOS_RELEASE', 'QC_PM_INCOMING_BULK_LOLOS_RELEASE',
+                    'QC_PM_RELEASE',
+                    'QC_PM_PASSED',
+                    'RELEASE_QC_PM',
+                    'QC_PM_LOLOS_RELEASE',
+                    'QC_PM_INCOMING_BULK_LOLOS_RELEASE',
                 ]) ||
                 (str_contains($cleanStatus, 'QC_PM') && (str_contains($cleanStatus, 'RELEASE') || str_contains($cleanStatus, 'PASSED') || str_contains($cleanStatus, 'LOLOS')))
             );
@@ -1145,8 +1161,11 @@ class KempuQcController extends Controller
 
             if (
                 in_array($cleanStatus, [
-                    'WPM_TRANSFER_OUT_TO_PROD', 'IN_TRANSIT_PRODUKSI',
-                    'PROD_TRANSFER_IN_FROM_WPM', 'PROD_TRANSFER_IN_WPM', 'QC_PRE_CUCI_PENDING',
+                    'WPM_TRANSFER_OUT_TO_PROD',
+                    'IN_TRANSIT_PRODUKSI',
+                    'PROD_TRANSFER_IN_FROM_WPM',
+                    'PROD_TRANSFER_IN_WPM',
+                    'QC_PRE_CUCI_PENDING',
                 ]) ||
                 $cleanLoc === strtoupper(MasterKempuModel::LOC_PRODUKSI)
             ) {
@@ -1359,8 +1378,8 @@ class KempuQcController extends Controller
         // Nomor PO/SPB tetap tampil di area WPM, Retur WFG, Pre Cuci, hingga Cuci, dan baru di-reset saat Filling Kempu
         $cycleNoPo = $cycleFilling?->no_po
             ?: ($kempu->main?->no_po
-            ?: ($latestFilledCycle?->no_po
-            ?: ($kempu->no_spb ?? '')));
+                ?: ($latestFilledCycle?->no_po
+                    ?: ($kempu->no_spb ?? '')));
 
         if (empty($cycleNoPo)) {
             $lastTracking = KempuTrackingHistoryModel::where('kempu_master_id', $kempu->id)

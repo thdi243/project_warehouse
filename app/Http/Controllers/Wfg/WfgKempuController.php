@@ -279,7 +279,7 @@ class WfgKempuController extends Controller
             return [
                 'valid'     => false,
                 'is_bypass' => false,
-                'message'   => "Flow Salah! Status kempu saat ini: '{$currentStatus}', perlu di-scan oleh Tim QC PM.",
+                'message'   => "Flow Salah! Status kempu saat ini REPAIR, perlu di-scan oleh Tim QC PM.",
             ];
         }
 
