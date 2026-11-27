@@ -251,6 +251,10 @@
                                             <td class="text-muted">Lokasi Tujuan:</td>
                                             <td id="modalTujuan">-</td>
                                         </tr>
+                                        <tr>
+                                            <td class="text-muted">Check-In Pos 1:</td>
+                                            <td id="modalCheckinPos1">-</td>
+                                        </tr>
                                     </table>
                                 </div>
                             </div>
@@ -597,22 +601,32 @@
                 $('#modalTujuan').html(
                     `<span class="badge bg-soft-info text-info">${tx.target_code} - ${tx.target_name}</span>`
                     );
+                $('#modalCheckinPos1').html(
+                    (tx.checkin_pos1 && tx.checkin_pos1 !== '-')
+                        ? `<span class="badge bg-soft-primary text-primary font-monospace fs-12">${tx.checkin_pos1}</span>`
+                        : '<span class="text-muted">-</span>'
+                );
 
                 // Timestamps Container
                 const ts = tx.timestamps || {};
                 let tsHtml = '';
-                if (ts.checkin_pos1 && ts.checkin_pos1 !== '-') {
-                    tsHtml += `
-                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <span class="text-muted"><i class="ri-shield-check-line text-primary me-1"></i> Check-In Pos 1</span>
-                            <span class="fw-bold text-dark font-monospace">${ts.checkin_pos1}</span>
-                        </div>
-                    `;
-                }
+
+                // 1. Check-In Pos 1 (Security Gate)
                 tsHtml += `
                     <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                         <div>
-                            <span class="text-muted"><i class="ri-login-box-line text-success me-1"></i> Check-In (Timbangan)</span>
+                            <span class="text-muted"><i class="ri-shield-check-line text-primary me-1"></i> Check-In Pos 1 (Security)</span>
+                            <small class="text-muted d-block ms-3"><i class="ri-shield-user-line me-1"></i>Pos 1 Security Gate</small>
+                        </div>
+                        <span class="fw-bold text-dark font-monospace">${(ts.checkin_pos1 && ts.checkin_pos1 !== '-') ? ts.checkin_pos1 : '-'}</span>
+                    </div>
+                `;
+
+                // 2. Check-In (Timbangan Masuk)
+                tsHtml += `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div>
+                            <span class="text-muted"><i class="ri-login-box-line text-success me-1"></i> Check-In (Timbangan Masuk)</span>
                             ${ts.check_in_by && ts.check_in_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.check_in_by}</span></small>` : ''}
                         </div>
                         <span class="fw-bold text-dark font-monospace">${ts.check_in || '-'}</span>

@@ -1991,7 +1991,8 @@ class BongkarMuatController extends Controller
                     $activeTrack->update([
                         'departure_time' => $now,
                         'duration_seconds' => $duration,
-                        'status_notes' => "Proses Muat di {$areaName} Selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan."
+                        'status_notes' => "Proses Muat di {$areaName} Selesai (Otomatis dari Form Bongkar Muat Selesai). Truk kembali ke Timbangan.",
+                        'created_by' => Auth::id(),
                     ]);
                 }
 

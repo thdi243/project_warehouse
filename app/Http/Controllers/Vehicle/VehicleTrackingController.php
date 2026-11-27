@@ -1266,7 +1266,8 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => "Aktivitas {$actionName} WPM Selesai. Truk kembali ke Timbangan."
+                    'status_notes' => "Aktivitas {$actionName} WPM Selesai. Truk kembali ke Timbangan.",
+                    'created_by' => Auth::id(),
                 ]);
             }
 
@@ -1873,7 +1874,8 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => "Proses {$actionName} Selesai. Truk kembali ke Timbangan."
+                    'status_notes' => "Proses {$actionName} Selesai. Truk kembali ke Timbangan.",
+                    'created_by' => Auth::id(),
                 ]);
             }
 
@@ -2096,7 +2098,8 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => 'Proses Bongkar/Muat WFG Selesai. Truk kembali ke Timbangan.'
+                    'status_notes' => 'Proses Bongkar/Muat WFG Selesai. Truk kembali ke Timbangan.',
+                    'created_by' => Auth::id(),
                 ]);
             }
 
@@ -2351,7 +2354,8 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => 'Aktivitas SMU Selesai. Truk kembali ke Timbangan.'
+                    'status_notes' => 'Aktivitas SMU Selesai. Truk kembali ke Timbangan.',
+                    'created_by' => Auth::id(),
                 ]);
             }
 
@@ -2562,7 +2566,8 @@ class VehicleTrackingController extends Controller
                 $activeTrack->update([
                     'departure_time' => $now,
                     'duration_seconds' => $duration,
-                    'status_notes' => 'Timbang Keluar Selesai. Check-Out.'
+                    'status_notes' => 'Timbang Keluar Selesai. Check-Out.',
+                    'created_by' => Auth::id(),
                 ]);
             }
 
@@ -3800,9 +3805,24 @@ class VehicleTrackingController extends Controller
                 }
             }
 
-            // 4. Durasi Aksi (QC Sampling & Bongkar/Muat)
+            // 4. Durasi Aksi (QC Sampling & Bongkar/Muat & Pos 1)
             $actionSeconds = 0;
             $actionDetails = [];
+
+            // Aksi Pos 1 ke Timbangan Masuk (jika ada data checkin_pos1)
+            if ($tx->checkin_pos1 && $checkIn && $checkIn->gte($tx->checkin_pos1)) {
+                $pos1Sec = abs($checkIn->diffInSeconds($tx->checkin_pos1, false));
+                if ($pos1Sec > 0) {
+                    $actionDetails[] = [
+                        'label' => 'Pos 1 ke Timbangan Masuk',
+                        'duration_sec' => $pos1Sec,
+                        'duration_label' => $formatDuration($pos1Sec),
+                        'start' => $tx->checkin_pos1->format('H:i'),
+                        'finish' => $checkIn->format('H:i'),
+                        'action_by' => 'Security Pos 1',
+                    ];
+                }
+            }
 
             // Aksi QC Sampling
             if ($tx->start_sampling_time && $tx->finish_sampling_time) {
@@ -3845,7 +3865,7 @@ class VehicleTrackingController extends Controller
                                 'duration_label' => $formatDuration($trackSec),
                                 'start' => $track->arrival_time ? $track->arrival_time->format('H:i') : '-',
                                 'finish' => $track->departure_time ? $track->departure_time->format('H:i') : '-',
-                                'action_by' => $getUserName($track->creator),
+                                'action_by' => $getUserName($tx->finishLoadingBy ?: ($tx->startLoadingBy ?: $track->creator)),
                             ];
                         }
                     }
@@ -3853,7 +3873,8 @@ class VehicleTrackingController extends Controller
             }
 
             // 5. Tracking Steps (Perpindahan Lokasi & Catatan)
-            $trackingSteps = $tx->tracking->map(function ($track) use ($formatDuration, $getUserName) {
+            $trackingCount = $tx->tracking->count();
+            $trackingSteps = $tx->tracking->values()->map(function ($track, $stepIndex) use ($formatDuration, $getUserName, $tx, $trackingCount) {
                 $locName = $track->location ? $track->location->name : 'N/A';
                 $locCode = $track->location ? $track->location->s_loc : '-';
 
@@ -3873,6 +3894,29 @@ class VehicleTrackingController extends Controller
 
                 $durSec = $track->duration_seconds ? abs($track->duration_seconds) : 0;
 
+                // Tentukan Action By yang akurat berdasarkan aktivitas tahapan
+                $actionUser = null;
+
+                if ($isQcTrack) {
+                    // Tahapan QC
+                    $actionUser = $tx->finishSamplingBy ?: ($tx->startSamplingBy ?: $track->creator);
+                } elseif ($locCode === 'TMB') {
+                    // Cek apakah ini Timbangan Masuk (awal) atau Timbangan Keluar (akhir)
+                    $notes = strtolower($track->status_notes ?? '');
+                    if ($stepIndex === 0 || str_contains($notes, 'masuk')) {
+                        // Timbangan Masuk -> Operator Check-In
+                        $actionUser = $tx->creator ?: $track->creator;
+                    } elseif ($stepIndex === ($trackingCount - 1) || str_contains($notes, 'keluar') || str_contains($notes, 'check-out')) {
+                        // Timbangan Keluar / Selesai Check-Out -> Operator Check-Out / Timbangan Out
+                        $actionUser = $tx->checkOutBy ?: ($tx->timbanganOutBy ?: $tx->creator ?: $track->creator);
+                    } else {
+                        $actionUser = $track->creator;
+                    }
+                } else {
+                    // Area Dock (WRM, WPM, WFG, SMU, dll)
+                    $actionUser = $tx->finishLoadingBy ?: ($tx->startLoadingBy ?: $track->creator);
+                }
+
                 return [
                     'id' => $track->id,
                     'location_name' => $locName,
@@ -3884,7 +3928,7 @@ class VehicleTrackingController extends Controller
                     'duration_sec' => $durSec,
                     'duration_label' => $formatDuration($durSec),
                     'status_notes' => $track->status_notes ?? '-',
-                    'action_by' => $getUserName($track->creator),
+                    'action_by' => $getUserName($actionUser),
                 ];
             });
 
