@@ -7,7 +7,7 @@
         </a>
         <div class="collapse menu-dropdown {{ request()->routeIs('wfg.*') ? 'show' : '' }}" id="sidebarWFG">
             <ul class="nav nav-sm flex-column">
-                @can('permission', 'bongkar-muat')
+                @can('permission', 'bongkar-muat-wfg')
                     <li class="nav-item">
                         <a href="#sidebarWFGLO" data-bs-toggle="collapse" role="button"
                             class="nav-link {{ request()->routeIs('wfg.bongkar_muat.*') ? '' : 'collapsed' }}"
@@ -18,13 +18,15 @@
                         <div class="collapse menu-dropdown {{ request()->routeIs('wfg.bongkar_muat.*') ? 'show' : '' }}"
                             id="sidebarWFGLO">
                             <ul class="nav nav-sm flex-column">
-                                @can('permission', 'form-bongkar-muat')
+                                @can('permission', 'form-muat-wfg')
                                     <li class="nav-item">
                                         <a href="{{ route('wfg.bongkar_muat.form') }}"
                                             class="nav-link {{ request()->routeIs('wfg.bongkar_muat.form') ? 'active' : '' }}">
                                             <i class="bx bx-git-commit fs-12"></i> Form Muat
                                         </a>
                                     </li>
+                                @endcan
+                                @can('permission', 'form-bongkar-wfg')
                                     <li class="nav-item">
                                         <a href="{{ route('wfg.bongkar_muat.form_bongkar') }}"
                                             class="nav-link {{ request()->routeIs('wfg.bongkar_muat.form_bongkar') ? 'active' : '' }}">
@@ -32,7 +34,7 @@
                                         </a>
                                     </li>
                                 @endcan
-                                @can('permission', 'data-bongkar-muat')
+                                @can('permission', 'data-bongkar-muat-wfg')
                                     <li class="nav-item">
                                         <a href="{{ route('wfg.bongkar_muat.index') }}"
                                             class="nav-link {{ request()->routeIs('wfg.bongkar_muat.index') ? 'active' : '' }}">
@@ -40,7 +42,7 @@
                                         </a>
                                     </li>
                                 @endcan
-                                @can('permission', 'approval-bongkar-muat')
+                                @can('permission', 'verifikasi-bongkar-muat-wfg')
                                     <li class="nav-item">
                                         <a href="{{ route('wfg.bongkar_muat.approval') }}"
                                             class="nav-link {{ request()->routeIs('wfg.bongkar_muat.approval') ? 'active' : '' }}">

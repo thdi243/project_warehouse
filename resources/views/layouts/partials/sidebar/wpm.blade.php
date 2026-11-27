@@ -74,38 +74,45 @@
                         </div>
                     </li>
                 @endcan
-
-                <li class="nav-item">
-                    <a href="#sidebarWPMBongkar" data-bs-toggle="collapse" role="button"
-                        class="nav-link {{ request()->routeIs('wpm.bongkar_muat.*') ? '' : 'collapsed' }}"
-                        aria-expanded="{{ request()->routeIs('wpm.bongkar_muat.*') ? 'true' : 'false' }}"
-                        aria-controls="sidebarWPMBongkar">
-                        <i class="bx bx-git-commit fs-12"></i> Bongkar Muat
-                    </a>
-                    <div class="collapse menu-dropdown {{ request()->routeIs('wpm.bongkar_muat.*') ? 'show' : '' }}"
-                        id="sidebarWPMBongkar">
-                        <ul class="nav nav-sm flex-column">
-                            <li class="nav-item">
-                                <a href="{{ route('wpm.bongkar_muat.form') }}"
-                                    class="nav-link {{ request()->routeIs('wpm.bongkar_muat.form') ? 'active' : '' }}">
-                                    <i class="bx bx-git-commit fs-12"></i> Form Bongkar
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="{{ route('wpm.bongkar_muat.index') }}"
-                                    class="nav-link {{ request()->routeIs('wpm.bongkar_muat.index') ? 'active' : '' }}">
-                                    <i class="bx bx-git-commit fs-12"></i> Data Bongkar
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="{{ route('wpm.bongkar_muat.approval') }}"
-                                    class="nav-link {{ request()->routeIs('wpm.bongkar_muat.approval') ? 'active' : '' }}">
-                                    <i class="bx bx-git-commit fs-12"></i> Verifikasi
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
+                @can('permission', 'bongkar-muat-wpm')
+                    <li class="nav-item">
+                        <a href="#sidebarWPMBongkar" data-bs-toggle="collapse" role="button"
+                            class="nav-link {{ request()->routeIs('wpm.bongkar_muat.*') ? '' : 'collapsed' }}"
+                            aria-expanded="{{ request()->routeIs('wpm.bongkar_muat.*') ? 'true' : 'false' }}"
+                            aria-controls="sidebarWPMBongkar">
+                            <i class="bx bx-git-commit fs-12"></i> Bongkar Muat
+                        </a>
+                        <div class="collapse menu-dropdown {{ request()->routeIs('wpm.bongkar_muat.*') ? 'show' : '' }}"
+                            id="sidebarWPMBongkar">
+                            <ul class="nav nav-sm flex-column">
+                                @can('permission', 'form-bongkar-wpm')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wpm.bongkar_muat.form') }}"
+                                            class="nav-link {{ request()->routeIs('wpm.bongkar_muat.form') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i> Form Bongkar
+                                        </a>
+                                    </li>
+                                @endcan
+                                @can('permission', 'data-bongkar-muat-wpm')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wpm.bongkar_muat.index') }}"
+                                            class="nav-link {{ request()->routeIs('wpm.bongkar_muat.index') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i> Data Bongkar
+                                        </a>
+                                    </li>
+                                @endcan
+                                @can('permission', 'verifikasi-bongkar-muat-wpm')
+                                    <li class="nav-item">
+                                        <a href="{{ route('wpm.bongkar_muat.approval') }}"
+                                            class="nav-link {{ request()->routeIs('wpm.bongkar_muat.approval') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i> Verifikasi
+                                        </a>
+                                    </li>
+                                @endcan
+                            </ul>
+                        </div>
+                    </li>
+                @endcan
             </ul>
         </div>
     </li>
