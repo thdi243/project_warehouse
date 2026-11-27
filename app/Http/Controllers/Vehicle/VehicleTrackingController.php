@@ -3771,234 +3771,308 @@ class VehicleTrackingController extends Controller
 
         $paginated = $query->orderBy('check_in_time', 'desc')->paginate($perPage);
 
-        $paginated->getCollection()->transform(function ($tx) use ($formatDuration, $getUserName) {
-            $checkIn = $tx->check_in_time;
-            $checkOut = $tx->check_out_time;
-
-            // 1. Total Durasi Siklus (Check-In to Check-Out)
-            $totalDurationSeconds = ($checkIn && $checkOut) ? abs($checkOut->diffInSeconds($checkIn, false)) : 0;
-
-            // 2. Durasi Tunggu (Waktu sejak check-in sampai ambil nomor antrian atau mulai proses)
-            $waitSeconds = 0;
-            $hasWait = false;
-            if ($tx->queue_taken_time && $checkIn) {
-                $waitSeconds = abs($tx->queue_taken_time->diffInSeconds($checkIn, false));
-                $hasWait = true;
-            } elseif ($tx->start_loading_time && $checkIn) {
-                $waitSeconds = abs($tx->start_loading_time->diffInSeconds($checkIn, false));
-                $hasWait = true;
-            } elseif ($tx->start_sampling_time && $checkIn) {
-                $waitSeconds = abs($tx->start_sampling_time->diffInSeconds($checkIn, false));
-                $hasWait = true;
-            }
-
-            // 3. Durasi Antri (Waktu sejak ambil antrian sampai mulai proses aksi)
-            $queueSeconds = 0;
-            $hasQueue = false;
-            if ($tx->queue_taken_time) {
-                if ($tx->start_loading_time) {
-                    $queueSeconds = abs($tx->start_loading_time->diffInSeconds($tx->queue_taken_time, false));
-                    $hasQueue = true;
-                } elseif ($tx->start_sampling_time) {
-                    $queueSeconds = abs($tx->start_sampling_time->diffInSeconds($tx->queue_taken_time, false));
-                    $hasQueue = true;
-                }
-            }
-
-            // 4. Durasi Aksi (QC Sampling & Bongkar/Muat & Pos 1)
-            $actionSeconds = 0;
-            $actionDetails = [];
-
-            // Aksi Pos 1 ke Timbangan Masuk (jika ada data checkin_pos1)
-            if ($tx->checkin_pos1 && $checkIn && $checkIn->gte($tx->checkin_pos1)) {
-                $pos1Sec = abs($checkIn->diffInSeconds($tx->checkin_pos1, false));
-                if ($pos1Sec > 0) {
-                    $actionDetails[] = [
-                        'label' => 'Pos 1 ke Timbangan Masuk',
-                        'duration_sec' => $pos1Sec,
-                        'duration_label' => $formatDuration($pos1Sec),
-                        'start' => $tx->checkin_pos1->format('H:i'),
-                        'finish' => $checkIn->format('H:i'),
-                        'action_by' => 'Security Pos 1',
-                    ];
-                }
-            }
-
-            // Aksi QC Sampling
-            if ($tx->start_sampling_time && $tx->finish_sampling_time) {
-                $qcSec = abs($tx->finish_sampling_time->diffInSeconds($tx->start_sampling_time, false));
-                $actionSeconds += $qcSec;
-                $actionDetails[] = [
-                    'label' => 'QC Sampling',
-                    'duration_sec' => $qcSec,
-                    'duration_label' => $formatDuration($qcSec),
-                    'start' => $tx->start_sampling_time->format('H:i'),
-                    'finish' => $tx->finish_sampling_time->format('H:i'),
-                    'action_by' => $getUserName($tx->finishSamplingBy ?: $tx->startSamplingBy),
-                ];
-            }
-
-            // Aksi Bongkar / Muat
-            if ($tx->start_loading_time && $tx->finish_loading_time) {
-                $loadingSec = abs($tx->finish_loading_time->diffInSeconds($tx->start_loading_time, false));
-                $actionSeconds += $loadingSec;
-                $loadLabel = $tx->jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
-                $actionDetails[] = [
-                    'label' => $loadLabel,
-                    'duration_sec' => $loadingSec,
-                    'duration_label' => $formatDuration($loadingSec),
-                    'start' => $tx->start_loading_time->format('H:i'),
-                    'finish' => $tx->finish_loading_time->format('H:i'),
-                    'action_by' => $getUserName($tx->finishLoadingBy ?: $tx->startLoadingBy),
-                ];
-            } elseif ($actionSeconds === 0) {
-                // Fallback dari tracking logs jika timestamps belum tercatat
-                foreach ($tx->tracking as $track) {
-                    $sLoc = $track->location ? $track->location->s_loc : '';
-                    if ($sLoc && $sLoc !== 'TMB' && $track->duration_seconds) {
-                        $trackSec = abs($track->duration_seconds);
-                        if ($trackSec > 0) {
-                            $actionSeconds += $trackSec;
-                            $actionDetails[] = [
-                                'label' => ($track->location ? $track->location->name : $sLoc),
-                                'duration_sec' => $trackSec,
-                                'duration_label' => $formatDuration($trackSec),
-                                'start' => $track->arrival_time ? $track->arrival_time->format('H:i') : '-',
-                                'finish' => $track->departure_time ? $track->departure_time->format('H:i') : '-',
-                                'action_by' => $getUserName($tx->finishLoadingBy ?: ($tx->startLoadingBy ?: $track->creator)),
-                            ];
-                        }
-                    }
-                }
-            }
-
-            // 5. Tracking Steps (Perpindahan Lokasi & Catatan)
-            $trackingCount = $tx->tracking->count();
-            $trackingSteps = $tx->tracking->values()->map(function ($track, $stepIndex) use ($formatDuration, $getUserName, $tx, $trackingCount) {
-                $locName = $track->location ? $track->location->name : 'N/A';
-                $locCode = $track->location ? $track->location->s_loc : '-';
-
-                $isQcTrack = false;
-                if ($track->status_notes && (
-                    str_contains($track->status_notes, 'QC Hasil') ||
-                    str_contains($track->status_notes, 'Sampling') ||
-                    str_contains($track->status_notes, 'Dokumen')
-                )) {
-                    $isQcTrack = true;
-                }
-
-                if ($isQcTrack) {
-                    $locName = 'QC (Quality Control)';
-                    $locCode = 'QC';
-                }
-
-                $durSec = $track->duration_seconds ? abs($track->duration_seconds) : 0;
-
-                // Tentukan Action By yang akurat berdasarkan aktivitas tahapan
-                $actionUser = null;
-
-                if ($isQcTrack) {
-                    // Tahapan QC
-                    $actionUser = $tx->finishSamplingBy ?: ($tx->startSamplingBy ?: $track->creator);
-                } elseif ($locCode === 'TMB') {
-                    // Cek apakah ini Timbangan Masuk (awal) atau Timbangan Keluar (akhir)
-                    $notes = strtolower($track->status_notes ?? '');
-                    if ($stepIndex === 0 || str_contains($notes, 'masuk')) {
-                        // Timbangan Masuk -> Operator Check-In
-                        $actionUser = $tx->creator ?: $track->creator;
-                    } elseif ($stepIndex === ($trackingCount - 1) || str_contains($notes, 'keluar') || str_contains($notes, 'check-out')) {
-                        // Timbangan Keluar / Selesai Check-Out -> Operator Check-Out / Timbangan Out
-                        $actionUser = $tx->checkOutBy ?: ($tx->timbanganOutBy ?: $tx->creator ?: $track->creator);
-                    } else {
-                        $actionUser = $track->creator;
-                    }
-                } else {
-                    // Area Dock (WRM, WPM, WFG, SMU, dll)
-                    $actionUser = $tx->finishLoadingBy ?: ($tx->startLoadingBy ?: $track->creator);
-                }
-
-                return [
-                    'id' => $track->id,
-                    'location_name' => $locName,
-                    'location_code' => $locCode,
-                    'arrival_time' => $track->arrival_time ? $track->arrival_time->format('H:i') : '-',
-                    'departure_time' => $track->departure_time ? $track->departure_time->format('H:i') : '-',
-                    'arrival_full' => $track->arrival_time ? $track->arrival_time->format('d-m-Y H:i:s') : '-',
-                    'departure_full' => $track->departure_time ? $track->departure_time->format('d-m-Y H:i:s') : '-',
-                    'duration_sec' => $durSec,
-                    'duration_label' => $formatDuration($durSec),
-                    'status_notes' => $track->status_notes ?? '-',
-                    'action_by' => $getUserName($actionUser),
-                ];
-            });
-
-            // Path rute ringkas
-            $historyPath = $trackingSteps->map(function ($step) {
-                return "{$step['location_code']} ({$step['duration_label']})";
-            })->implode(' ➔ ');
-
-            return [
-                'id' => $tx->id,
-                'no_transaction' => $tx->no_transaction,
-                'trnvisitorid' => $tx->trnvisitorid ?? '-',
-                'no_pol' => $tx->vehicle ? $tx->vehicle->no_pol : 'N/A',
-                'vendor' => $tx->vendor ?? '-',
-                'nama_driver' => $tx->nama_driver ?? '-',
-                'no_hp_driver' => $tx->no_hp_driver ?? '-',
-                'checkin_pos1' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y H:i') : '-',
-                'jenis' => $tx->jenis,
-                'item_name' => $tx->item ? $tx->item->name : 'N/A',
-                'no_spb' => $tx->no_spb ?? '-',
-                'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 2) : '-',
-                'target_name' => $tx->targetLocation ? $tx->targetLocation->name : '-',
-                'target_code' => $tx->targetLocation ? $tx->targetLocation->s_loc : '-',
-                'no_antrian' => $tx->no_antrian,
-                'qc_status' => $tx->qc_status,
-                'check_in' => $checkIn ? $checkIn->format('d-m-Y H:i') : '-',
-                'check_out' => $checkOut ? $checkOut->format('d-m-Y H:i') : '-',
-
-                // Durasi-durasi
-                'durasi_tunggu_sec' => $waitSeconds,
-                'durasi_tunggu_label' => $hasWait ? $formatDuration($waitSeconds) : '-',
-                'durasi_antri_sec' => $queueSeconds,
-                'durasi_antri_label' => $hasQueue ? $formatDuration($queueSeconds) : '-',
-                'durasi_aksi_sec' => $actionSeconds,
-                'durasi_aksi_label' => $actionSeconds > 0 ? $formatDuration($actionSeconds) : '-',
-                'total_durasi_sec' => $totalDurationSeconds,
-                'total_durasi_label' => $totalDurationSeconds > 0 ? $formatDuration($totalDurationSeconds) : '-',
-                'timbangan_out_time' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y H:i') : '-',
-                'durasi_timbangan_out_sec' => $tx->timbangan_out_time ? abs(($checkOut ?: Carbon::now())->diffInSeconds($tx->timbangan_out_time, false)) : 0,
-                'durasi_timbangan_out_label' => $tx->timbangan_out_time ? $formatDuration(abs(($checkOut ?: Carbon::now())->diffInSeconds($tx->timbangan_out_time, false))) : '-',
-
-                // Detail Aksi & Rute
-                'action_details' => $actionDetails,
-                'tracking_steps' => $trackingSteps,
-                'history_path' => $historyPath,
-
-                // Timestamps lengkap
-                'timestamps' => [
-                    'checkin_pos1' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y H:i:s') : '-',
-                    'check_in' => $checkIn ? $checkIn->format('d-m-Y H:i:s') : '-',
-                    'check_in_by' => $getUserName($tx->creator),
-                    'queue_taken' => $tx->queue_taken_time ? $tx->queue_taken_time->format('d-m-Y H:i:s') : '-',
-                    'queue_taken_by' => $getUserName($tx->queueTakenBy),
-                    'start_sampling' => $tx->start_sampling_time ? $tx->start_sampling_time->format('d-m-Y H:i:s') : '-',
-                    'start_sampling_by' => $getUserName($tx->startSamplingBy),
-                    'finish_sampling' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('d-m-Y H:i:s') : '-',
-                    'finish_sampling_by' => $getUserName($tx->finishSamplingBy),
-                    'start_loading' => $tx->start_loading_time ? $tx->start_loading_time->format('d-m-Y H:i:s') : '-',
-                    'start_loading_by' => $getUserName($tx->startLoadingBy),
-                    'finish_loading' => $tx->finish_loading_time ? $tx->finish_loading_time->format('d-m-Y H:i:s') : '-',
-                    'finish_loading_by' => $getUserName($tx->finishLoadingBy),
-                    'timbangan_out' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y H:i:s') : '-',
-                    'timbangan_out_by' => $getUserName($tx->timbanganOutBy),
-                    'check_out' => $checkOut ? $checkOut->format('d-m-Y H:i:s') : '-',
-                    'check_out_by' => $getUserName($tx->checkOutBy),
-                ],
-            ];
+        $paginated->getCollection()->transform(function ($tx) {
+            return $this->formatTransactionDetail($tx);
         });
 
         return response()->json($paginated);
+    }
+
+    /**
+     * Get detail of a single transaction including all logs, timestamps, actions, and tracking steps.
+     */
+    public function transactionDetail($id)
+    {
+        try {
+            $tx = VehicleTransaction::with([
+                'vehicle',
+                'item',
+                'targetLocation',
+                'currentLocation',
+                'tracking.location',
+                'tracking.creator',
+                'creator',
+                'queueTakenBy',
+                'startSamplingBy',
+                'finishSamplingBy',
+                'startLoadingBy',
+                'finishLoadingBy',
+                'timbanganOutBy',
+                'checkOutBy',
+            ])->findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => $this->formatTransactionDetail($tx)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat detail transaksi: ' . $e->getMessage()
+            ], 404);
+        }
+    }
+
+    /**
+     * Format a vehicle transaction into a comprehensive detail object for modal/history.
+     */
+    public function formatTransactionDetail(VehicleTransaction $tx): array
+    {
+        $formatDuration = function ($sec) {
+            if ($sec === null || $sec <= 0) return '0d';
+            $h = floor($sec / 3600);
+            $m = floor(($sec % 3600) / 60);
+            $s = $sec % 60;
+            $res = '';
+            if ($h > 0) $res .= $h . 'j ';
+            if ($m > 0 || $h > 0) $res .= $m . 'm ';
+            $res .= $s . 'd';
+            return trim($res);
+        };
+
+        $getUserName = function ($user) {
+            if (!$user) return '-';
+            return $user->nama_lengkap ?: ($user->username ?: '-');
+        };
+
+        $checkIn = $tx->check_in_time;
+        $checkOut = $tx->check_out_time;
+        $now = Carbon::now();
+
+        // 1. Total Durasi Siklus (Check-In to Check-Out / Now jika masih aktif)
+        $totalDurationSeconds = $checkIn ? abs(($checkOut ?: $now)->diffInSeconds($checkIn, false)) : 0;
+
+        // 2. Durasi Tunggu (Waktu sejak check-in sampai ambil nomor antrian atau mulai proses)
+        $waitSeconds = 0;
+        $hasWait = false;
+        if ($tx->queue_taken_time && $checkIn) {
+            $waitSeconds = abs($tx->queue_taken_time->diffInSeconds($checkIn, false));
+            $hasWait = true;
+        } elseif ($tx->start_loading_time && $checkIn) {
+            $waitSeconds = abs($tx->start_loading_time->diffInSeconds($checkIn, false));
+            $hasWait = true;
+        } elseif ($tx->start_sampling_time && $checkIn) {
+            $waitSeconds = abs($tx->start_sampling_time->diffInSeconds($checkIn, false));
+            $hasWait = true;
+        } elseif ($checkIn && !$checkOut) {
+            $waitSeconds = abs($now->diffInSeconds($checkIn, false));
+            $hasWait = true;
+        }
+
+        // 3. Durasi Antri (Waktu sejak ambil antrian sampai mulai proses aksi)
+        $queueSeconds = 0;
+        $hasQueue = false;
+        if ($tx->queue_taken_time) {
+            if ($tx->start_loading_time) {
+                $queueSeconds = abs($tx->start_loading_time->diffInSeconds($tx->queue_taken_time, false));
+                $hasQueue = true;
+            } elseif ($tx->start_sampling_time) {
+                $queueSeconds = abs($tx->start_sampling_time->diffInSeconds($tx->queue_taken_time, false));
+                $hasQueue = true;
+            } elseif (!$checkOut) {
+                $queueSeconds = abs($now->diffInSeconds($tx->queue_taken_time, false));
+                $hasQueue = true;
+            }
+        }
+
+        // 4. Durasi Aksi (QC Sampling & Bongkar/Muat & Pos 1)
+        $actionSeconds = 0;
+        $actionDetails = [];
+
+        // Aksi Pos 1 ke Timbangan Masuk (jika ada data checkin_pos1)
+        if ($tx->checkin_pos1 && $checkIn && $checkIn->gte($tx->checkin_pos1)) {
+            $pos1Sec = abs($checkIn->diffInSeconds($tx->checkin_pos1, false));
+            if ($pos1Sec > 0) {
+                $actionDetails[] = [
+                    'label' => 'Pos 1 ke Timbangan Masuk',
+                    'duration_sec' => $pos1Sec,
+                    'duration_label' => $formatDuration($pos1Sec),
+                    'start' => $tx->checkin_pos1->format('H:i'),
+                    'finish' => $checkIn->format('H:i'),
+                    'action_by' => 'Security Pos 1',
+                ];
+            }
+        }
+
+        // Aksi QC Sampling
+        if ($tx->start_sampling_time) {
+            $qcFinish = $tx->finish_sampling_time ?: $now;
+            $qcSec = abs($qcFinish->diffInSeconds($tx->start_sampling_time, false));
+            $actionSeconds += $qcSec;
+            $actionDetails[] = [
+                'label' => 'QC Sampling' . (!$tx->finish_sampling_time ? ' (Sedang Berjalan)' : ''),
+                'duration_sec' => $qcSec,
+                'duration_label' => $formatDuration($qcSec),
+                'start' => $tx->start_sampling_time->format('H:i'),
+                'finish' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('H:i') : 'Sedang Berjalan',
+                'action_by' => $getUserName($tx->finishSamplingBy ?: $tx->startSamplingBy),
+            ];
+        }
+
+        // Aksi Bongkar / Muat
+        if ($tx->start_loading_time) {
+            $loadingFinish = $tx->finish_loading_time ?: $now;
+            $loadingSec = abs($loadingFinish->diffInSeconds($tx->start_loading_time, false));
+            $actionSeconds += $loadingSec;
+            $loadLabel = ($tx->jenis === 'bongkaran' ? 'Bongkar' : 'Muat') . (!$tx->finish_loading_time ? ' (Sedang Berjalan)' : '');
+            $actionDetails[] = [
+                'label' => $loadLabel,
+                'duration_sec' => $loadingSec,
+                'duration_label' => $formatDuration($loadingSec),
+                'start' => $tx->start_loading_time->format('H:i'),
+                'finish' => $tx->finish_loading_time ? $tx->finish_loading_time->format('H:i') : 'Sedang Berjalan',
+                'action_by' => $getUserName($tx->finishLoadingBy ?: $tx->startLoadingBy),
+            ];
+        } elseif ($actionSeconds === 0 && $tx->tracking) {
+            // Fallback dari tracking logs jika timestamps belum tercatat
+            foreach ($tx->tracking as $track) {
+                $sLoc = $track->location ? $track->location->s_loc : '';
+                if ($sLoc && $sLoc !== 'TMB' && $track->duration_seconds) {
+                    $trackSec = abs($track->duration_seconds);
+                    if ($trackSec > 0) {
+                        $actionSeconds += $trackSec;
+                        $actionDetails[] = [
+                            'label' => ($track->location ? $track->location->name : $sLoc),
+                            'duration_sec' => $trackSec,
+                            'duration_label' => $formatDuration($trackSec),
+                            'start' => $track->arrival_time ? $track->arrival_time->format('H:i') : '-',
+                            'finish' => $track->departure_time ? $track->departure_time->format('H:i') : '-',
+                            'action_by' => $getUserName($tx->finishLoadingBy ?: ($tx->startLoadingBy ?: $track->creator)),
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 5. Tracking Steps (Perpindahan Lokasi & Catatan)
+        $trackingCount = $tx->tracking ? $tx->tracking->count() : 0;
+        $trackingSteps = $tx->tracking ? $tx->tracking->values()->map(function ($track, $stepIndex) use ($formatDuration, $getUserName, $tx, $trackingCount, $now) {
+            $locName = $track->location ? $track->location->name : 'N/A';
+            $locCode = $track->location ? $track->location->s_loc : '-';
+
+            $isQcTrack = false;
+            if ($track->status_notes && (
+                str_contains($track->status_notes, 'QC Hasil') ||
+                str_contains($track->status_notes, 'Sampling') ||
+                str_contains($track->status_notes, 'Dokumen')
+            )) {
+                $isQcTrack = true;
+            }
+
+            if ($isQcTrack) {
+                $locName = 'QC (Quality Control)';
+                $locCode = 'QC';
+            }
+
+            $durSec = $track->duration_seconds ? abs($track->duration_seconds) : ($track->arrival_time && !$track->departure_time ? abs($now->diffInSeconds($track->arrival_time, false)) : 0);
+
+            // Tentukan Action By yang akurat berdasarkan aktivitas tahapan
+            $actionUser = null;
+
+            if ($isQcTrack) {
+                // Tahapan QC
+                $actionUser = $tx->finishSamplingBy ?: ($tx->startSamplingBy ?: $track->creator);
+            } elseif ($locCode === 'TMB') {
+                // Cek apakah ini Timbangan Masuk (awal) atau Timbangan Keluar (akhir)
+                $notes = strtolower($track->status_notes ?? '');
+                if ($stepIndex === 0 || str_contains($notes, 'masuk')) {
+                    // Timbangan Masuk -> Operator Check-In
+                    $actionUser = $tx->creator ?: $track->creator;
+                } elseif ($stepIndex === ($trackingCount - 1) || str_contains($notes, 'keluar') || str_contains($notes, 'check-out')) {
+                    // Timbangan Keluar / Selesai Check-Out -> Operator Check-Out / Timbangan Out
+                    $actionUser = $tx->checkOutBy ?: ($tx->timbanganOutBy ?: $tx->creator ?: $track->creator);
+                } else {
+                    $actionUser = $track->creator;
+                }
+            } else {
+                // Area Dock (WRM, WPM, WFG, SMU, dll)
+                $actionUser = $tx->finishLoadingBy ?: ($tx->startLoadingBy ?: $track->creator);
+            }
+
+            return [
+                'id' => $track->id,
+                'location_name' => $locName,
+                'location_code' => $locCode,
+                'arrival_time' => $track->arrival_time ? $track->arrival_time->format('H:i') : '-',
+                'departure_time' => $track->departure_time ? $track->departure_time->format('H:i') : ($track->arrival_time ? 'Aktif' : '-'),
+                'arrival_full' => $track->arrival_time ? $track->arrival_time->format('d-m-Y H:i:s') : '-',
+                'departure_full' => $track->departure_time ? $track->departure_time->format('d-m-Y H:i:s') : ($track->arrival_time ? 'Aktif / Berjalan' : '-'),
+                'duration_sec' => $durSec,
+                'duration_label' => $formatDuration($durSec),
+                'status_notes' => $track->status_notes ?? '-',
+                'action_by' => $getUserName($actionUser),
+                'is_active' => empty($track->departure_time),
+            ];
+        }) : collect();
+
+        // Path rute ringkas
+        $historyPath = $trackingSteps->map(function ($step) {
+            return "{$step['location_code']} ({$step['duration_label']})";
+        })->implode(' ➔ ');
+
+        return [
+            'id' => $tx->id,
+            'no_transaction' => $tx->no_transaction,
+            'trnvisitorid' => $tx->trnvisitorid ?? '-',
+            'no_pol' => $tx->vehicle ? $tx->vehicle->no_pol : 'N/A',
+            'vendor' => $tx->vendor ?? '-',
+            'nama_driver' => $tx->nama_driver ?? '-',
+            'no_hp_driver' => $tx->no_hp_driver ?? '-',
+            'checkin_pos1' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y H:i:s') : '-',
+            'jenis' => $tx->jenis,
+            'item_name' => $tx->item ? $tx->item->name : 'N/A',
+            'no_spb' => $tx->no_spb ?? '-',
+            'qty_spb' => $tx->qty_spb ? number_format($tx->qty_spb, 2) : '-',
+            'target_name' => $tx->targetLocation ? $tx->targetLocation->name : '-',
+            'target_code' => $tx->targetLocation ? $tx->targetLocation->s_loc : '-',
+            'current_loc_code' => $tx->currentLocation ? $tx->currentLocation->s_loc : '-',
+            'current_loc_name' => $tx->currentLocation ? $tx->currentLocation->name : '-',
+            'no_antrian' => $tx->no_antrian,
+            'status' => $tx->status,
+            'qc_status' => $tx->qc_status,
+            'unloading_status' => $tx->unloading_status ?? 'pending',
+            'check_in' => $checkIn ? $checkIn->format('d-m-Y H:i') : '-',
+            'check_out' => $checkOut ? $checkOut->format('d-m-Y H:i') : '-',
+
+            // Durasi-durasi
+            'durasi_tunggu_sec' => $waitSeconds,
+            'durasi_tunggu_label' => $hasWait ? $formatDuration($waitSeconds) : '-',
+            'durasi_antri_sec' => $queueSeconds,
+            'durasi_antri_label' => $hasQueue ? $formatDuration($queueSeconds) : '-',
+            'durasi_aksi_sec' => $actionSeconds,
+            'durasi_aksi_label' => $actionSeconds > 0 ? $formatDuration($actionSeconds) : '-',
+            'total_durasi_sec' => $totalDurationSeconds,
+            'total_durasi_label' => $totalDurationSeconds > 0 ? $formatDuration($totalDurationSeconds) : '-',
+            'timbangan_out_time' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y H:i') : '-',
+            'durasi_timbangan_out_sec' => $tx->timbangan_out_time ? abs(($checkOut ?: $now)->diffInSeconds($tx->timbangan_out_time, false)) : 0,
+            'durasi_timbangan_out_label' => $tx->timbangan_out_time ? $formatDuration(abs(($checkOut ?: $now)->diffInSeconds($tx->timbangan_out_time, false))) : '-',
+
+            // Detail Aksi & Rute
+            'action_details' => $actionDetails,
+            'tracking_steps' => $trackingSteps,
+            'history_path' => $historyPath,
+
+            // Timestamps lengkap
+            'timestamps' => [
+                'checkin_pos1' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y H:i:s') : '-',
+                'check_in' => $checkIn ? $checkIn->format('d-m-Y H:i:s') : '-',
+                'check_in_by' => $getUserName($tx->creator),
+                'queue_taken' => $tx->queue_taken_time ? $tx->queue_taken_time->format('d-m-Y H:i:s') : '-',
+                'queue_taken_by' => $getUserName($tx->queueTakenBy),
+                'start_sampling' => $tx->start_sampling_time ? $tx->start_sampling_time->format('d-m-Y H:i:s') : '-',
+                'start_sampling_by' => $getUserName($tx->startSamplingBy),
+                'finish_sampling' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('d-m-Y H:i:s') : '-',
+                'finish_sampling_by' => $getUserName($tx->finishSamplingBy),
+                'start_loading' => $tx->start_loading_time ? $tx->start_loading_time->format('d-m-Y H:i:s') : '-',
+                'start_loading_by' => $getUserName($tx->startLoadingBy),
+                'finish_loading' => $tx->finish_loading_time ? $tx->finish_loading_time->format('d-m-Y H:i:s') : '-',
+                'finish_loading_by' => $getUserName($tx->finishLoadingBy),
+                'timbangan_out' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y H:i:s') : '-',
+                'timbangan_out_by' => $getUserName($tx->timbanganOutBy),
+                'check_out' => $checkOut ? $checkOut->format('d-m-Y H:i:s') : '-',
+                'check_out_by' => $getUserName($tx->checkOutBy),
+            ],
+        ];
     }
 
     /**

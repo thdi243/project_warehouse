@@ -4,6 +4,17 @@
 
 @section('styles')
     <style>
+        .btn-detail-vehicle {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-detail-vehicle:hover {
+            background-color: #299cdb !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 6px rgba(41, 156, 219, 0.35) !important;
+            transform: translateY(-1px);
+        }
         .select2-container .select2-selection--single {
             height: 37px !important;
             border: 1px solid #ced4da !important;
@@ -390,6 +401,188 @@
                         <button type="submit" class="btn btn-warning">Simpan Perubahan</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Vehicle Activity & Tracking Modal -->
+    <div class="modal fade" id="detailVehicleModal" tabindex="-1" aria-labelledby="detailVehicleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-light border-0 py-3">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="detailVehicleModalLabel">
+                            <i class="ri-truck-line text-primary me-2"></i>Detail Aktivitas & Riwayat Kendaraan
+                        </h5>
+                        <small class="text-muted" id="detailModalSubtitle">Memuat data transaksi...</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Current Position & Stage Banner -->
+                    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center mb-4 py-2 px-3">
+                        <div class="avatar-xs me-3">
+                            <span class="avatar-title bg-info text-white rounded-circle fs-16">
+                                <i class="ri-navigation-line"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <small class="text-uppercase fw-bold text-muted d-block fs-11">Tahapan / Posisi Saat Ini</small>
+                            <span class="fw-bold fs-14 text-dark" id="detailModalCurrentStatusText">-</span>
+                        </div>
+                        <div id="detailModalCurrentStatusBadge"></div>
+                    </div>
+
+                    <!-- KPI Duration Cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="card border-0 shadow-sm bg-soft-secondary mb-0 h-100">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="ri-time-line text-secondary fs-18 me-2"></i>
+                                        <span class="text-uppercase fs-11 fw-bold text-muted">Durasi Tunggu</span>
+                                    </div>
+                                    <h4 class="mb-0 fw-bold text-secondary" id="detailModalKpiTunggu">-</h4>
+                                    <small class="text-muted fs-11">Check-in s/d Ambil Antrian</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card border-0 shadow-sm bg-soft-warning mb-0 h-100">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="ri-hourglass-2-line text-warning fs-18 me-2"></i>
+                                        <span class="text-uppercase fs-11 fw-bold text-warning">Durasi Antri</span>
+                                    </div>
+                                    <h4 class="mb-0 fw-bold text-warning" id="detailModalKpiAntri">-</h4>
+                                    <small class="text-muted fs-11">Ambil Antrian s/d Mulai Aksi</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card border-0 shadow-sm bg-soft-info mb-0 h-100">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="ri-truck-line text-info fs-18 me-2"></i>
+                                        <span class="text-uppercase fs-11 fw-bold text-info">Durasi Aksi</span>
+                                    </div>
+                                    <h4 class="mb-0 fw-bold text-info" id="detailModalKpiAksi">-</h4>
+                                    <small class="text-muted fs-11">Sampling QC + Bongkar/Muat</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card border-0 shadow-sm bg-soft-success mb-0 h-100">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="ri-timer-line text-success fs-18 me-2"></i>
+                                        <span class="text-uppercase fs-11 fw-bold text-success">Total Durasi</span>
+                                    </div>
+                                    <h4 class="mb-0 fw-bold text-success" id="detailModalKpiTotal">-</h4>
+                                    <small class="text-muted fs-11">Waktu Sejak Check-In</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <!-- Left: Info & Timestamps -->
+                        <div class="col-lg-5">
+                            <!-- Info Card -->
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light py-2 px-3">
+                                    <h6 class="card-title mb-0 fs-13 fw-bold text-dark">
+                                        <i class="ri-information-line me-1 text-primary"></i> Informasi Kendaraan & Dokumen
+                                    </h6>
+                                </div>
+                                <div class="card-body p-3 fs-13">
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <tr>
+                                            <td class="text-muted" style="width: 40%;">No. Polisi:</td>
+                                            <td><span class="badge bg-soft-primary text-primary fs-12 fw-bold"
+                                                    id="detailModalPlat">-</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Vendor:</td>
+                                            <td class="fw-bold" id="detailModalVendor">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Driver / HP:</td>
+                                            <td id="detailModalDriver">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Jenis Aktivitas:</td>
+                                            <td id="detailModalJenis">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Item Barang:</td>
+                                            <td class="fw-bold" id="detailModalItem">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">No. SPB / Qty:</td>
+                                            <td id="detailModalSpb">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Lokasi Tujuan:</td>
+                                            <td id="detailModalTujuan">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Check-In Pos 1:</td>
+                                            <td id="detailModalCheckinPos1">-</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Timestamps Card -->
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light py-2 px-3">
+                                    <h6 class="card-title mb-0 fs-13 fw-bold text-dark">
+                                        <i class="ri-time-line me-1 text-info"></i> Catatan Waktu Aktivitas (Timestamps)
+                                    </h6>
+                                </div>
+                                <div class="card-body p-3 fs-13">
+                                    <div class="d-flex flex-column gap-2" id="detailModalTimestampsContainer">
+                                        <!-- Timestamps populated via JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Breakdown Card -->
+                            <div class="card border mb-0" id="detailModalActionCard">
+                                <div class="card-header bg-light py-2 px-3">
+                                    <h6 class="card-title mb-0 fs-13 fw-bold text-dark">
+                                        <i class="ri-flashlight-line me-1 text-warning"></i> Rincian Aksi
+                                    </h6>
+                                </div>
+                                <div class="card-body p-3 fs-13" id="detailModalActionBreakdown">
+                                    <!-- Action breakdown populated via JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Movement Checkpoint Logs -->
+                        <div class="col-lg-7">
+                            <div class="card border h-100">
+                                <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                                    <h6 class="card-title mb-0 fs-13 fw-bold text-dark">
+                                        <i class="ri-road-map-line me-1 text-success"></i> Riwayat Perpindahan Lokasi (Tracking Steps)
+                                    </h6>
+                                    <span class="badge bg-soft-primary text-primary" id="detailModalStepCount">0 Checkpoints</span>
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="timeline-wrapper" id="detailModalTrackingSteps">
+                                        <!-- Steps populated via JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light py-2">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Tutup</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1010,7 +1203,15 @@
                     const row = `
                         <tr>
                             <td class="text-center"><small class="fw-bold">${index + (currentPage - 1) * itemsPerPage + 1}</small></td>
-                            <td><span class="badge bg-soft-primary text-primary fs-12 fw-bold">${tx.no_pol}</span></td>
+                            <td>
+                                <a href="javascript:void(0);" 
+                                    class="badge bg-soft-primary text-primary border border-primary-subtle fs-12 fw-bold text-decoration-none btn-detail-vehicle shadow-sm" 
+                                    data-id="${tx.id}" 
+                                    style="cursor: pointer; transition: all 0.2s;"
+                                    title="Klik untuk melihat detail aktivitas & log posisi ${tx.no_pol}">
+                                    <i class="ri-search-eye-line me-1 align-middle"></i>${tx.no_pol}
+                                </a>
+                            </td>
                             <td>
                                 ${tx.item_name && tx.item_name !== '-' ? `<small class="text-dark fw-semibold">${tx.item_name}</small>` : ''}
                                 <br><small class="text-muted">${tx.jenis}</small>
@@ -1131,6 +1332,313 @@
                     }
                 });
             });
+
+            // Click Handler for Vehicle Detail Modal
+            $(document).on('click', '.btn-detail-vehicle', function(e) {
+                e.preventDefault();
+                const id = $(this).data('id');
+                if (!id) return;
+
+                // Reset & Open Modal with Loading State
+                $('#detailVehicleModal').modal('show');
+                $('#detailModalSubtitle').html('<span class="spinner-border spinner-border-sm me-1 text-primary"></span> Memuat log aktivitas kendaraan...');
+                $('#detailModalCurrentStatusText').html('<span class="spinner-border spinner-border-sm me-1 text-info"></span> Mengidentifikasi posisi...');
+                $('#detailModalCurrentStatusBadge').empty();
+                $('#detailModalKpiTunggu').text('-');
+                $('#detailModalKpiAntri').text('-');
+                $('#detailModalKpiAksi').text('-');
+                $('#detailModalKpiTotal').text('-');
+                $('#detailModalTimestampsContainer').html('<div class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Memuat log waktu aktivitas...</div>');
+                $('#detailModalActionBreakdown').html('<div class="text-center py-2 text-muted">Memuat rincian aksi...</div>');
+                $('#detailModalTrackingSteps').html('<div class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Memuat tracking steps...</div>');
+
+                $.ajax({
+                    url: `{{ url('vehicle-monitoring/transaction-detail') }}/${id}`,
+                    type: 'GET',
+                    success: function(response) {
+                        if (!response.success || !response.data) {
+                            $('#detailModalSubtitle').text('Data transaksi tidak ditemukan.');
+                            return;
+                        }
+                        populateVehicleDetailModal(response.data);
+                    },
+                    error: function(xhr) {
+                        $('#detailModalSubtitle').html('<span class="text-danger">Gagal memuat detail transaksi.</span>');
+                        $('#detailModalTimestampsContainer').html('<div class="alert alert-danger py-2">Gagal menghubungi server.</div>');
+                        $('#detailModalTrackingSteps').html('<div class="alert alert-danger py-2">Gagal memuat checkpoints.</div>');
+                    }
+                });
+            });
+
+            function populateVehicleDetailModal(tx) {
+                // Subtitle
+                $('#detailModalSubtitle').html(
+                    `<strong>${tx.no_transaction}</strong> | Plat: <span class="badge bg-soft-primary text-primary fs-12 fw-bold">${tx.no_pol}</span> | Driver: <strong>${tx.nama_driver || '-'}</strong>`
+                );
+
+                // Current Status / Stage ("Sudah sampai mana aja")
+                const status = (tx.status || '').toLowerCase();
+                const unloading = (tx.unloading_status || '').toLowerCase();
+                const targetSloc = tx.target_code || '';
+                const targetName = tx.target_name || '';
+                const actName = (tx.jenis === 'bongkaran' ? 'Bongkar' : 'Muat');
+
+                let stageText = 'Dalam Perjalanan / Standby';
+                if (status === 'timbangan_out') {
+                    stageText = 'Tiba di Timbangan Keluar (Antre Check-Out)';
+                } else if (status === 'completed') {
+                    stageText = 'Proses Selesai & Kendaraan Telah Keluar Pabrik (Check-Out)';
+                } else if (status === 'antri_sampling') {
+                    stageText = `Menunggu Antrian Sampling Lab QC ${tx.no_antrian ? `(#${tx.no_antrian})` : ''}`;
+                } else if (status === 'sampling' || tx.qc_status === 'on_check') {
+                    stageText = 'Sedang Berlangsung Sampling QC di Lab';
+                } else if (status === 'wrm_bongkar' || targetSloc === 'B006') {
+                    stageText = unloading === 'process' ? 'Sedang Proses Bongkar di Area WRM' : 'Menuju / Standby di Area WRM';
+                } else if (status === 'wpm' || targetSloc === 'C001') {
+                    stageText = unloading === 'process' ? 'Sedang Proses Bongkar di Area WPM' : 'Menuju / Standby di Area WPM';
+                } else if (status === 'wfg' || targetSloc === 'A001') {
+                    stageText = unloading === 'process' ? `Sedang Proses ${actName} di Loading Dock WFG` : 'Menuju / Standby di Loading Dock WFG';
+                } else if (status === 'smu' || targetSloc === 'A002') {
+                    stageText = unloading === 'process' ? 'Sedang Proses Bongkar di Area SMU' : 'Menuju / Standby di Area SMU';
+                } else if (status === 'timbangan_in') {
+                    stageText = 'Baru Check-In di Timbangan Masuk (Menunggu Arahan/Antrian)';
+                } else {
+                    stageText = `Posisi: ${tx.current_loc_name && tx.current_loc_name !== '-' ? tx.current_loc_name : (targetName || status)}`;
+                }
+
+                $('#detailModalCurrentStatusText').text(stageText);
+                $('#detailModalCurrentStatusBadge').html(renderDetailedStatusBadge(tx));
+
+                // KPI Durations
+                $('#detailModalKpiTunggu').text(tx.durasi_tunggu_label || '-');
+                $('#detailModalKpiAntri').text(tx.durasi_antri_label || '-');
+                $('#detailModalKpiAksi').text(tx.durasi_aksi_label || '-');
+                $('#detailModalKpiTotal').text(tx.total_durasi_label || '-');
+
+                // Vehicle & SPB Info
+                $('#detailModalPlat').text(tx.no_pol);
+                $('#detailModalVendor').text(tx.vendor || '-');
+                $('#detailModalDriver').text(`${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})`);
+                $('#detailModalJenis').html(`<span class="badge bg-soft-info text-info text-uppercase">${tx.jenis || '-'}</span>`);
+                $('#detailModalItem').text(tx.item_name || '-');
+                $('#detailModalSpb').text(`${tx.no_spb ?? '-'} / ${tx.qty_spb ?? '-'} Kg`);
+                $('#detailModalTujuan').html(`<span class="badge bg-soft-info text-info">${tx.target_code} - ${tx.target_name}</span>`);
+                $('#detailModalCheckinPos1').html(
+                    (tx.checkin_pos1 && tx.checkin_pos1 !== '-')
+                        ? `<span class="badge bg-soft-primary text-primary font-monospace fs-12">${tx.checkin_pos1}</span>`
+                        : '<span class="text-muted">-</span>'
+                );
+
+                // Timestamps Container
+                const ts = tx.timestamps || {};
+                let tsHtml = '';
+
+                // 1. Check-In Pos 1 (Security Gate)
+                tsHtml += `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div>
+                            <span class="text-muted"><i class="ri-shield-check-line text-primary me-1"></i> Check-In Pos 1 (Security)</span>
+                            <small class="text-muted d-block ms-3"><i class="ri-shield-user-line me-1"></i>Pos 1 Security Gate</small>
+                        </div>
+                        <span class="fw-bold text-dark font-monospace">${(ts.checkin_pos1 && ts.checkin_pos1 !== '-') ? ts.checkin_pos1 : '-'}</span>
+                    </div>
+                `;
+
+                // 2. Check-In (Timbangan Masuk)
+                tsHtml += `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div>
+                            <span class="text-muted"><i class="ri-login-box-line text-success me-1"></i> Check-In (Timbangan Masuk)</span>
+                            ${ts.check_in_by && ts.check_in_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.check_in_by}</span></small>` : ''}
+                        </div>
+                        <span class="fw-bold text-dark font-monospace">${ts.check_in || '-'}</span>
+                    </div>
+                `;
+
+                if (ts.queue_taken && ts.queue_taken !== '-') {
+                    tsHtml += `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="text-muted"><i class="ri-coupon-3-line text-warning me-1"></i> Ambil Nomor Antrian ${tx.no_antrian ? `(#${tx.no_antrian})` : ''}</span>
+                                ${ts.queue_taken_by && ts.queue_taken_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.queue_taken_by}</span></small>` : ''}
+                            </div>
+                            <span class="fw-bold text-dark font-monospace">${ts.queue_taken}</span>
+                        </div>
+                    `;
+                }
+
+                if (ts.start_sampling && ts.start_sampling !== '-') {
+                    tsHtml += `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="text-muted"><i class="ri-flask-line text-primary me-1"></i> Mulai Sampling QC</span>
+                                ${ts.start_sampling_by && ts.start_sampling_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.start_sampling_by}</span></small>` : ''}
+                            </div>
+                            <span class="fw-bold text-dark font-monospace">${ts.start_sampling}</span>
+                        </div>
+                    `;
+                }
+
+                if (ts.finish_sampling && ts.finish_sampling !== '-') {
+                    tsHtml += `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="text-muted"><i class="ri-checkbox-circle-line text-info me-1"></i> Selesai Sampling QC</span>
+                                ${ts.finish_sampling_by && ts.finish_sampling_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.finish_sampling_by}</span></small>` : ''}
+                            </div>
+                            <span class="fw-bold text-dark font-monospace">${ts.finish_sampling}</span>
+                        </div>
+                    `;
+                }
+
+                if (ts.start_loading && ts.start_loading !== '-') {
+                    const actionLabel = tx.jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
+                    tsHtml += `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="text-muted"><i class="ri-play-circle-line text-info me-1"></i> Mulai ${actionLabel}</span>
+                                ${ts.start_loading_by && ts.start_loading_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.start_loading_by}</span></small>` : ''}
+                            </div>
+                            <span class="fw-bold text-dark font-monospace">${ts.start_loading}</span>
+                        </div>
+                    `;
+                }
+
+                if (ts.finish_loading && ts.finish_loading !== '-') {
+                    const actionLabel = tx.jenis === 'bongkaran' ? 'Bongkar' : 'Muat';
+                    tsHtml += `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="text-muted"><i class="ri-stop-circle-line text-success me-1"></i> Selesai ${actionLabel}</span>
+                                ${ts.finish_loading_by && ts.finish_loading_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.finish_loading_by}</span></small>` : ''}
+                            </div>
+                            <span class="fw-bold text-dark font-monospace">${ts.finish_loading}</span>
+                        </div>
+                    `;
+                }
+
+                if (ts.timbangan_out && ts.timbangan_out !== '-') {
+                    tsHtml += `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <span class="text-muted"><i class="ri-scales-3-line text-warning me-1"></i> Tiba di Timbangan Out (Antre)</span>
+                                ${ts.timbangan_out_by && ts.timbangan_out_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.timbangan_out_by}</span></small>` : ''}
+                            </div>
+                            <span class="fw-bold text-dark font-monospace">${ts.timbangan_out}</span>
+                        </div>
+                    `;
+                }
+
+                tsHtml += `
+                    <div class="d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <span class="text-muted"><i class="ri-logout-box-line text-danger me-1"></i> Check-Out (Selesai Timbang Keluar)</span>
+                            ${ts.check_out_by && ts.check_out_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.check_out_by}</span></small>` : ''}
+                        </div>
+                        <span class="fw-bold text-dark font-monospace">${(ts.check_out && ts.check_out !== '-') ? ts.check_out : '<span class="badge bg-soft-warning text-warning">Belum Check-Out</span>'}</span>
+                    </div>
+                `;
+                $('#detailModalTimestampsContainer').html(tsHtml);
+
+                // Action Breakdown
+                if (tx.action_details && tx.action_details.length > 0) {
+                    let actHtml = tx.action_details.map(act => `
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <div>
+                                <strong class="text-dark">${act.label}</strong>
+                                <small class="text-muted d-block">${act.start} s/d ${act.finish}</small>
+                                ${act.action_by && act.action_by !== '-' ? `<small class="text-muted d-block"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${act.action_by}</span></small>` : ''}
+                            </div>
+                            <span class="badge bg-soft-primary text-primary fs-12">${act.duration_label}</span>
+                        </div>
+                    `).join('');
+
+                    if (tx.durasi_timbangan_out_label && tx.durasi_timbangan_out_label !== '-') {
+                        actHtml += `
+                            <div class="d-flex justify-content-between align-items-center py-2">
+                                <div>
+                                    <strong class="text-dark">Tunggu Timbangan Out</strong>
+                                    <small class="text-muted d-block">Antre s/d Check-Out</small>
+                                </div>
+                                <span class="badge bg-soft-warning text-warning fs-12">${tx.durasi_timbangan_out_label}</span>
+                            </div>
+                        `;
+                    }
+
+                    $('#detailModalActionBreakdown').html(actHtml);
+                    $('#detailModalActionCard').show();
+                } else {
+                    $('#detailModalActionBreakdown').html(
+                        '<span class="text-muted fst-italic">Belum ada catatan durasi aksi khusus.</span>'
+                    );
+                }
+
+                // Tracking Steps (Perpindahan Lokasi)
+                const steps = tx.tracking_steps || [];
+                $('#detailModalStepCount').text(`${steps.length} Checkpoints`);
+
+                if (steps.length === 0) {
+                    $('#detailModalTrackingSteps').html(
+                        '<div class="text-center text-muted py-4">Belum ada riwayat perpindahan checkpoint tercatat.</div>'
+                    );
+                } else {
+                    let stepsHtml = `
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr class="fs-12 text-muted">
+                                        <th style="width: 40px;">#</th>
+                                        <th>Lokasi Checkpoint</th>
+                                        <th>Waktu Masuk</th>
+                                        <th>Waktu Keluar</th>
+                                        <th class="text-center">Durasi</th>
+                                        <th>Catatan Status / Aktivitas</th>
+                                        <th>Action By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    steps.forEach((st, sIdx) => {
+                        let locBadge = 'bg-soft-primary text-primary';
+                        if (st.location_code === 'TMB') locBadge = 'bg-soft-secondary text-secondary';
+                        else if (st.location_code === 'QC') locBadge = 'bg-soft-warning text-warning';
+                        else if (st.location_code === 'B006') locBadge = 'bg-soft-info text-info';
+                        else if (st.location_code === 'A001') locBadge = 'bg-soft-success text-success';
+
+                        const activeBadge = st.is_active ? `<span class="badge bg-success text-white ms-1"><i class="ri-radar-line me-1"></i>Posisi Saat Ini</span>` : '';
+
+                        stepsHtml += `
+                            <tr class="${st.is_active ? 'table-light border-start border-3 border-success' : ''}">
+                                <td><span class="badge rounded-pill bg-light text-dark border">${sIdx + 1}</span></td>
+                                <td>
+                                    <span class="badge ${locBadge} fw-bold me-1">${st.location_code}</span>
+                                    <span class="fw-semibold text-dark fs-12">${st.location_name}</span>
+                                    ${activeBadge}
+                                </td>
+                                <td><span class="fs-12 text-dark font-monospace">${st.arrival_full}</span></td>
+                                <td><span class="fs-12 text-dark font-monospace">${st.departure_full}</span></td>
+                                <td class="text-center">
+                                    <span class="badge bg-soft-info text-info fs-11 fw-bold">${st.duration_label}</span>
+                                </td>
+                                <td>
+                                    <small class="text-muted" style="white-space: normal;">${st.status_notes || '-'}</small>
+                                </td>
+                                <td>
+                                    ${st.action_by && st.action_by !== '-' ? `<span class="badge bg-soft-secondary text-secondary fs-11"><i class="ri-user-line me-1"></i>${st.action_by}</span>` : '<span class="text-muted">-</span>'}
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    stepsHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    $('#detailModalTrackingSteps').html(stepsHtml);
+                }
+            }
 
             // Edit button handler (supports dynamically rendered elements)
             $(document).on('click', '.btn-edit-ajax', function() {

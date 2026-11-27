@@ -1156,6 +1156,7 @@ Route::middleware('auth')->group(function () {
 
         // General Report/History Data
         Route::get('/history/data', [VehicleTrackingController::class, 'historyData'])->name('history.data');
+        Route::get('/transaction-detail/{id}', [VehicleTrackingController::class, 'transactionDetail'])->name('transaction_detail');
     });
 
     // Traceability Scan Kempu
