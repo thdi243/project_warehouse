@@ -187,18 +187,35 @@
                                         <input type="text" name="sloc" class="form-control" placeholder="C001"
                                             value="{{ $draft->sloc ?? 'C001' }}">
                                     </div>
-                                    <div class="col-md-12">
-                                        <label class="form-label">Supplier / Vendor</label>
-                                        <input type="text" name="supplier_vendor" id="supplier_vendor"
-                                            class="form-control" placeholder="Nama Supplier / Vendor..."
-                                            value="{{ $draft->supplier_vendor ?? '' }}">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Gate / Dock</label>
+                                        <select name="gate" id="gate" class="form-select select2">
+                                            <option value="">-- Pilih Gate --</option>
+                                            @foreach (range(1, 30) as $g)
+                                                @php
+                                                    $isBooked =
+                                                        in_array((int) $g, $bookedGates) &&
+                                                        (!isset($draft) || (int) $draft->gate !== (int) $g);
+                                                @endphp
+                                                <option value="{{ $g }}" @selected(isset($draft) && (int) $draft->gate === (int) $g)
+                                                    @disabled($isBooked)>
+                                                    Gate {{ $g }}{{ $isBooked ? ' (Terpakai)' : '' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">No. Segel</label>
-                                        <input type="text" name="no_segel_bas" class="form-control"
-                                            placeholder="No. Segel..." value="{{ $draft->no_segel_bas ?? '' }}">
+                                        <label class="form-label">Forklift Driver</label>
+                                        <select name="forklift_driver_id" class="form-select select2">
+                                            <option value="">-- Pilih Operator --</option>
+                                            @foreach ($forkliftDrivers as $driver)
+                                                <option value="{{ $driver->id }}" @selected(isset($draft) && $draft->forklift_driver_id == $driver->id)>
+                                                    {{ $driver->username }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="form-label">Jumlah TKBM</label>
                                         <div class="input-group">
                                             <input type="number" name="jumlah_tkbm" class="form-control"
@@ -206,28 +223,30 @@
                                             <span class="input-group-text">Orang</span>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="form-label text-primary fw-bold">
-                                            <i class="ri-time-line me-1"></i> Jam Serah Dokumen ke QC <small class="text-muted fw-normal">(WIB / 24 Jam)</small>
+                                            <i class="ri-time-line me-1"></i> Jam Serah Dokumen ke QC
                                         </label>
                                         <div class="input-group">
                                             <input type="text" name="jam_serah_terima_qc" id="jam_serah_terima_qc"
                                                 class="form-control border-primary timepicker-24"
                                                 placeholder="Contoh: 14:42"
                                                 value="{{ !empty($draft->jam_serah_terima_qc) ? substr($draft->jam_serah_terima_qc, 0, 5) : '' }}">
-                                            <span class="input-group-text bg-primary-subtle text-primary"><i class="ri-time-line"></i></span>
+                                            <span class="input-group-text bg-primary-subtle text-primary"><i
+                                                    class="ri-time-line"></i></span>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="form-label text-success fw-bold">
-                                            <i class="ri-checkbox-circle-line me-1"></i> Jam Release / Unrelease QC <small class="text-muted fw-normal">(WIB / 24 Jam)</small>
+                                            <i class="ri-checkbox-circle-line me-1"></i> Jam Release / Unrelease QC
                                         </label>
                                         <div class="input-group">
                                             <input type="text" name="jam_release_qc" id="jam_release_qc"
                                                 class="form-control border-success timepicker-24"
                                                 placeholder="Contoh: 15:30"
                                                 value="{{ !empty($draft->jam_release_qc) ? substr($draft->jam_release_qc, 0, 5) : '' }}">
-                                            <span class="input-group-text bg-success-subtle text-success"><i class="ri-checkbox-circle-line"></i></span>
+                                            <span class="input-group-text bg-success-subtle text-success"><i
+                                                    class="ri-checkbox-circle-line"></i></span>
                                         </div>
                                     </div>
                                 </div>
@@ -282,8 +301,16 @@
                                                     $vDriver = $vTx->nama_driver ?? '';
                                                     $vVendor = $vTx->vendor ?? '';
                                                     $vSpb = $vTx->no_spb ?? '';
-                                                    $jamDoc = $vTx->queue_taken_time ? $vTx->queue_taken_time->format('H:i') : ($vTx->notif_qc_doc_at ? $vTx->notif_qc_doc_at->format('H:i') : '');
-                                                    $jamRel = $vTx->finish_sampling_time ? $vTx->finish_sampling_time->format('H:i') : ($vTx->notif_qc_release_at ? $vTx->notif_qc_release_at->format('H:i') : '');
+                                                    $jamDoc = $vTx->queue_taken_time
+                                                        ? $vTx->queue_taken_time->format('H:i')
+                                                        : ($vTx->notif_qc_doc_at
+                                                            ? $vTx->notif_qc_doc_at->format('H:i')
+                                                            : '');
+                                                    $jamRel = $vTx->finish_sampling_time
+                                                        ? $vTx->finish_sampling_time->format('H:i')
+                                                        : ($vTx->notif_qc_release_at
+                                                            ? $vTx->notif_qc_release_at->format('H:i')
+                                                            : '');
                                                     $isSelected = $matchVehicle($vNoPol);
                                                 @endphp
                                                 <option value="{{ $vNoPol }}" data-driver="{{ $vDriver }}"
@@ -312,23 +339,11 @@
                                                 id="driver-indicator-name">{{ $driverNameVal }}</strong>
                                         </div>
                                     </div>
-
                                     <div class="col-md-6">
-                                        <label class="form-label">Gate / Dock</label>
-                                        <select name="gate" id="gate" class="form-select select2">
-                                            <option value="">-- Pilih Gate --</option>
-                                            @foreach (range(1, 30) as $g)
-                                                @php
-                                                    $isBooked =
-                                                        in_array((int) $g, $bookedGates) &&
-                                                        (!isset($draft) || (int) $draft->gate !== (int) $g);
-                                                @endphp
-                                                <option value="{{ $g }}" @selected(isset($draft) && (int) $draft->gate === (int) $g)
-                                                    @disabled($isBooked)>
-                                                    Gate {{ $g }}{{ $isBooked ? ' (Terpakai)' : '' }}
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                        <label class="form-label">Supplier / Vendor</label>
+                                        <input type="text" name="supplier_vendor" id="supplier_vendor"
+                                            class="form-control" placeholder="Nama Supplier / Vendor..."
+                                            value="{{ $draft->supplier_vendor ?? '' }}">
                                     </div>
 
                                     <div class="col-md-6">
@@ -336,18 +351,6 @@
                                         <select name="jenis_pengiriman" class="form-select">
                                             <option value="Lokal" @selected(($draft->jenis_pengiriman ?? 'Lokal') === 'Lokal')>Lokal</option>
                                             <option value="Import" @selected(($draft->jenis_pengiriman ?? '') === 'Import')>Import</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label">Forklift Driver</label>
-                                        <select name="forklift_driver_id" class="form-select select2">
-                                            <option value="">-- Pilih Operator --</option>
-                                            @foreach ($forkliftDrivers as $driver)
-                                                <option value="{{ $driver->id }}" @selected(isset($draft) && $draft->forklift_driver_id == $driver->id)>
-                                                    {{ $driver->username }}
-                                                </option>
-                                            @endforeach
                                         </select>
                                     </div>
 
@@ -362,6 +365,11 @@
                                                 class="text-muted">(Opsional)</small></label>
                                         <input type="text" name="no_kontainer" class="form-control"
                                             placeholder="No. Kontainer..." value="{{ $draft->no_kontainer ?? '' }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">No. Segel</label>
+                                        <input type="text" name="no_segel_bas" class="form-control"
+                                            placeholder="No. Segel..." value="{{ $draft->no_segel_bas ?? '' }}">
                                     </div>
                                 </div>
                             </div>
@@ -424,13 +432,11 @@
                                                                 value="{{ $detail->material_id }}">
                                                             <input type="hidden"
                                                                 name="details[{{ $rowIndex }}][mid]"
-                                                                class="detail-mid"
-                                                                value="{{ $mid }}">
+                                                                class="detail-mid" value="{{ $mid }}">
                                                             <input type="hidden"
                                                                 name="details[{{ $rowIndex }}][nama_barang]"
                                                                 class="detail-nama" value="{{ $nama }}">
-                                                            <input type="hidden"
-                                                                class="detail-qty-pallet"
+                                                            <input type="hidden" class="detail-qty-pallet"
                                                                 value="{{ $qtyPallet }}">
                                                             <select class="form-select form-select-sm material-select"
                                                                 style="width: 100%;">
@@ -472,8 +478,8 @@
                                                                 name="details[{{ $rowIndex }}][qty]"
                                                                 class="form-control form-control-sm table-input detail-qty text-end fw-bold"
                                                                 value="{{ floatval($detail->qty ?? 0) > 0 ? (float) $detail->qty : '' }}"
-                                                                placeholder="0"
-                                                                {{ $jenisVal === 'P' ? 'readonly' : '' }} required>
+                                                                placeholder="0" {{ $jenisVal === 'P' ? 'readonly' : '' }}
+                                                                required>
                                                         </td>
                                                         <td>
                                                             <input type="text"
@@ -483,10 +489,14 @@
                                                                 placeholder="Keterangan...">
                                                         </td>
                                                         <td class="text-center text-nowrap">
-                                                            <button type="button" class="btn btn-sm btn-soft-primary btn-duplicate-row me-1" title="Duplikat Baris (Row Below)">
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-soft-primary btn-duplicate-row me-1"
+                                                                title="Duplikat Baris (Row Below)">
                                                                 <i class="ri-file-copy-line"></i>
                                                             </button>
-                                                            <button type="button" class="btn btn-sm btn-soft-danger btn-delete-row" title="Hapus Baris">
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-soft-danger btn-delete-row"
+                                                                title="Hapus Baris">
                                                                 <i class="ri-delete-bin-line"></i>
                                                             </button>
                                                         </td>
@@ -745,9 +755,9 @@
                             <span class="autosave-status-bottom badge bg-light text-muted border px-3 py-2 fw-medium">
                                 <i class="ri-checkbox-circle-line text-success me-1"></i> Draft tersimpan otomatis
                             </span>
-                            <button type="button" class="btn btn-soft-secondary" id="btn-save-draft">
+                            {{-- <button type="button" class="btn btn-soft-secondary" id="btn-save-draft">
                                 <i class="ri-save-line me-1"></i> Simpan Manual
-                            </button>
+                            </button> --}}
                             <button type="submit" class="btn btn-success px-4" id="btn-submit">
                                 <i class="ri-check-line me-1"></i> Submit & Lanjut Approval
                             </button>
@@ -869,7 +879,8 @@
                     $row.find('.detail-mid').val(data.mid);
                     $row.find('.detail-nama').val(data.nama);
                     $row.find('.detail-uom').val(data.uom);
-                    let cleanQty = (data.qty_pallet !== undefined && data.qty_pallet !== null && data.qty_pallet !== '') ? parseFloat(data.qty_pallet) : 0;
+                    let cleanQty = (data.qty_pallet !== undefined && data.qty_pallet !== null && data
+                        .qty_pallet !== '') ? parseFloat(data.qty_pallet) : 0;
                     $row.find('.detail-qty-pallet').val(cleanQty);
 
                     let j = $row.find('.detail-jenis').val();
@@ -963,7 +974,8 @@
 
                 let optionHtml = '';
                 if (materialId || mid) {
-                    optionHtml = `<option value="${materialId}" data-mid="${mid}" data-nama="${nama}" data-uom="${uom}" data-qty-pallet="${qtyPallet}" selected>[${mid}] ${nama}</option>`;
+                    optionHtml =
+                        `<option value="${materialId}" data-mid="${mid}" data-nama="${nama}" data-uom="${uom}" data-qty-pallet="${qtyPallet}" selected>[${mid}] ${nama}</option>`;
                 }
 
                 let newRow = `
@@ -1114,7 +1126,7 @@
                 if (keys.length === 0) {
                     $tbody.html(
                         '<tr><td colspan="6" class="text-center text-muted small py-3">Belum ada baris item</td></tr>'
-                        );
+                    );
                     return;
                 }
 
@@ -1185,7 +1197,8 @@
                 let d = e.params.data;
                 $('#modal-mid').val(d.mid);
                 $('#modal-uom').val(d.uom);
-                let cleanModalQty = (d.qty_pallet !== undefined && d.qty_pallet !== null && d.qty_pallet !== '') ? parseFloat(d.qty_pallet) : '';
+                let cleanModalQty = (d.qty_pallet !== undefined && d.qty_pallet !== null && d.qty_pallet !==
+                    '') ? parseFloat(d.qty_pallet) : '';
                 $('#modal-qty-pallet').val(!isNaN(cleanModalQty) && cleanModalQty > 0 ? cleanModalQty : '');
                 if ($('#modal-jenis').val() === 'P') {
                     $('#modal-qty-pallet').prop('readonly', true);
@@ -1233,7 +1246,8 @@
                 let palletCount = parseInt($('#modal-pallet-count').val()) || 1;
                 let jenisVal = $('#modal-jenis').val() || 'P';
                 let maxPalletQty = parseFloat(selData.qty_pallet) || 0;
-                let qtyVal = parseFloat($('#modal-qty-pallet').val()) || (maxPalletQty > 0 ? maxPalletQty : 0);
+                let qtyVal = parseFloat($('#modal-qty-pallet').val()) || (maxPalletQty > 0 ? maxPalletQty :
+                    0);
                 if (jenisVal === 'P' && maxPalletQty > 0) {
                     qtyVal = maxPalletQty;
                 } else if (jenisVal === 'R' && maxPalletQty > 0 && qtyVal > maxPalletQty) {
@@ -1510,12 +1524,17 @@
                     let qty = parseFloat($(this).find('.detail-qty').val()) || 0;
                     let maxQty = parseFloat($(this).find('.detail-qty-pallet').val()) || 0;
                     if (j === 'R' && maxQty > 0 && qty > maxQty) {
-                        overQtyError = `Baris #${idx + 1}: Qty Receh (${qty}) tidak boleh melebihi Full Pallet (${maxQty})`;
+                        overQtyError =
+                            `Baris #${idx + 1}: Qty Receh (${qty}) tidak boleh melebihi Full Pallet (${maxQty})`;
                         return false;
                     }
                 });
                 if (overQtyError) {
-                    Swal.fire({ icon: 'warning', title: 'Validasi Qty', text: overQtyError });
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Validasi Qty',
+                        text: overQtyError
+                    });
                     return;
                 }
 

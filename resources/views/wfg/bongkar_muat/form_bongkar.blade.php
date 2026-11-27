@@ -188,16 +188,33 @@
                                         <input type="text" name="sloc" class="form-control" placeholder="A001"
                                             value="{{ $draft->sloc ?? 'A001' }}">
                                     </div>
-                                    <div class="col-md-12">
-                                        <label class="form-label">Supplier / Vendor</label>
-                                        <input type="text" name="supplier_vendor" id="supplier_vendor"
-                                            class="form-control" placeholder="Nama Supplier / Vendor..."
-                                            value="{{ $draft->supplier_vendor ?? ($matchedWfgTx->vendor ?? '') }}">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Gate / Dock</label>
+                                        <select name="gate" id="gate" class="form-select select2">
+                                            <option value="">-- Pilih Gate --</option>
+                                            @foreach (range(1, 30) as $g)
+                                                @php
+                                                    $isBooked =
+                                                        in_array((int) $g, $bookedGates) &&
+                                                        (!isset($draft) || (int) $draft->gate !== (int) $g);
+                                                @endphp
+                                                <option value="{{ $g }}" @selected(isset($draft) && (int) $draft->gate === (int) $g)
+                                                    @disabled($isBooked)>
+                                                    Gate {{ $g }}{{ $isBooked ? ' (Terpakai)' : '' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">No. Segel</label>
-                                        <input type="text" name="no_segel_bas" class="form-control"
-                                            placeholder="No. Segel..." value="{{ $draft->no_segel_bas ?? '' }}">
+                                        <label class="form-label">Forklift Driver</label>
+                                        <select name="forklift_driver_id" class="form-select select2">
+                                            <option value="">-- Pilih Operator --</option>
+                                            @foreach ($forkliftDrivers as $driver)
+                                                <option value="{{ $driver->id }}" @selected(isset($draft) && $draft->forklift_driver_id == $driver->id)>
+                                                    {{ $driver->username }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">Jumlah TKBM</label>
@@ -293,21 +310,10 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Gate / Dock</label>
-                                        <select name="gate" id="gate" class="form-select select2">
-                                            <option value="">-- Pilih Gate --</option>
-                                            @foreach (range(1, 30) as $g)
-                                                @php
-                                                    $isBooked =
-                                                        in_array((int) $g, $bookedGates) &&
-                                                        (!isset($draft) || (int) $draft->gate !== (int) $g);
-                                                @endphp
-                                                <option value="{{ $g }}" @selected(isset($draft) && (int) $draft->gate === (int) $g)
-                                                    @disabled($isBooked)>
-                                                    Gate {{ $g }}{{ $isBooked ? ' (Terpakai)' : '' }}
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                        <label class="form-label">Supplier / Vendor</label>
+                                        <input type="text" name="supplier_vendor" id="supplier_vendor"
+                                            class="form-control" placeholder="Nama Supplier / Vendor..."
+                                            value="{{ $draft->supplier_vendor ?? ($matchedWfgTx->vendor ?? '') }}">
                                     </div>
 
                                     <div class="col-md-6">
@@ -315,18 +321,6 @@
                                         <select name="jenis_pengiriman" class="form-select">
                                             <option value="Lokal" @selected(($draft->jenis_pengiriman ?? 'Lokal') === 'Lokal')>Lokal</option>
                                             <option value="Import" @selected(($draft->jenis_pengiriman ?? '') === 'Import')>Import</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label">Forklift Driver</label>
-                                        <select name="forklift_driver_id" class="form-select select2">
-                                            <option value="">-- Pilih Operator --</option>
-                                            @foreach ($forkliftDrivers as $driver)
-                                                <option value="{{ $driver->id }}" @selected(isset($draft) && $draft->forklift_driver_id == $driver->id)>
-                                                    {{ $driver->username }}
-                                                </option>
-                                            @endforeach
                                         </select>
                                     </div>
 
@@ -341,6 +335,11 @@
                                                 class="text-muted">(Opsional)</small></label>
                                         <input type="text" name="no_kontainer" class="form-control"
                                             placeholder="No. Kontainer..." value="{{ $draft->no_kontainer ?? '' }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">No. Segel</label>
+                                        <input type="text" name="no_segel_bas" class="form-control"
+                                            placeholder="No. Segel..." value="{{ $draft->no_segel_bas ?? '' }}">
                                     </div>
                                 </div>
                             </div>
@@ -718,20 +717,20 @@
 
             if (status === 'saving') {
                 $badges.removeClass('bg-light bg-success-subtle bg-danger-subtle text-muted text-success text-danger')
-                       .addClass('bg-warning-subtle text-warning')
-                       .html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan draft...');
+                    .addClass('bg-warning-subtle text-warning')
+                    .html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan draft...');
             } else if (status === 'saved') {
                 const now = new Date();
                 const timeStr = String(now.getHours()).padStart(2, '0') + ':' +
-                                String(now.getMinutes()).padStart(2, '0') + ':' +
-                                String(now.getSeconds()).padStart(2, '0');
+                    String(now.getMinutes()).padStart(2, '0') + ':' +
+                    String(now.getSeconds()).padStart(2, '0');
                 $badges.removeClass('bg-light bg-warning-subtle bg-danger-subtle text-muted text-warning text-danger')
-                       .addClass('bg-success-subtle text-success')
-                       .html(`<i class="ri-checkbox-circle-line me-1"></i> Draft tersimpan (${timeStr})`);
+                    .addClass('bg-success-subtle text-success')
+                    .html(`<i class="ri-checkbox-circle-line me-1"></i> Draft tersimpan (${timeStr})`);
             } else if (status === 'error') {
                 $badges.removeClass('bg-light bg-warning-subtle bg-success-subtle text-muted text-warning text-success')
-                       .addClass('bg-danger-subtle text-danger')
-                       .html('<i class="ri-error-warning-line me-1"></i> Gagal simpan draft');
+                    .addClass('bg-danger-subtle text-danger')
+                    .html('<i class="ri-error-warning-line me-1"></i> Gagal simpan draft');
             }
         }
 
@@ -1258,11 +1257,16 @@
                     let maxQty = parseFloat(it.qty_box) || 0;
                     let q = parseFloat(it.qty) || 0;
                     if (it.jenis === 'R' && maxQty > 0 && q > maxQty) {
-                        overQtyError = `Baris #${idx + 1}: Qty Receh (${q}) tidak boleh melebihi Full Pallet (${maxQty})`;
+                        overQtyError =
+                            `Baris #${idx + 1}: Qty Receh (${q}) tidak boleh melebihi Full Pallet (${maxQty})`;
                     }
                 });
                 if (overQtyError) {
-                    Swal.fire({ icon: 'warning', title: 'Validasi Qty', text: overQtyError });
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Validasi Qty',
+                        text: overQtyError
+                    });
                     return;
                 }
 

@@ -187,18 +187,35 @@
                                         <input type="text" name="sloc" class="form-control" placeholder="B006"
                                             value="{{ $draft->sloc ?? 'B006' }}">
                                     </div>
-                                    <div class="col-md-12">
-                                        <label class="form-label">Supplier / Vendor</label>
-                                        <input type="text" name="supplier_vendor" id="supplier_vendor"
-                                            class="form-control" placeholder="Nama Supplier / Vendor..."
-                                            value="{{ $draft->supplier_vendor ?? '' }}">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Gate / Dock</label>
+                                        <select name="gate" id="gate" class="form-select select2">
+                                            <option value="">-- Pilih Gate --</option>
+                                            @foreach (range(1, 30) as $g)
+                                                @php
+                                                    $isBooked =
+                                                        in_array((int) $g, $bookedGates) &&
+                                                        (!isset($draft) || (int) $draft->gate !== (int) $g);
+                                                @endphp
+                                                <option value="{{ $g }}" @selected(isset($draft) && (int) $draft->gate === (int) $g)
+                                                    @disabled($isBooked)>
+                                                    Gate {{ $g }}{{ $isBooked ? ' (Terpakai)' : '' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">No. Segel</label>
-                                        <input type="text" name="no_segel_bas" class="form-control"
-                                            placeholder="No. Segel..." value="{{ $draft->no_segel_bas ?? '' }}">
+                                        <label class="form-label">Forklift Driver</label>
+                                        <select name="forklift_driver_id" class="form-select select2">
+                                            <option value="">-- Pilih Operator --</option>
+                                            @foreach ($forkliftDrivers as $driver)
+                                                <option value="{{ $driver->id }}" @selected(isset($draft) && $draft->forklift_driver_id == $driver->id)>
+                                                    {{ $driver->username }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="form-label">Jumlah TKBM</label>
                                         <div class="input-group">
                                             <input type="number" name="jumlah_tkbm" class="form-control"
@@ -206,28 +223,30 @@
                                             <span class="input-group-text">Orang</span>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="form-label text-primary fw-bold">
-                                            <i class="ri-time-line me-1"></i> Jam Serah Dokumen ke QC <small class="text-muted fw-normal">(WIB / 24 Jam)</small>
+                                            <i class="ri-time-line me-1"></i> Jam Serah Dokumen ke QC
                                         </label>
                                         <div class="input-group">
                                             <input type="text" name="jam_serah_terima_qc" id="jam_serah_terima_qc"
                                                 class="form-control border-primary timepicker-24"
                                                 placeholder="Contoh: 14:42"
                                                 value="{{ !empty($draft->jam_serah_terima_qc) ? substr($draft->jam_serah_terima_qc, 0, 5) : '' }}">
-                                            <span class="input-group-text bg-primary-subtle text-primary"><i class="ri-time-line"></i></span>
+                                            <span class="input-group-text bg-primary-subtle text-primary"><i
+                                                    class="ri-time-line"></i></span>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <label class="form-label text-success fw-bold">
-                                            <i class="ri-checkbox-circle-line me-1"></i> Jam Release / Unrelease QC <small class="text-muted fw-normal">(WIB / 24 Jam)</small>
+                                            <i class="ri-checkbox-circle-line me-1"></i> Jam Release / Unrelease QC
                                         </label>
                                         <div class="input-group">
                                             <input type="text" name="jam_release_qc" id="jam_release_qc"
                                                 class="form-control border-success timepicker-24"
                                                 placeholder="Contoh: 15:30"
                                                 value="{{ !empty($draft->jam_release_qc) ? substr($draft->jam_release_qc, 0, 5) : '' }}">
-                                            <span class="input-group-text bg-success-subtle text-success"><i class="ri-checkbox-circle-line"></i></span>
+                                            <span class="input-group-text bg-success-subtle text-success"><i
+                                                    class="ri-checkbox-circle-line"></i></span>
                                         </div>
                                     </div>
                                 </div>
@@ -282,8 +301,16 @@
                                                     $vDriver = $vTx->nama_driver ?? '';
                                                     $vVendor = $vTx->vendor ?? '';
                                                     $vSpb = $vTx->no_spb ?? '';
-                                                    $jamDoc = $vTx->queue_taken_time ? $vTx->queue_taken_time->format('H:i') : ($vTx->notif_qc_doc_at ? $vTx->notif_qc_doc_at->format('H:i') : '');
-                                                    $jamRel = $vTx->finish_sampling_time ? $vTx->finish_sampling_time->format('H:i') : ($vTx->notif_qc_release_at ? $vTx->notif_qc_release_at->format('H:i') : '');
+                                                    $jamDoc = $vTx->queue_taken_time
+                                                        ? $vTx->queue_taken_time->format('H:i')
+                                                        : ($vTx->notif_qc_doc_at
+                                                            ? $vTx->notif_qc_doc_at->format('H:i')
+                                                            : '');
+                                                    $jamRel = $vTx->finish_sampling_time
+                                                        ? $vTx->finish_sampling_time->format('H:i')
+                                                        : ($vTx->notif_qc_release_at
+                                                            ? $vTx->notif_qc_release_at->format('H:i')
+                                                            : '');
                                                     $isSelected = $matchVehicle($vNoPol);
                                                 @endphp
                                                 <option value="{{ $vNoPol }}" data-driver="{{ $vDriver }}"
@@ -312,23 +339,11 @@
                                                 id="driver-indicator-name">{{ $driverNameVal }}</strong>
                                         </div>
                                     </div>
-
                                     <div class="col-md-6">
-                                        <label class="form-label">Gate / Dock</label>
-                                        <select name="gate" id="gate" class="form-select select2">
-                                            <option value="">-- Pilih Gate --</option>
-                                            @foreach (range(1, 30) as $g)
-                                                @php
-                                                    $isBooked =
-                                                        in_array((int) $g, $bookedGates) &&
-                                                        (!isset($draft) || (int) $draft->gate !== (int) $g);
-                                                @endphp
-                                                <option value="{{ $g }}" @selected(isset($draft) && (int) $draft->gate === (int) $g)
-                                                    @disabled($isBooked)>
-                                                    Gate {{ $g }}{{ $isBooked ? ' (Terpakai)' : '' }}
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                        <label class="form-label">Supplier / Vendor</label>
+                                        <input type="text" name="supplier_vendor" id="supplier_vendor"
+                                            class="form-control" placeholder="Nama Supplier / Vendor..."
+                                            value="{{ $draft->supplier_vendor ?? '' }}">
                                     </div>
 
                                     <div class="col-md-6">
@@ -336,18 +351,6 @@
                                         <select name="jenis_pengiriman" class="form-select">
                                             <option value="Lokal" @selected(($draft->jenis_pengiriman ?? 'Lokal') === 'Lokal')>Lokal</option>
                                             <option value="Import" @selected(($draft->jenis_pengiriman ?? '') === 'Import')>Import</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label">Forklift Driver</label>
-                                        <select name="forklift_driver_id" class="form-select select2">
-                                            <option value="">-- Pilih Operator --</option>
-                                            @foreach ($forkliftDrivers as $driver)
-                                                <option value="{{ $driver->id }}" @selected(isset($draft) && $draft->forklift_driver_id == $driver->id)>
-                                                    {{ $driver->username }}
-                                                </option>
-                                            @endforeach
                                         </select>
                                     </div>
 
@@ -362,6 +365,11 @@
                                                 class="text-muted">(Opsional)</small></label>
                                         <input type="text" name="no_kontainer" class="form-control"
                                             placeholder="No. Kontainer..." value="{{ $draft->no_kontainer ?? '' }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">No. Segel</label>
+                                        <input type="text" name="no_segel_bas" class="form-control"
+                                            placeholder="No. Segel..." value="{{ $draft->no_segel_bas ?? '' }}">
                                     </div>
                                 </div>
                             </div>
@@ -415,41 +423,80 @@
                                                         $qtyPallet = floatval($mat->qty_kg ?? ($mat->qty_pallet ?? 0));
                                                     @endphp
                                                     <tr data-index="{{ $rowIndex }}">
-                                                        <td class="text-center fw-medium row-number">{{ $rowIndex }}</td>
+                                                        <td class="text-center fw-medium row-number">{{ $rowIndex }}
+                                                        </td>
                                                         <td>
-                                                            <input type="hidden" name="details[{{ $rowIndex }}][material_id]" class="detail-material-id" value="{{ $detail->material_id }}">
-                                                            <input type="hidden" name="details[{{ $rowIndex }}][mid]" class="detail-mid" value="{{ $mid }}">
-                                                            <input type="hidden" name="details[{{ $rowIndex }}][nama_barang]" class="detail-nama" value="{{ $nama }}">
-                                                            <input type="hidden" class="detail-qty-pallet" value="{{ $qtyPallet }}">
-                                                            <select class="form-select form-select-sm material-select" style="width: 100%;">
+                                                            <input type="hidden"
+                                                                name="details[{{ $rowIndex }}][material_id]"
+                                                                class="detail-material-id"
+                                                                value="{{ $detail->material_id }}">
+                                                            <input type="hidden"
+                                                                name="details[{{ $rowIndex }}][mid]"
+                                                                class="detail-mid" value="{{ $mid }}">
+                                                            <input type="hidden"
+                                                                name="details[{{ $rowIndex }}][nama_barang]"
+                                                                class="detail-nama" value="{{ $nama }}">
+                                                            <input type="hidden" class="detail-qty-pallet"
+                                                                value="{{ $qtyPallet }}">
+                                                            <select class="form-select form-select-sm material-select"
+                                                                style="width: 100%;">
                                                                 @if ($detail->material_id || $mid)
-                                                                    <option value="{{ $detail->material_id }}" data-mid="{{ $mid }}" data-nama="{{ $nama }}" data-uom="{{ $uom }}" data-qty-pallet="{{ $qtyPallet }}" selected>
+                                                                    <option value="{{ $detail->material_id }}"
+                                                                        data-mid="{{ $mid }}"
+                                                                        data-nama="{{ $nama }}"
+                                                                        data-uom="{{ $uom }}"
+                                                                        data-qty-pallet="{{ $qtyPallet }}" selected>
                                                                         [{{ $mid }}] {{ $nama }}
                                                                     </option>
                                                                 @endif
                                                             </select>
                                                         </td>
                                                         <td>
-                                                            <input type="text" name="details[{{ $rowIndex }}][batch_number]" class="form-control form-control-sm table-input text-center" value="{{ $detail->batch_number ?? '' }}" placeholder="Batch...">
+                                                            <input type="text"
+                                                                name="details[{{ $rowIndex }}][batch_number]"
+                                                                class="form-control form-control-sm table-input text-center"
+                                                                value="{{ $detail->batch_number ?? '' }}"
+                                                                placeholder="Batch...">
                                                         </td>
                                                         <td>
-                                                            <select name="details[{{ $rowIndex }}][jenis]" class="form-select form-select-sm fw-bold text-center detail-jenis">
-                                                                <option value="P" @selected($jenisVal === 'P')>P</option>
-                                                                <option value="R" @selected($jenisVal === 'R')>R</option>
+                                                            <select name="details[{{ $rowIndex }}][jenis]"
+                                                                class="form-select form-select-sm fw-bold text-center detail-jenis">
+                                                                <option value="P" @selected($jenisVal === 'P')>P
+                                                                </option>
+                                                                <option value="R" @selected($jenisVal === 'R')>R
+                                                                </option>
                                                             </select>
                                                         </td>
                                                         <td>
-                                                            <input type="text" name="details[{{ $rowIndex }}][uom]" class="form-control form-control-sm table-input detail-uom text-center" value="{{ $uom }}" placeholder="KG">
+                                                            <input type="text"
+                                                                name="details[{{ $rowIndex }}][uom]"
+                                                                class="form-control form-control-sm table-input detail-uom text-center"
+                                                                value="{{ $uom }}" placeholder="KG">
                                                         </td>
                                                         <td>
-                                                            <input type="number" step="any" name="details[{{ $rowIndex }}][qty]" class="form-control form-control-sm table-input detail-qty text-end fw-bold" value="{{ floatval($detail->qty ?? 0) > 0 ? (float) $detail->qty : '' }}" placeholder="0" {{ $jenisVal === 'P' ? 'readonly' : '' }} required>
+                                                            <input type="number" step="any"
+                                                                name="details[{{ $rowIndex }}][qty]"
+                                                                class="form-control form-control-sm table-input detail-qty text-end fw-bold"
+                                                                value="{{ floatval($detail->qty ?? 0) > 0 ? (float) $detail->qty : '' }}"
+                                                                placeholder="0" {{ $jenisVal === 'P' ? 'readonly' : '' }}
+                                                                required>
                                                         </td>
                                                         <td>
-                                                            <input type="text" name="details[{{ $rowIndex }}][keterangan]" class="form-control form-control-sm table-input detail-keterangan" value="{{ $detail->keterangan ?? '' }}" placeholder="Contoh: 20 zak, sample, dsb">
+                                                            <input type="text"
+                                                                name="details[{{ $rowIndex }}][keterangan]"
+                                                                class="form-control form-control-sm table-input detail-keterangan"
+                                                                value="{{ $detail->keterangan ?? '' }}"
+                                                                placeholder="Contoh: 20 zak, sample, dsb">
                                                         </td>
                                                         <td class="text-center text-nowrap">
-                                                            <button type="button" class="btn btn-sm btn-soft-primary btn-duplicate-row me-1" title="Duplikat Baris (Row Below)"><i class="ri-file-copy-line"></i></button>
-                                                            <button type="button" class="btn btn-sm btn-soft-danger btn-delete-row" title="Hapus Baris"><i class="ri-delete-bin-line"></i></button>
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-soft-primary btn-duplicate-row me-1"
+                                                                title="Duplikat Baris (Row Below)"><i
+                                                                    class="ri-file-copy-line"></i></button>
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-soft-danger btn-delete-row"
+                                                                title="Hapus Baris"><i
+                                                                    class="ri-delete-bin-line"></i></button>
                                                         </td>
                                                     </tr>
                                                 @endforeach
@@ -494,7 +541,8 @@
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td colspan="6" class="text-center text-muted small py-3">Belum ada baris item</td>
+                                                <td colspan="6" class="text-center text-muted small py-3">Belum ada
+                                                    baris item</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -510,7 +558,8 @@
                         <div class="card shadow-sm border-0">
                             <div class="card-header bg-light">
                                 <h5 class="card-title mb-0">
-                                    <i class="ri-shield-check-line me-2"></i>Pemeriksaan Kondisi & Kelengkapan Dokumen / Foto
+                                    <i class="ri-shield-check-line me-2"></i>Pemeriksaan Kondisi & Kelengkapan Dokumen /
+                                    Foto
                                 </h5>
                             </div>
                             <div class="card-body">
@@ -521,22 +570,28 @@
                                         <div class="mb-3">
                                             <label class="form-label d-block">COA</label>
                                             <div class="form-check form-check-inline">
-                                                <input class="form-check-input" type="radio" name="inspection[doc_coa]" id="coa_ada" value="Ada" @checked(($insp['doc_coa'] ?? 'Ada') === 'Ada')>
+                                                <input class="form-check-input" type="radio" name="inspection[doc_coa]"
+                                                    id="coa_ada" value="Ada" @checked(($insp['doc_coa'] ?? 'Ada') === 'Ada')>
                                                 <label class="form-check-label" for="coa_ada">Ada</label>
                                             </div>
                                             <div class="form-check form-check-inline">
-                                                <input class="form-check-input" type="radio" name="inspection[doc_coa]" id="coa_tidak" value="Tidak ada" @checked(($insp['doc_coa'] ?? '') === 'Tidak ada')>
+                                                <input class="form-check-input" type="radio" name="inspection[doc_coa]"
+                                                    id="coa_tidak" value="Tidak ada" @checked(($insp['doc_coa'] ?? '') === 'Tidak ada')>
                                                 <label class="form-check-label" for="coa_tidak">Tidak ada</label>
                                             </div>
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label d-block">Kartu Checkpoint</label>
                                             <div class="form-check form-check-inline">
-                                                <input class="form-check-input" type="radio" name="inspection[doc_kartu_checkpoint]" id="cp_ada" value="Ada" @checked(($insp['doc_kartu_checkpoint'] ?? 'Ada') === 'Ada')>
+                                                <input class="form-check-input" type="radio"
+                                                    name="inspection[doc_kartu_checkpoint]" id="cp_ada" value="Ada"
+                                                    @checked(($insp['doc_kartu_checkpoint'] ?? 'Ada') === 'Ada')>
                                                 <label class="form-check-label" for="cp_ada">Ada</label>
                                             </div>
                                             <div class="form-check form-check-inline">
-                                                <input class="form-check-input" type="radio" name="inspection[doc_kartu_checkpoint]" id="cp_tidak" value="Tidak ada" @checked(($insp['doc_kartu_checkpoint'] ?? '') === 'Tidak ada')>
+                                                <input class="form-check-input" type="radio"
+                                                    name="inspection[doc_kartu_checkpoint]" id="cp_tidak"
+                                                    value="Tidak ada" @checked(($insp['doc_kartu_checkpoint'] ?? '') === 'Tidak ada')>
                                                 <label class="form-check-label" for="cp_tidak">Tidak ada</label>
                                             </div>
                                         </div>
@@ -548,16 +603,35 @@
                                         <h6 class="fw-bold mb-3 text-info border-bottom pb-2">Kondisi Kendaraan</h6>
                                         @php
                                             $vehicleChecks = [
-                                                'kondisi_lantai' => ['label' => 'Lantai Container', 'opts' => ['Baik', 'Rusak']],
-                                                'kondisi_dinding' => ['label' => 'Dinding Container Luar & Dalam', 'opts' => ['Baik', 'Rusak']],
-                                                'kondisi_sealed' => ['label' => 'Sealed Container', 'opts' => ['Baik', 'Rusak']],
-                                                'kondisi_pintu' => ['label' => 'Pintu Container', 'opts' => ['Baik', 'Rusak']],
-                                                'kondisi_kebersihan' => ['label' => 'Kebersihan Kendaraan', 'opts' => ['Bersih', 'Tidak Bersih']],
-                                                'kondisi_bau_tajam' => ['label' => 'Berbau Tajam', 'opts' => ['Ada', 'Tidak']],
+                                                'kondisi_lantai' => [
+                                                    'label' => 'Lantai Container',
+                                                    'opts' => ['Baik', 'Rusak'],
+                                                ],
+                                                'kondisi_dinding' => [
+                                                    'label' => 'Dinding Container Luar & Dalam',
+                                                    'opts' => ['Baik', 'Rusak'],
+                                                ],
+                                                'kondisi_sealed' => [
+                                                    'label' => 'Sealed Container',
+                                                    'opts' => ['Baik', 'Rusak'],
+                                                ],
+                                                'kondisi_pintu' => [
+                                                    'label' => 'Pintu Container',
+                                                    'opts' => ['Baik', 'Rusak'],
+                                                ],
+                                                'kondisi_kebersihan' => [
+                                                    'label' => 'Kebersihan Kendaraan',
+                                                    'opts' => ['Bersih', 'Tidak Bersih'],
+                                                ],
+                                                'kondisi_bau_tajam' => [
+                                                    'label' => 'Berbau Tajam',
+                                                    'opts' => ['Ada', 'Tidak'],
+                                                ],
                                             ];
                                         @endphp
                                         @foreach ($vehicleChecks as $fieldKey => $cfg)
-                                            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                            <div
+                                                class="d-flex justify-content-between align-items-center py-2 border-bottom">
                                                 <span class="small fw-semibold">{{ $cfg['label'] }}</span>
                                                 <div class="d-flex gap-3">
                                                     @foreach ($cfg['opts'] as $optIdx => $optVal)
@@ -581,49 +655,71 @@
                                         <div class="row g-2">
                                             <div class="col-6">
                                                 <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="inspection[foto_plat_nomor]" id="f_plat" value="1" @checked(!empty($insp['foto_plat_nomor']))>
-                                                    <label class="form-check-label small" for="f_plat">Foto Plat Nomor</label>
+                                                    <input class="form-check-input" type="checkbox"
+                                                        name="inspection[foto_plat_nomor]" id="f_plat" value="1"
+                                                        @checked(!empty($insp['foto_plat_nomor']))>
+                                                    <label class="form-check-label small" for="f_plat">Foto Plat
+                                                        Nomor</label>
                                                 </div>
                                             </div>
                                             <div class="col-6">
                                                 <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="inspection[foto_no_container]" id="f_kont" value="1" @checked(!empty($insp['foto_no_container']))>
-                                                    <label class="form-check-label small" for="f_kont">Foto No Container</label>
+                                                    <input class="form-check-input" type="checkbox"
+                                                        name="inspection[foto_no_container]" id="f_kont"
+                                                        value="1" @checked(!empty($insp['foto_no_container']))>
+                                                    <label class="form-check-label small" for="f_kont">Foto No
+                                                        Container</label>
                                                 </div>
                                             </div>
                                             <div class="col-6">
                                                 <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="inspection[foto_sealed_container]" id="f_seal" value="1" @checked(!empty($insp['foto_sealed_container']))>
-                                                    <label class="form-check-label small" for="f_seal">Foto Sealed Container</label>
+                                                    <input class="form-check-input" type="checkbox"
+                                                        name="inspection[foto_sealed_container]" id="f_seal"
+                                                        value="1" @checked(!empty($insp['foto_sealed_container']))>
+                                                    <label class="form-check-label small" for="f_seal">Foto Sealed
+                                                        Container</label>
                                                 </div>
                                             </div>
                                             <div class="col-6">
                                                 <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="inspection[foto_absorber_fumigan]" id="f_abs" value="1" @checked(!empty($insp['foto_absorber_fumigan']))>
-                                                    <label class="form-check-label small" for="f_abs">Foto Absorber / Fumigan</label>
+                                                    <input class="form-check-input" type="checkbox"
+                                                        name="inspection[foto_absorber_fumigan]" id="f_abs"
+                                                        value="1" @checked(!empty($insp['foto_absorber_fumigan']))>
+                                                    <label class="form-check-label small" for="f_abs">Foto Absorber /
+                                                        Fumigan</label>
                                                 </div>
                                             </div>
                                             <div class="col-6">
                                                 <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="inspection[foto_material_bermasalah]" id="f_mat" value="1" @checked(!empty($insp['foto_material_bermasalah']))>
-                                                    <label class="form-check-label small" for="f_mat">Foto Material Bermasalah</label>
+                                                    <input class="form-check-input" type="checkbox"
+                                                        name="inspection[foto_material_bermasalah]" id="f_mat"
+                                                        value="1" @checked(!empty($insp['foto_material_bermasalah']))>
+                                                    <label class="form-check-label small" for="f_mat">Foto Material
+                                                        Bermasalah</label>
                                                 </div>
                                             </div>
                                             <div class="col-6">
                                                 <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="inspection[foto_container_berlubang]" id="f_lub" value="1" @checked(!empty($insp['foto_container_berlubang']))>
-                                                    <label class="form-check-label small" for="f_lub">Foto Container Berlubang</label>
+                                                    <input class="form-check-input" type="checkbox"
+                                                        name="inspection[foto_container_berlubang]" id="f_lub"
+                                                        value="1" @checked(!empty($insp['foto_container_berlubang']))>
+                                                    <label class="form-check-label small" for="f_lub">Foto Container
+                                                        Berlubang</label>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="row g-2 mt-2">
                                             <div class="col-6">
                                                 <label class="form-label small mb-1">Jumlah Absorber</label>
-                                                <input type="text" name="inspection[jumlah_absorber]" class="form-control form-control-sm" value="{{ $insp['jumlah_absorber'] ?? '-' }}">
+                                                <input type="text" name="inspection[jumlah_absorber]"
+                                                    class="form-control form-control-sm"
+                                                    value="{{ $insp['jumlah_absorber'] ?? '-' }}">
                                             </div>
                                             <div class="col-6">
                                                 <label class="form-label small mb-1">Jumlah Fumigan</label>
-                                                <input type="text" name="inspection[jumlah_fumigan]" class="form-control form-control-sm" value="{{ $insp['jumlah_fumigan'] ?? '-' }}">
+                                                <input type="text" name="inspection[jumlah_fumigan]"
+                                                    class="form-control form-control-sm"
+                                                    value="{{ $insp['jumlah_fumigan'] ?? '-' }}">
                                             </div>
                                         </div>
                                     </div>
@@ -632,8 +728,10 @@
                                 {{-- Catatan Penyimpangan & Catatan Umum --}}
                                 <div class="row g-3 mt-3 border-top pt-3">
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold text-danger">Catatan Bila Ditemukan Penyimpangan</label>
-                                        <textarea name="inspection[catatan_penyimpangan]" class="form-control" rows="2" placeholder="Contoh: Tunggu Hasil STA, reject zak, dsb...">{{ $insp['catatan_penyimpangan'] ?? '' }}</textarea>
+                                        <label class="form-label fw-bold text-danger">Catatan Bila Ditemukan
+                                            Penyimpangan</label>
+                                        <textarea name="inspection[catatan_penyimpangan]" class="form-control" rows="2"
+                                            placeholder="Contoh: Tunggu Hasil STA, reject zak, dsb...">{{ $insp['catatan_penyimpangan'] ?? '' }}</textarea>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-bold">Catatan Umum / Lain-lain</label>
@@ -655,9 +753,9 @@
                             <span class="autosave-status-bottom badge bg-light text-muted border px-3 py-2 fw-medium">
                                 <i class="ri-checkbox-circle-line text-success me-1"></i> Draft tersimpan otomatis
                             </span>
-                            <button type="button" class="btn btn-soft-secondary" id="btn-save-draft">
+                            {{-- <button type="button" class="btn btn-soft-secondary" id="btn-save-draft">
                                 <i class="ri-save-line me-1"></i> Simpan Manual
-                            </button>
+                            </button> --}}
                             <button type="submit" class="btn btn-success px-4" id="btn-submit">
                                 <i class="ri-check-line me-1"></i> Submit & Lanjut Approval
                             </button>
@@ -694,7 +792,8 @@
                     <div class="row g-2 mb-3">
                         <div class="col-4">
                             <label class="form-label">Jumlah Pallet / Baris <span class="text-danger">*</span></label>
-                            <input type="number" id="modal-pallet-count" class="form-control" min="1" max="100" value="1">
+                            <input type="number" id="modal-pallet-count" class="form-control" min="1"
+                                max="100" value="1">
                         </div>
                         <div class="col-4">
                             <label class="form-label">Jenis <span class="text-danger">*</span></label>
@@ -705,7 +804,8 @@
                         </div>
                         <div class="col-4">
                             <label class="form-label">Qty per Pallet (KG) <span class="text-danger">*</span></label>
-                            <input type="number" step="any" id="modal-qty-pallet" class="form-control" placeholder="0">
+                            <input type="number" step="any" id="modal-qty-pallet" class="form-control"
+                                placeholder="0">
                         </div>
                     </div>
                     <div class="mb-3">
@@ -714,7 +814,8 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Keterangan (Opsional)</label>
-                        <input type="text" id="modal-keterangan" class="form-control" placeholder="Contoh: 20 zak, sample, dsb...">
+                        <input type="text" id="modal-keterangan" class="form-control"
+                            placeholder="Contoh: 20 zak, sample, dsb...">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -731,19 +832,28 @@
         $(document).ready(function() {
             let rowCounter = {{ $rowIndex ?? 0 }};
 
-            $('.select2').select2({ placeholder: '-- Pilih --', allowClear: true });
-            $('.select2-tags').select2({ placeholder: '-- Pilih / Ketik --', allowClear: true, tags: true });
+            $('.select2').select2({
+                placeholder: '-- Pilih --',
+                allowClear: true
+            });
+            $('.select2-tags').select2({
+                placeholder: '-- Pilih / Ketik --',
+                allowClear: true,
+                tags: true
+            });
 
             function initMaterialSelect($element) {
                 $element.select2({
                     placeholder: 'Cari Material WRM...',
                     allowClear: true,
                     ajax: {
-                        url: '{{ route("wrm.bongkar_muat.search_materials") }}',
+                        url: '{{ route('wrm.bongkar_muat.search_materials') }}',
                         dataType: 'json',
                         delay: 250,
                         data: function(params) {
-                            return { q: params.term };
+                            return {
+                                q: params.term
+                            };
                         },
                         processResults: function(data) {
                             return {
@@ -768,7 +878,8 @@
                     $row.find('.detail-mid').val(data.mid);
                     $row.find('.detail-nama').val(data.nama);
                     $row.find('.detail-uom').val(data.uom || 'KG');
-                    let cleanQty = (data.qty_pallet !== undefined && data.qty_pallet !== null && data.qty_pallet !== '') ? parseFloat(data.qty_pallet) : 0;
+                    let cleanQty = (data.qty_pallet !== undefined && data.qty_pallet !== null && data
+                        .qty_pallet !== '') ? parseFloat(data.qty_pallet) : 0;
                     $row.find('.detail-qty-pallet').val(cleanQty);
 
                     let j = $row.find('.detail-jenis').val();
@@ -862,7 +973,8 @@
 
                 let optionHtml = '';
                 if (materialId || mid) {
-                    optionHtml = `<option value="${materialId}" data-mid="${mid}" data-nama="${nama}" data-uom="${uom}" data-qty-pallet="${qtyPallet}" selected>[${mid}] ${nama}</option>`;
+                    optionHtml =
+                        `<option value="${materialId}" data-mid="${mid}" data-nama="${nama}" data-uom="${uom}" data-qty-pallet="${qtyPallet}" selected>[${mid}] ${nama}</option>`;
                 }
 
                 let newRow = `
@@ -984,7 +1096,14 @@
                         grandTotalPallet += 1;
 
                         if (!groups[mid]) {
-                            groups[mid] = { mid: mid, nama: nama, uom: uom, totalQty: 0, count: 0, notes: [] };
+                            groups[mid] = {
+                                mid: mid,
+                                nama: nama,
+                                uom: uom,
+                                totalQty: 0,
+                                count: 0,
+                                notes: []
+                            };
                         }
                         groups[mid].totalQty += qty;
                         groups[mid].count += 1;
@@ -1002,7 +1121,9 @@
 
                 let keys = Object.keys(groups);
                 if (keys.length === 0) {
-                    $tbody.html('<tr><td colspan="6" class="text-center text-muted small py-3">Belum ada baris item</td></tr>');
+                    $tbody.html(
+                        '<tr><td colspan="6" class="text-center text-muted small py-3">Belum ada baris item</td></tr>'
+                    );
                     return;
                 }
 
@@ -1045,10 +1166,14 @@
                 placeholder: 'Cari Material WRM...',
                 allowClear: true,
                 ajax: {
-                    url: '{{ route("wrm.bongkar_muat.search_materials") }}',
+                    url: '{{ route('wrm.bongkar_muat.search_materials') }}',
                     dataType: 'json',
                     delay: 250,
-                    data: function(params) { return { q: params.term }; },
+                    data: function(params) {
+                        return {
+                            q: params.term
+                        };
+                    },
                     processResults: function(data) {
                         return {
                             results: data.map(function(item) {
@@ -1069,7 +1194,8 @@
                 let d = e.params.data;
                 $('#modal-mid').val(d.mid);
                 $('#modal-uom').val(d.uom || 'KG');
-                let cleanModalQty = (d.qty_pallet !== undefined && d.qty_pallet !== null && d.qty_pallet !== '') ? parseFloat(d.qty_pallet) : '';
+                let cleanModalQty = (d.qty_pallet !== undefined && d.qty_pallet !== null && d.qty_pallet !==
+                    '') ? parseFloat(d.qty_pallet) : '';
                 $('#modal-qty-pallet').val(!isNaN(cleanModalQty) && cleanModalQty > 0 ? cleanModalQty : '');
                 if ($('#modal-jenis').val() === 'P') {
                     $('#modal-qty-pallet').prop('readonly', true);
@@ -1108,13 +1234,17 @@
             $('#btn-confirm-add-list').on('click', function() {
                 let selData = $('#modal-material-select').select2('data')[0];
                 if (!selData) {
-                    Swal.fire({ icon: 'warning', title: 'Pilih Material terlebih dahulu!' });
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Pilih Material terlebih dahulu!'
+                    });
                     return;
                 }
                 let palletCount = parseInt($('#modal-pallet-count').val()) || 1;
                 let jenisVal = $('#modal-jenis').val() || 'P';
                 let maxPalletQty = parseFloat(selData.qty_pallet) || 0;
-                let qtyVal = parseFloat($('#modal-qty-pallet').val()) || (maxPalletQty > 0 ? maxPalletQty : 0);
+                let qtyVal = parseFloat($('#modal-qty-pallet').val()) || (maxPalletQty > 0 ? maxPalletQty :
+                    0);
                 if (jenisVal === 'P' && maxPalletQty > 0) {
                     qtyVal = maxPalletQty;
                 } else if (jenisVal === 'R' && maxPalletQty > 0 && qtyVal > maxPalletQty) {
@@ -1268,21 +1398,24 @@
                 if (!$badges.length) return;
 
                 if (status === 'saving') {
-                    $badges.removeClass('bg-light bg-success-subtle bg-danger-subtle text-muted text-success text-danger')
-                           .addClass('bg-warning-subtle text-warning')
-                           .html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan draft...');
+                    $badges.removeClass(
+                            'bg-light bg-success-subtle bg-danger-subtle text-muted text-success text-danger')
+                        .addClass('bg-warning-subtle text-warning')
+                        .html('<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan draft...');
                 } else if (status === 'saved') {
                     const now = new Date();
                     const timeStr = String(now.getHours()).padStart(2, '0') + ':' +
-                                    String(now.getMinutes()).padStart(2, '0') + ':' +
-                                    String(now.getSeconds()).padStart(2, '0');
-                    $badges.removeClass('bg-light bg-warning-subtle bg-danger-subtle text-muted text-warning text-danger')
-                           .addClass('bg-success-subtle text-success')
-                           .html(`<i class="ri-checkbox-circle-line me-1"></i> Draft tersimpan (${timeStr})`);
+                        String(now.getMinutes()).padStart(2, '0') + ':' +
+                        String(now.getSeconds()).padStart(2, '0');
+                    $badges.removeClass(
+                            'bg-light bg-warning-subtle bg-danger-subtle text-muted text-warning text-danger')
+                        .addClass('bg-success-subtle text-success')
+                        .html(`<i class="ri-checkbox-circle-line me-1"></i> Draft tersimpan (${timeStr})`);
                 } else if (status === 'error') {
-                    $badges.removeClass('bg-light bg-warning-subtle bg-success-subtle text-muted text-warning text-success')
-                           .addClass('bg-danger-subtle text-danger')
-                           .html('<i class="ri-error-warning-line me-1"></i> Gagal simpan draft');
+                    $badges.removeClass(
+                            'bg-light bg-warning-subtle bg-success-subtle text-muted text-warning text-success')
+                        .addClass('bg-danger-subtle text-danger')
+                        .html('<i class="ri-error-warning-line me-1"></i> Gagal simpan draft');
                 }
             }
 
@@ -1308,7 +1441,7 @@
                 }
 
                 currentAutoSaveRequest = $.ajax({
-                    url: '{{ route("wrm.bongkar_muat.save_draft") }}',
+                    url: '{{ route('wrm.bongkar_muat.save_draft') }}',
                     type: 'POST',
                     data: formData,
                     success: function(res) {
@@ -1327,13 +1460,23 @@
                             setAutoSaveStatus('saved');
                             if (isManual) {
                                 Swal.close();
-                                Swal.fire({ icon: 'success', title: 'Berhasil!', text: res.message, timer: 1500, showConfirmButton: false });
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil!',
+                                    text: res.message,
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
                             }
                         } else {
                             setAutoSaveStatus('error');
                             if (isManual) {
                                 Swal.close();
-                                Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal',
+                                    text: res.message
+                                });
                             }
                         }
                     },
@@ -1342,7 +1485,11 @@
                         setAutoSaveStatus('error');
                         if (isManual) {
                             Swal.close();
-                            Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message || 'Terjadi kesalahan sistem' });
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: xhr.responseJSON?.message || 'Terjadi kesalahan sistem'
+                            });
                         }
                     },
                     complete: function() {
@@ -1360,7 +1507,11 @@
                 e.preventDefault();
                 let rowCount = $('#table-details tbody tr').length;
                 if (rowCount === 0) {
-                    Swal.fire({ icon: 'warning', title: 'Tabel Barang Kosong', text: 'Tambahkan minimal 1 baris barang sebelum submit!' });
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Tabel Barang Kosong',
+                        text: 'Tambahkan minimal 1 baris barang sebelum submit!'
+                    });
                     return;
                 }
 
@@ -1370,18 +1521,23 @@
                     let qty = parseFloat($(this).find('.detail-qty').val()) || 0;
                     let maxQty = parseFloat($(this).find('.detail-qty-pallet').val()) || 0;
                     if (j === 'R' && maxQty > 0 && qty > maxQty) {
-                        overQtyError = `Baris #${idx + 1}: Qty Receh (${qty}) tidak boleh melebihi Full Pallet (${maxQty})`;
+                        overQtyError =
+                            `Baris #${idx + 1}: Qty Receh (${qty}) tidak boleh melebihi Full Pallet (${maxQty})`;
                         return false;
                     }
                 });
                 if (overQtyError) {
-                    Swal.fire({ icon: 'warning', title: 'Validasi Qty', text: overQtyError });
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Validasi Qty',
+                        text: overQtyError
+                    });
                     return;
                 }
 
                 let formData = $(this).serialize();
                 $.ajax({
-                    url: '{{ route("wrm.bongkar_muat.store") }}',
+                    url: '{{ route('wrm.bongkar_muat.store') }}',
                     type: 'POST',
                     data: formData,
                     beforeSend: function() {
@@ -1400,12 +1556,21 @@
                                 window.location.href = res.redirect;
                             });
                         } else {
-                            Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: res.message
+                            });
                         }
                     },
                     error: function(err) {
                         Swal.close();
-                        Swal.fire({ icon: 'error', title: 'Error', text: err.responseJSON?.message || 'Terjadi kesalahan sistem' });
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: err.responseJSON?.message ||
+                                'Terjadi kesalahan sistem'
+                        });
                     }
                 });
             });
@@ -1423,7 +1588,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: '{{ route("wrm.bongkar_muat.cancel_draft") }}',
+                            url: '{{ route('wrm.bongkar_muat.cancel_draft') }}',
                             type: 'POST',
                             data: {
                                 _token: '{{ csrf_token() }}',
@@ -1431,9 +1596,14 @@
                             },
                             success: function(res) {
                                 if (res.status) {
-                                    window.location.href = '{{ route("wrm.bongkar_muat.index") }}';
+                                    window.location.href =
+                                        '{{ route('wrm.bongkar_muat.index') }}';
                                 } else {
-                                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Gagal',
+                                        text: res.message
+                                    });
                                 }
                             }
                         });
