@@ -34,7 +34,7 @@
     @endif
 
     {{-- MRP Sparepart WSP --}}
-    <li class="nav-item">
+    {{-- <li class="nav-item">
         <a href="#sidebarWSPMrp" data-bs-toggle="collapse" role="button"
             class="nav-link menu-link {{ request()->routeIs('stock.mrp.*') ? '' : 'collapsed' }}"
             aria-expanded="{{ request()->routeIs('stock.mrp.*') ? 'true' : 'false' }}" aria-controls="sidebarWSPMrp">
@@ -70,5 +70,5 @@
                 @endif
             </ul>
         </div>
-    </li>
+    </li> --}}
 @endif
