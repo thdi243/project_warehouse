@@ -17,6 +17,7 @@ class BongkarMuatDetail extends Model
         'material_id',
         'batch_number',
         'jenis',
+        'uom',
         'qty',
         'to_dummy',
         'to_sap',
@@ -25,6 +26,7 @@ class BongkarMuatDetail extends Model
         'manual_picking',
         'no_to',
         'qty_to',
+        'keterangan',
     ];
 
     protected $casts = [

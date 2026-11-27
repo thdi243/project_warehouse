@@ -9,9 +9,13 @@
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                         <h4 class="mb-sm-0">Data Bongkar Muat</h4>
-                        <div class="page-title-right">
+                        <div class="page-title-right d-flex gap-2">
                             <a href="{{ route('wfg.bongkar_muat.form') }}" class="btn btn-primary">
-                                <i class="ri-add-line me-1"></i> Tambah Bongkar Muat
+                                <i class="ri-add-line me-1"></i> Form Muat
+                            </a>
+                            <a href="{{ route('wfg.bongkar_muat.form_bongkar') }}"
+                                class="btn btn-warning text-dark fw-semibold">
+                                <i class="ri-add-line me-1"></i> Form Bongkar
                             </a>
                         </div>
                     </div>
@@ -40,6 +44,14 @@
                                     <input type="date" id="endDate" class="form-control">
                                 </div>
                                 <div class="col-md-2">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Tipe</label>
+                                    <select id="tipeFilter" class="form-select">
+                                        <option value="">Semua Tipe</option>
+                                        <option value="muat">Muat</option>
+                                        <option value="bongkar">Bongkar</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Status</label>
                                     <select id="statusFilter" class="form-select">
                                         <option value="">All Status</option>
@@ -51,16 +63,16 @@
                                         <option value="rejected">Rejected</option>
                                     </select>
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-1">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Flags</label>
                                     <select id="flagsFilter" class="form-select">
-                                        <option value="" selected disabled>No Choose</option>
+                                        <option value="" selected>All</option>
                                         <option value="double_po">2 PO</option>
                                         <option value="cancel_to">Cancel TO</option>
                                         <option value="manual_picking">Manual Picking</option>
                                     </select>
                                 </div>
-                                <div class="col-md-2 mt-md-4 d-flex gap-2">
+                                <div class="col-md-1 mt-md-4 d-flex gap-2">
                                     <button type="button" class="btn btn-soft-danger flex-fill" id="btnReset">
                                         <i class="ri-refresh-line"></i> Reset
                                     </button>
@@ -77,21 +89,15 @@
                         <table class="table table-hover align-middle text-nowrap" id="bongkarMuatTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="text-center">No</th>
-                                    <th>Tanggal</th>
-                                    <th>Wavepick SMU</th>
-                                    <th>Shipment SMU</th>
-                                    <th>Wavepick BAS</th>
-                                    <th>Shipment BAS</th>
-                                    <th>Forklift Driver</th>
-                                    <th>Checker</th>
-                                    <th>Driver</th>
+                                    <th class="text-center" style="width: 50px;">No</th>
+                                    <th style="width: 100px;">Tipe</th>
+                                    <th>No. Dokumen</th>
+                                    <th>No. Mobil</th>
+                                    <th>Jam Mulai/Selesai</th>
                                     <th>Status</th>
-                                    <th>Jam Muat</th>
-                                    <th>Jam Selesai</th>
                                     <th>Verified By</th>
                                     <th>Flags</th>
-                                    <th class="text-center">Actions</th>
+                                    <th class="text-center" style="width: 150px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -125,7 +131,8 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Batch Number</label>
-                                <input type="text" name="batch_number" id="add-item-batch" class="form-control" placeholder="Batch...">
+                                <input type="text" name="batch_number" id="add-item-batch" class="form-control"
+                                    placeholder="Batch...">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Jenis <span class="text-danger">*</span></label>
@@ -138,36 +145,42 @@
                         <div class="row">
                             <div class="col-md-12 mb-3">
                                 <label class="form-label">Quantity <span class="text-danger">*</span></label>
-                                <input type="number" name="qty" id="add-item-qty" class="form-control" step="any" min="0.01" required>
+                                <input type="number" name="qty" id="add-item-qty" class="form-control"
+                                    step="any" min="0.01" required>
                                 <small class="text-muted" id="add-item-qty-hint">Pilih material terlebih dahulu</small>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">TO Dummy</label>
-                                <input type="text" name="to_dummy" id="add-item-to-dummy" class="form-control" placeholder="...">
+                                <input type="text" name="to_dummy" id="add-item-to-dummy" class="form-control"
+                                    placeholder="...">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">TO SAP</label>
-                                <input type="text" name="to_sap" id="add-item-to-sap" class="form-control" placeholder="...">
+                                <input type="text" name="to_sap" id="add-item-to-sap" class="form-control"
+                                    placeholder="...">
                             </div>
                         </div>
                         <div class="row mt-2">
                             <div class="col-4">
                                 <div class="form-check form-switch form-switch-warning">
-                                    <input class="form-check-input" type="checkbox" name="double_po" id="add-item-double-po" value="1">
+                                    <input class="form-check-input" type="checkbox" name="double_po"
+                                        id="add-item-double-po" value="1">
                                     <label class="form-check-label" for="add-item-double-po">Double PO</label>
                                 </div>
                             </div>
                             <div class="col-4">
                                 <div class="form-check form-switch form-switch-danger">
-                                    <input class="form-check-input" type="checkbox" name="cancel_to" id="add-item-cancel-to" value="1">
+                                    <input class="form-check-input" type="checkbox" name="cancel_to"
+                                        id="add-item-cancel-to" value="1">
                                     <label class="form-check-label" for="add-item-cancel-to">Cancel TO</label>
                                 </div>
                             </div>
                             <div class="col-4">
                                 <div class="form-check form-switch form-switch-success">
-                                    <input class="form-check-input" type="checkbox" name="manual_picking" id="add-item-manual-picking" value="1">
+                                    <input class="form-check-input" type="checkbox" name="manual_picking"
+                                        id="add-item-manual-picking" value="1">
                                     <label class="form-check-label" for="add-item-manual-picking">Manual</label>
                                 </div>
                             </div>
@@ -350,55 +363,79 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header bg-light">
-                    <h5 class="modal-title">Bongkar Muat Details</h5>
+                    <h5 class="modal-title"><i class="ri-file-list-3-line me-1 text-primary"></i> Bongkar Muat Details
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                        <div>
+                            <span class="text-muted small">Tipe:</span> <span id="detail-tipe-badge"></span>
+                            <span class="ms-3 text-muted small">Status:</span> <span id="detail-status"
+                                class="badge bg-primary"></span>
+                        </div>
+                        <a id="detail-full-page-btn" href="#" target="_blank"
+                            class="btn btn-sm btn-outline-primary">
+                            <i class="ri-external-link-line me-1"></i> Buka Halaman Penuh
+                        </a>
+                    </div>
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <table class="table table-sm table-borderless">
                                 <tr>
-                                    <td width="120" class="text-muted">No Dok</td>
+                                    <td width="130" class="text-muted">No Dok</td>
                                     <td class="fw-bold">: <span id="detail-no-dok"></span></td>
                                 </tr>
-                                <tr>
-                                    <td width="120" class="text-muted">Wavepick SMU</td>
+                                <tr class="detail-muat-only">
+                                    <td class="text-muted">Wavepick SMU</td>
                                     <td class="fw-bold">: <span id="detail-wavepick_smu"></span></td>
                                 </tr>
-                                <tr>
+                                <tr class="detail-muat-only">
                                     <td class="text-muted">Shipment SMU</td>
                                     <td class="fw-bold">: <span id="detail-shipment_smu"></span></td>
                                 </tr>
-                                <tr>
+                                <tr class="detail-muat-only">
                                     <td class="text-muted">Wavepick BAS</td>
                                     <td class="fw-bold">: <span id="detail-wavepick_bas"></span></td>
                                 </tr>
-                                <tr>
+                                <tr class="detail-muat-only">
                                     <td class="text-muted">Shipment BAS</td>
                                     <td class="fw-bold">: <span id="detail-shipment_bas"></span></td>
                                 </tr>
-                                <tr>
-                                    <td class="text-muted">Status</td>
-                                    <td class="fw-bold">: <span id="detail-status" class="badge bg-primary"></span></td>
+                                <tr class="detail-bongkar-only">
+                                    <td class="text-muted">No. SPKB</td>
+                                    <td class="fw-bold">: <span id="detail-no_spkb"></span></td>
+                                </tr>
+                                <tr class="detail-bongkar-only">
+                                    <td class="text-muted">Supplier / Vendor</td>
+                                    <td class="fw-bold">: <span id="detail-supplier_vendor"></span></td>
+                                </tr>
+                                <tr class="detail-bongkar-only">
+                                    <td class="text-muted">Tujuan Bongkar</td>
+                                    <td class="fw-bold">: <span id="detail-tujuan_bongkar"></span></td>
                                 </tr>
                                 <tr>
-                                    <td width="120" class="text-muted">Forklift Driver</td>
+                                    <td class="text-muted">Forklift Driver</td>
                                     <td class="fw-bold">: <span id="detail-forklift-driver"></span></td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Checker</td>
                                     <td class="fw-bold">: <span id="detail-checker"></span></td>
                                 </tr>
+                                <tr>
+                                    <td class="text-muted">Verified By</td>
+                                    <td class="fw-bold">: <span id="detail-verificator"></span></td>
+                                </tr>
                             </table>
                         </div>
                         <div class="col-md-6">
                             <table class="table table-sm table-borderless">
                                 <tr>
-                                    <td class="text-muted">Driver</td>
+                                    <td width="130" class="text-muted">Driver</td>
                                     <td class="fw-bold">: <span id="detail-driver"></span></td>
                                 </tr>
-                                <tr>
-                                    <td class="text-muted">Tujuan</td>
+                                <tr class="detail-muat-only">
+                                    <td class="text-muted">Tujuan / Destinasi</td>
                                     <td class="fw-bold">: <span id="detail-destinasi"></span></td>
                                 </tr>
                                 <tr>
@@ -406,26 +443,26 @@
                                     <td class="fw-bold">: <span id="detail-no_mobil"></span></td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Jam Muat</td>
+                                    <td class="text-muted">Jam Mulai</td>
                                     <td class="fw-bold">: <span id="detail-jam_muat"></span></td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Jam Selesai</td>
                                     <td class="fw-bold">: <span id="detail-jam_selesai"></span></td>
                                 </tr>
-                                <tr>
+                                <tr class="detail-muat-only">
                                     <td class="text-muted">No. Kontainer</td>
                                     <td class="fw-bold">: <span id="detail-no_kontainer"></span></td>
                                 </tr>
-                                <tr>
+                                <tr class="detail-muat-only">
                                     <td class="text-muted">No. Segel BAS</td>
                                     <td class="fw-bold">: <span id="detail-no_segel_bas"></span></td>
                                 </tr>
-                                <tr>
+                                <tr class="detail-muat-only">
                                     <td class="text-muted">No. Segel Vendor</td>
                                     <td class="fw-bold">: <span id="detail-no_segel_vendor"></span></td>
                                 </tr>
-                                <tr>
+                                <tr class="detail-muat-only">
                                     <td class="text-muted">Slipsheet</td>
                                     <td class="fw-bold">: <span id="detail-jumlah_slipsheet"></span></td>
                                 </tr>
@@ -435,7 +472,9 @@
 
                     <div class="d-flex justify-content-between align-items-center mb-2 mt-4">
                         <h6 class="mb-0 fw-bold">Item Details</h6>
-                        @if(auth()->user()->hasAnyPermission(['bongkar-muat-plus', 'approval-bongkar-muat', 'data-bongkar-muat-plus']) || auth()->user()->hasRole('super-admin') || auth()->user()->hasPermission('super-admin'))
+                        @if (auth()->user()->hasAnyPermission(['bongkar-muat-plus', 'approval-bongkar-muat', 'data-bongkar-muat-plus']) ||
+                                auth()->user()->hasRole('super-admin') ||
+                                auth()->user()->hasPermission('super-admin'))
                             <button type="button" class="btn btn-sm btn-primary" id="btn-add-item">
                                 <i class="ri-add-line me-1"></i> Tambah Item
                             </button>
@@ -454,7 +493,9 @@
                                     <th>Flags</th>
                                     <th>No TO</th>
                                     <th>Qty TO</th>
-                                    @if(auth()->user()->hasAnyPermission(['bongkar-muat-plus', 'approval-bongkar-muat', 'data-bongkar-muat-plus']) || auth()->user()->hasRole('super-admin') || auth()->user()->hasPermission('super-admin'))
+                                    @if (auth()->user()->hasAnyPermission(['bongkar-muat-plus', 'approval-bongkar-muat', 'data-bongkar-muat-plus']) ||
+                                            auth()->user()->hasRole('super-admin') ||
+                                            auth()->user()->hasPermission('super-admin'))
                                         <th class="text-center">Actions</th>
                                     @endif
                                 </tr>
@@ -506,10 +547,11 @@
                 const endDate = $('#endDate').val();
                 const status = $('#statusFilter').val();
                 const flags = $('#flagsFilter').val();
+                const tipe = $('#tipeFilter').val();
                 const tbody = $('#bongkarMuatTable tbody');
 
                 tbody.html(
-                    '<tr><td colspan="15" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>'
+                    '<tr><td colspan="10" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>'
                 );
                 $('#paginationContainer').empty();
 
@@ -522,7 +564,8 @@
                         start_date: startDate,
                         end_date: endDate,
                         status: status,
-                        flags: flags
+                        flags: flags,
+                        tipe: tipe
                     },
                     success: function(res) {
                         const paginatedData = res.data;
@@ -534,8 +577,6 @@
                             $.each(items, function(index, order) {
                                 const noUrut = ((paginatedData.current_page - 1) *
                                     paginatedData.per_page) + (index + 1);
-                                const typeBadgeClass = order.type_shipment === 'BAS' ?
-                                    'bg-info' : 'bg-secondary';
 
                                 let statusClass = 'bg-secondary';
                                 let statusText = order.status ? order.status.toUpperCase() :
@@ -564,25 +605,61 @@
                                         break;
                                 }
 
-                                const forkliftDriverName = order.forklift_driver ? order
-                                    .forklift_driver.username : '-';
-                                const checkerName = order.checker ? order.checker.username :
-                                    '-';
-                                const driverName = order.driver_name ? order.driver_name :
-                                    '-';
                                 const verificatorName = order.verificator ? order
-                                    .verificator.username :
-                                    '-';
-
+                                    .verificator.username : '-';
 
                                 // Store order data for modal
                                 const orderJson = encodeURIComponent(JSON.stringify(order));
-                                const editUrl =
-                                    "{{ route('wfg.bongkar_muat.form') }}?draft_id=" + order
-                                    .id;
+                                const isBongkar = order.tipe === 'bongkar';
+                                const editUrl = (isBongkar ?
+                                        "{{ route('wfg.bongkar_muat.form_bongkar') }}" :
+                                        "{{ route('wfg.bongkar_muat.form') }}") +
+                                    "?draft_id=" + order.id;
+                                const tipeBadge = isBongkar ?
+                                    '<span class="badge bg-warning text-dark"><i class="ri-download-2-line me-1"></i>BONGKAR</span>' :
+                                    '<span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="ri-upload-2-line me-1"></i>MUAT</span>';
 
                                 const showUrl = "{{ url('wfg/bongkar-muat/show') }}/" +
                                     order.id;
+
+                                const docNum = order.no_dokumen || (isBongkar ? (order
+                                    .no_spkb ||
+                                    '<span class="text-muted fst-italic">Draft #' +
+                                    order.id + '</span>') : (order.shipment_bas ||
+                                    order.shipment_smu ||
+                                    '<span class="text-muted fst-italic">Draft #' +
+                                    order.id + '</span>'));
+                                const tanggalStr = order.tanggal ? order.tanggal.substring(
+                                    0, 10) : '-';
+
+                                const mobilBadge = order.no_mobil ?
+                                    `<span class="badge bg-soft-dark text-dark fw-bold">${order.no_mobil}</span>` :
+                                    '<span class="text-muted">-</span>';
+                                const driverSmall = order.driver_name ?
+                                    `<small class="text-muted d-block">${order.driver_name}</small>` :
+                                    '';
+
+                                const jamMulai = order.jam_muat ? order.jam_muat.substring(
+                                    0, 5) : '-';
+                                const jamSelesai = order.jam_selesai ? order.jam_selesai
+                                    .substring(0, 5) : '-';
+
+                                let flagBadges = [];
+                                if (order.details && order.details.length > 0) {
+                                    if (order.details.some(d => d.double_po)) flagBadges
+                                        .push(
+                                            '<span class="badge bg-warning text-dark me-1">2 PO</span>'
+                                        );
+                                    if (order.details.some(d => d.cancel_to)) flagBadges
+                                        .push(
+                                            '<span class="badge bg-danger me-1">Cancel TO</span>'
+                                        );
+                                    if (order.details.some(d => d.manual_picking))
+                                        flagBadges.push(
+                                            '<span class="badge bg-info">Manual</span>');
+                                }
+                                const flagsHtml = flagBadges.length > 0 ? flagBadges.join(
+                                    '') : '<span class="text-muted">-</span>';
 
                                 let actions = `
                                     <button type="button" class="btn btn-soft-info btn-sm btn-detail" data-order="${orderJson}" title="Quick View Items">
@@ -605,30 +682,25 @@
                                     </button>
                                 `;
 
-                                const flagBadges = order.details?.some(detail =>
-                                        detail.double_po ||
-                                        detail.cancel_to ||
-                                        detail.manual_picking
-                                    ) ?
-                                    '<span class="badge bg-warning text-dark">Yes</span>' :
-                                    '-';
-
                                 const rowHtml = `
                                     <tr>
-                                        <td class="text-center">${noUrut}</td>
-                                        <td class="text-center">${order.tanggal}</td>
-                                        <td>${order.wavepick_smu ?? '-'}</td>
-                                        <td>${order.shipment_smu ?? '-'}</td>
-                                        <td>${order.wavepick_bas ?? '-'}</td>
-                                        <td>${order.shipment_bas ?? '-'}</td>
-                                        <td>${forkliftDriverName}</td>
-                                        <td>${checkerName}</td>
-                                        <td>${driverName}</td>
+                                        <td class="text-center fw-medium">${noUrut}</td>
+                                        <td>${tipeBadge}</td>
+                                        <td>
+                                            <div class="fw-bold">${docNum}</div>
+                                            <small class="text-muted">${tanggalStr}</small>
+                                        </td>
+                                        <td>
+                                            ${mobilBadge}
+                                            ${driverSmall}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-soft-info text-dark fw-bold">${jamMulai} WIB</span><br>
+                                            <span class="badge bg-soft-info text-dark fw-bold">${jamSelesai} WIB</span>
+                                        </td>
                                         <td><span class="badge ${statusClass}">${statusText}</span></td>
-                                        <td>${order.jam_muat || '-'}</td>
-                                        <td>${order.jam_selesai || '-'}</td>
                                         <td>${verificatorName}</td>
-                                        <td>${flagBadges}</td>
+                                        <td>${flagsHtml}</td>
                                         <td class="text-center">
                                             <div class="d-flex gap-1 justify-content-center">
                                                 ${actions}
@@ -641,14 +713,14 @@
                             renderPagination(paginatedData);
                         } else {
                             tbody.append(
-                                '<tr><td colspan="15" class="text-center py-4">No bongkar muat records found.</td></tr>'
+                                '<tr><td colspan="10" class="text-center py-4">No bongkar muat records found.</td></tr>'
                             );
                         }
                     },
                     error: function(xhr) {
                         console.error("Error loading data", xhr);
                         tbody.append(
-                            '<tr><td colspan="9" class="text-center py-4 text-danger">Failed to load data.</td></tr>'
+                            '<tr><td colspan="10" class="text-center py-4 text-danger">Failed to load data.</td></tr>'
                         );
                     }
                 });
@@ -726,14 +798,16 @@
                 $('#endDate').val('');
                 $('#statusFilter').val('');
                 $('#flagsFilter').val('');
+                $('#tipeFilter').val('');
                 loadData(1);
             });
 
-            $('#startDate, #endDate, #statusFilter, #flagsFilter').change(function() {
+            $('#startDate, #endDate, #statusFilter, #flagsFilter, #tipeFilter').change(function() {
                 loadData(1);
             });
 
-            const canManageItems = {{ (auth()->user()->hasAnyPermission(['bongkar-muat-plus', 'approval-bongkar-muat', 'data-bongkar-muat-plus']) || auth()->user()->hasRole('super-admin') || auth()->user()->hasPermission('super-admin')) ? 'true' : 'false' }};
+            const canManageItems =
+                {{ auth()->user()->hasAnyPermission(['bongkar-muat-plus', 'approval-bongkar-muat', 'data-bongkar-muat-plus']) ||auth()->user()->hasRole('super-admin') ||auth()->user()->hasPermission('super-admin')? 'true': 'false' }};
 
             function renderDetailItems(details) {
                 let detailsHtml = '';
@@ -775,7 +849,8 @@
                     });
                 } else {
                     const colspan = canManageItems ? 10 : 9;
-                    detailsHtml = `<tr><td colspan="${colspan}" class="text-center py-3 text-muted">No items found</td></tr>`;
+                    detailsHtml =
+                        `<tr><td colspan="${colspan}" class="text-center py-3 text-muted">No items found</td></tr>`;
                 }
                 $('#detail-items tbody').html(detailsHtml);
             }
@@ -809,16 +884,38 @@
                 // Store order in window for header edit
                 window.currentOrder = order;
 
+                const isBongkar = order.tipe === 'bongkar';
+                const showUrl = "{{ url('wfg/bongkar-muat/show') }}/" + order.id;
+                $('#detail-full-page-btn').attr('href', showUrl);
+
+                if (isBongkar) {
+                    $('#detail-tipe-badge').html(
+                        '<span class="badge bg-warning text-dark"><i class="ri-download-2-line me-1"></i>BONGKAR</span>'
+                    );
+                    $('.detail-bongkar-only').show();
+                    $('.detail-muat-only').hide();
+                } else {
+                    $('#detail-tipe-badge').html(
+                        '<span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="ri-upload-2-line me-1"></i>MUAT</span>'
+                    );
+                    $('.detail-bongkar-only').hide();
+                    $('.detail-muat-only').show();
+                }
+
                 $('#detail-no-dok').text(order.no_dokumen || '-');
                 $('#detail-wavepick_smu').text(order.wavepick_smu || '-');
                 $('#detail-shipment_smu').text(order.shipment_smu || '-');
                 $('#detail-wavepick_bas').text(order.wavepick_bas || '-');
                 $('#detail-shipment_bas').text(order.shipment_bas || '-');
+                $('#detail-no_spkb').text(order.no_spkb || '-');
+                $('#detail-supplier_vendor').text(order.supplier_vendor || '-');
+                $('#detail-tujuan_bongkar').text(order.tujuan_bongkar || '-');
                 $('#detail-status').text(order.status ? order.status.toUpperCase() : '-');
                 $('#detail-forklift-driver').text(order.forklift_driver ? order.forklift_driver.username :
                     '-');
                 $('#detail-driver').text(order.driver_name ? order.driver_name : '-');
                 $('#detail-checker').text(order.checker ? order.checker.username : '-');
+                $('#detail-verificator').text(order.verificator ? order.verificator.username : '-');
                 $('#detail-destinasi').text(order.destinasi ? order.destinasi.destinasi : '-');
                 $('#detail-no_mobil').text(order.no_mobil || '-');
                 $('#detail-jam_muat').text(order.jam_muat || '-');
@@ -932,7 +1029,8 @@
                     $('#add-item-qty-hint').text('Ambil dari Qty Box Master (' + data.qty_box + ')');
                 } else if (jenis === 'R') {
                     $('#add-item-qty').prop('readonly', false);
-                    $('#add-item-qty-hint').text(data.qty_box ? 'Maksimal ' + data.qty_box : 'Kuantitas receh');
+                    $('#add-item-qty-hint').text(data.qty_box ? 'Maksimal ' + data.qty_box :
+                        'Kuantitas receh');
                 }
             });
 
@@ -944,14 +1042,16 @@
                 if (jenis === 'P') {
                     if (materialData && materialData.qty_box) {
                         $('#add-item-qty').val(materialData.qty_box);
-                        $('#add-item-qty-hint').text('Ambil dari Qty Box Master (' + materialData.qty_box + ')');
+                        $('#add-item-qty-hint').text('Ambil dari Qty Box Master (' + materialData.qty_box +
+                            ')');
                     } else {
                         $('#add-item-qty-hint').text('Ambil dari Qty Box Master');
                     }
                     $('#add-item-qty').prop('readonly', true);
                 } else {
                     $('#add-item-qty').prop('readonly', false);
-                    $('#add-item-qty-hint').text(materialData && materialData.qty_box ? 'Maksimal ' + materialData.qty_box : 'Kuantitas receh');
+                    $('#add-item-qty-hint').text(materialData && materialData.qty_box ? 'Maksimal ' +
+                        materialData.qty_box : 'Kuantitas receh');
                 }
             });
 
@@ -1024,13 +1124,16 @@
                 const jenis = $('#add-item-jenis').val();
 
                 if (jenis === 'R' && materialData && materialData.qty_box && qty > materialData.qty_box) {
-                    Swal.fire('Perhatian', `Kuantitas untuk Receh (R) tidak boleh melebihi Qty Box Master (${materialData.qty_box}).`, 'warning');
+                    Swal.fire('Perhatian',
+                        `Kuantitas untuk Receh (R) tidak boleh melebihi Qty Box Master (${materialData.qty_box}).`,
+                        'warning');
                     return;
                 }
 
                 const formData = $(this).serialize();
                 const btn = $('#btn-save-add-item');
-                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status"></span> Menyimpan...');
+                btn.prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm" role="status"></span> Menyimpan...');
 
                 $.ajax({
                     url: "{{ url('wfg/bongkar-muat/store-item') }}/" + orderId,
@@ -1054,7 +1157,8 @@
                     },
                     error: function(xhr) {
                         btn.prop('disabled', false).text('Save Item');
-                        Swal.fire('Error', xhr.responseJSON?.message || 'Gagal menambahkan item', 'error');
+                        Swal.fire('Error', xhr.responseJSON?.message ||
+                            'Gagal menambahkan item', 'error');
                     }
                 });
             });
@@ -1065,7 +1169,8 @@
 
                 $('#edit-item-id').val(detail.id);
                 $('#edit-item-material').val(
-                    detail.material ? `[${detail.material.mid_barang}] ${detail.material.nama_barang}` : '-');
+                    detail.material ? `[${detail.material.mid_barang}] ${detail.material.nama_barang}` :
+                    '-');
                 $('#edit-item-batch').val(detail.batch_number);
                 $('#edit-item-jenis').val(detail.jenis);
                 $('#edit-item-qty').val(detail.qty);

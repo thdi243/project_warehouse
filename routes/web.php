@@ -26,6 +26,8 @@ use App\Http\Controllers\Vehicle\VehicleTrackingController;
 use App\Http\Controllers\Vehicle\VehicleAnalyticsController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\Wfg\BongkarMuatController;
+use App\Http\Controllers\Wpm\WpmBongkarMuatController;
+use App\Http\Controllers\Wrm\WrmBongkarMuatController;
 use App\Http\Controllers\Wfg\MasterDestinasiController;
 use App\Http\Controllers\Wfg\BarangWfgController;
 use App\Http\Controllers\Wfg\stock_opname\StockOnHandWfgController;
@@ -538,9 +540,12 @@ Route::middleware('auth')->group(function () {
                 Route::get('/form', [BongkarMuatController::class, 'create'])->name('wfg.bongkar_muat.form');
                 Route::post('/store', [BongkarMuatController::class, 'store'])->name('wfg.bongkar_muat.store');
                 Route::post('/save-draft', [BongkarMuatController::class, 'saveDraft'])->name('wfg.bongkar_muat.save_draft');
+                Route::get('/form-bongkar', [BongkarMuatController::class, 'createBongkar'])->name('wfg.bongkar_muat.form_bongkar');
+                Route::post('/store-bongkar', [BongkarMuatController::class, 'storeBongkar'])->name('wfg.bongkar_muat.store_bongkar');
+                Route::post('/save-draft-bongkar', [BongkarMuatController::class, 'saveDraftBongkar'])->name('wfg.bongkar_muat.save_draft_bongkar');
+                Route::get('/booked-gates', [BongkarMuatController::class, 'getBookedGates'])->name('wfg.bongkar_muat.booked_gates');
                 Route::post('/cancel-draft', [BongkarMuatController::class, 'cancelDraft'])->name('wfg.bongkar_muat.cancel_draft');
                 Route::post('/follow-up-checker/{id}', [BongkarMuatController::class, 'followUpChecker'])->name('wfg.bongkar_muat.follow_up_checker');
-                Route::delete('/{id}', [BongkarMuatController::class, 'destroy'])->name('wfg.bongkar_muat.destroy');
                 Route::get('/show/{id}', [BongkarMuatController::class, 'show'])->name('wfg.bongkar_muat.show');
                 Route::post('/approve-checker/{id}', [BongkarMuatController::class, 'approveChecker'])->name('wfg.bongkar_muat.approve_checker');
                 Route::post('/approve-driver/{id}', [BongkarMuatController::class, 'approveDriver'])->name('wfg.bongkar_muat.approve_driver');
@@ -552,6 +557,7 @@ Route::middleware('auth')->group(function () {
                 Route::put('/update-item/{id}', [BongkarMuatController::class, 'updateItem'])->name('wfg.bongkar_muat.update_item');
                 Route::delete('/delete-item/{id}', [BongkarMuatController::class, 'deleteItem'])->name('wfg.bongkar_muat.delete_item');
                 Route::put('/update/{id}', [BongkarMuatController::class, 'update'])->name('wfg.bongkar_muat.update');
+                Route::delete('/{id}', [BongkarMuatController::class, 'destroy'])->name('wfg.bongkar_muat.destroy');
             });
 
             // Maste Barang SO WFG
@@ -676,6 +682,54 @@ Route::middleware('auth')->group(function () {
             Route::get('/report', [WpmKempuController::class, 'report'])->name('report');
             Route::get('/report/data', [WpmKempuController::class, 'reportData'])->name('report_data');
             Route::get('/report/export', [WpmKempuController::class, 'exportReport'])->name('report_export');
+        });
+
+        // Bongkar Muat WPM
+        Route::prefix('bongkar-muat')->group(function () {
+            Route::get('/', [WpmBongkarMuatController::class, 'index'])->name('bongkar_muat.index');
+            Route::get('/data', [WpmBongkarMuatController::class, 'data'])->name('bongkar_muat.data');
+            Route::get('/approval', [WpmBongkarMuatController::class, 'approval'])->name('bongkar_muat.approval');
+            Route::get('/approval-data', [WpmBongkarMuatController::class, 'approvalData'])->name('bongkar_muat.approval_data');
+            Route::get('/form', [WpmBongkarMuatController::class, 'create'])->name('bongkar_muat.form');
+            Route::post('/store', [WpmBongkarMuatController::class, 'store'])->name('bongkar_muat.store');
+            Route::post('/save-draft', [WpmBongkarMuatController::class, 'saveDraft'])->name('bongkar_muat.save_draft');
+            Route::post('/cancel-draft', [WpmBongkarMuatController::class, 'cancelDraft'])->name('bongkar_muat.cancel_draft');
+            Route::get('/booked-gates', [WpmBongkarMuatController::class, 'getBookedGates'])->name('bongkar_muat.booked_gates');
+            Route::get('/show/{id}', [WpmBongkarMuatController::class, 'show'])->name('bongkar_muat.show');
+            Route::post('/approve-checker/{id}', [WpmBongkarMuatController::class, 'approveChecker'])->name('bongkar_muat.approve_checker');
+            Route::post('/approve-qc/{id}', [WpmBongkarMuatController::class, 'approveQc'])->name('bongkar_muat.approve_qc');
+            Route::post('/approve-driver/{id}', [WpmBongkarMuatController::class, 'approveDriver'])->name('bongkar_muat.approve_driver');
+            Route::post('/validate/{id}', [WpmBongkarMuatController::class, 'validateOrder'])->name('bongkar_muat.validate');
+            Route::get('/search-materials', [WpmBongkarMuatController::class, 'searchMaterials'])->name('bongkar_muat.search_materials');
+            Route::get('/download/{id}', [WpmBongkarMuatController::class, 'download'])->name('bongkar_muat.download');
+            Route::put('/update/{id}', [WpmBongkarMuatController::class, 'update'])->name('bongkar_muat.update');
+            Route::delete('/{id}', [WpmBongkarMuatController::class, 'destroy'])->name('bongkar_muat.destroy');
+            Route::post('/follow-up-checker/{id}', [WpmBongkarMuatController::class, 'followUpChecker'])->name('bongkar_muat.follow_up_checker');
+        });
+    });
+
+    // Warehouse Raw Material (WRM) Bongkar Muat
+    Route::middleware(['auth'])->prefix('wrm')->name('wrm.')->group(function () {
+        Route::prefix('bongkar-muat')->group(function () {
+            Route::get('/', [WrmBongkarMuatController::class, 'index'])->name('bongkar_muat.index');
+            Route::get('/data', [WrmBongkarMuatController::class, 'data'])->name('bongkar_muat.data');
+            Route::get('/approval', [WrmBongkarMuatController::class, 'approval'])->name('bongkar_muat.approval');
+            Route::get('/approval-data', [WrmBongkarMuatController::class, 'approvalData'])->name('bongkar_muat.approval_data');
+            Route::get('/form', [WrmBongkarMuatController::class, 'create'])->name('bongkar_muat.form');
+            Route::post('/store', [WrmBongkarMuatController::class, 'store'])->name('bongkar_muat.store');
+            Route::post('/save-draft', [WrmBongkarMuatController::class, 'saveDraft'])->name('bongkar_muat.save_draft');
+            Route::post('/cancel-draft', [WrmBongkarMuatController::class, 'cancelDraft'])->name('bongkar_muat.cancel_draft');
+            Route::get('/booked-gates', [WrmBongkarMuatController::class, 'getBookedGates'])->name('bongkar_muat.booked_gates');
+            Route::get('/show/{id}', [WrmBongkarMuatController::class, 'show'])->name('bongkar_muat.show');
+            Route::post('/approve-checker/{id}', [WrmBongkarMuatController::class, 'approveChecker'])->name('bongkar_muat.approve_checker');
+            Route::post('/approve-qc/{id}', [WrmBongkarMuatController::class, 'approveQc'])->name('bongkar_muat.approve_qc');
+            Route::post('/approve-driver/{id}', [WrmBongkarMuatController::class, 'approveDriver'])->name('bongkar_muat.approve_driver');
+            Route::post('/validate/{id}', [WrmBongkarMuatController::class, 'validateOrder'])->name('bongkar_muat.validate');
+            Route::get('/search-materials', [WrmBongkarMuatController::class, 'searchMaterials'])->name('bongkar_muat.search_materials');
+            Route::get('/download/{id}', [WrmBongkarMuatController::class, 'download'])->name('bongkar_muat.download');
+            Route::put('/update/{id}', [WrmBongkarMuatController::class, 'update'])->name('bongkar_muat.update');
+            Route::delete('/{id}', [WrmBongkarMuatController::class, 'destroy'])->name('bongkar_muat.destroy');
+            Route::post('/follow-up-checker/{id}', [WrmBongkarMuatController::class, 'followUpChecker'])->name('bongkar_muat.follow_up_checker');
         });
     });
 

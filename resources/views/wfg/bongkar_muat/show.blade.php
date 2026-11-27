@@ -24,55 +24,130 @@
                     <div class="card shadow-sm border-0">
                         <div class="card-body p-4">
                             <div class="text-center mb-4">
-                                <h5>Bongkar Muat: {{ $order->no_dokumen }}</h5>
-                                <p class="text-muted mb-0">
-                                    @if ($order->wavepick_smu)
-                                        <span class="badge bg-soft-primary text-primary">SMU:
-                                            {{ $order->wavepick_smu }}</span>
+                                <h5>
+                                    @if (($order->tipe ?? 'muat') === 'bongkar')
+                                        <span class="badge bg-warning text-dark me-1">BONGKAR</span>
+                                    @else
+                                        <span class="badge bg-primary me-1">MUAT</span>
                                     @endif
-                                    @if ($order->wavepick_bas)
-                                        <span class="badge bg-soft-info text-info">BAS: {{ $order->wavepick_bas }}</span>
+                                    Bongkar Muat: {{ $order->no_dokumen }}
+                                </h5>
+                                <p class="text-muted mb-0">
+                                    @if (($order->tipe ?? 'muat') === 'bongkar')
+                                        @if ($order->no_spkb)
+                                            <span class="badge bg-soft-warning text-warning">SPKB/SPB: {{ $order->no_spkb }}</span>
+                                        @endif
+                                        @if ($order->supplier_vendor)
+                                            <span class="badge bg-soft-info text-info">Supplier/Vendor: {{ $order->supplier_vendor }}</span>
+                                        @endif
+                                    @else
+                                        @if ($order->wavepick_smu)
+                                            <span class="badge bg-soft-primary text-primary">SMU:
+                                                {{ $order->wavepick_smu }}</span>
+                                        @endif
+                                        @if ($order->wavepick_bas)
+                                            <span class="badge bg-soft-info text-info">BAS: {{ $order->wavepick_bas }}</span>
+                                        @endif
                                     @endif
                                 </p>
                             </div>
 
-                            <div class="row mb-4 bg-light p-3 rounded mx-2">
-                                <div class="col-md-6 border-end">
-                                    <p class="mb-1 text-muted small uppercase">Vehicle & Gate</p>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>No. Mobil:</span> <span class="fw-bold">{{ $order->no_mobil ?? '-' }}</span>
+                            @if (($order->tipe ?? 'muat') === 'bongkar')
+                                @php
+                                    $insp = is_array($order->inspection_data) ? $order->inspection_data : [];
+                                @endphp
+                                <div class="row mb-4 bg-light p-3 rounded mx-2">
+                                    <div class="col-md-6 border-end">
+                                        <p class="mb-1 text-muted small uppercase fw-bold">Informasi Dokumen & Pengiriman</p>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>No. SPKB / SPB:</span> <span class="fw-bold">{{ $order->no_spkb ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>No. ECP:</span> <span class="fw-bold text-primary">{{ $order->no_ecp ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Sloc:</span> <span class="fw-bold">{{ $order->sloc ?? 'A001' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Supplier / Vendor:</span> <span class="fw-bold">{{ $order->supplier_vendor ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>No. Segel:</span> <span class="fw-bold">{{ $order->no_segel_bas ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Jumlah TKBM:</span> <span class="fw-bold text-primary">{{ $order->jumlah_tkbm ? $order->jumlah_tkbm . ' Orang' : '-' }}</span>
+                                        </div>
                                     </div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>Gate:</span> <span class="fw-bold">{{ $order->gate ?? '-' }}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>Jam Muat:</span> <span class="fw-bold">{{ $order->jam_muat ?? '-' }}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between">
-                                        <span>Tujuan:</span> <span
-                                            class="fw-bold">{{ $order->destinasi->destinasi ?? '-' }}</span>
+                                    <div class="col-md-6 ps-md-4">
+                                        <p class="mb-1 text-muted small uppercase fw-bold">Kendaraan & Operasional</p>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>No. Polisi (Jenis):</span> <span class="fw-bold">{{ ($order->no_mobil ?? '-') . ' (' . ($order->jenis_pengiriman ?? 'Lokal') . ')' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Gate / Dock:</span> <span class="fw-bold">{{ $order->gate ? 'Gate ' . $order->gate : '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Forklift Driver:</span> <span class="fw-bold">{{ $order->forkliftDriver->username ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Mulai / Selesai Bongkar:</span> <span class="fw-bold">{{ ($order->jam_muat ?? '-') . ' / ' . ($order->jam_selesai ?? '-') }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>COA / Kartu Checkpoint:</span> <span class="fw-bold">{{ ($insp['doc_coa'] ?? 'Ada') . ' / ' . ($insp['doc_kartu_checkpoint'] ?? 'Ada') }}</span>
+                                        </div>
+                                        @if ($order->no_kontainer)
+                                        <div class="d-flex justify-content-between">
+                                            <span>No. Kontainer:</span> <span class="fw-bold">{{ $order->no_kontainer }}</span>
+                                        </div>
+                                        @endif
                                     </div>
                                 </div>
-                                <div class="col-md-6 ps-md-4">
-                                    <p class="mb-1 text-muted small uppercase">Container & Seals</p>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>No. Kontainer:</span> <span
-                                            class="fw-bold">{{ $order->no_kontainer ?? '-' }}</span>
+                            @else
+                                <div class="row mb-4 bg-light p-3 rounded mx-2">
+                                    <div class="col-md-6 border-end">
+                                        <p class="mb-1 text-muted small uppercase">Vehicle & Gate</p>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>No. Mobil:</span> <span class="fw-bold">{{ $order->no_mobil ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Gate:</span> <span class="fw-bold">{{ $order->gate ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Jam Muat:</span> <span class="fw-bold">{{ $order->jam_muat ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Tujuan:</span> <span
+                                                class="fw-bold">{{ $order->destinasi->destinasi ?? '-' }}</span>
+                                        </div>
                                     </div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>Segel BAS:</span> <span
-                                            class="fw-bold text-info">{{ $order->no_segel_bas ?? '-' }}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>Segel Vendor:</span> <span
-                                            class="fw-bold text-info">{{ $order->no_segel_vendor ?? '-' }}</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between">
-                                        <span>Slipsheet:</span> <span
-                                            class="fw-bold">{{ $order->jumlah_slipsheet ?? 0 }}</span>
+                                    <div class="col-md-6 ps-md-4">
+                                        <p class="mb-1 text-muted small uppercase">Container & Seals</p>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>No. Kontainer:</span> <span
+                                                class="fw-bold">{{ $order->no_kontainer ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Segel BAS:</span> <span
+                                                class="fw-bold text-info">{{ $order->no_segel_bas ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Segel Vendor:</span> <span
+                                                class="fw-bold text-info">{{ $order->no_segel_vendor ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>No. ECP:</span> <span class="fw-bold text-primary">{{ $order->no_ecp ?? '-' }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Slipsheet:</span> <span
+                                                class="fw-bold">{{ $order->jumlah_slipsheet ?? 0 }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Jumlah TKBM:</span> <span
+                                                class="fw-bold text-primary">{{ $order->jumlah_tkbm ? $order->jumlah_tkbm . ' Orang' : '-' }}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            @endif
 
                             <!-- Stepper Visual -->
                             <div class="position-relative m-4">

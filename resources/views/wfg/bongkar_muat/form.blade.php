@@ -79,11 +79,11 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0">Form Bongkar Muat</h4>
+                        <h4 class="mb-sm-0">Form & Pemeriksaan Muat WFG</h4>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript: void(0);">WFG</a></li>
-                                <li class="breadcrumb-item active">Form Bongkar Muat</li>
+                                <li class="breadcrumb-item active">Form Muat WFG</li>
                             </ol>
                         </div>
                     </div>
@@ -146,11 +146,16 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-12 mb-3">
+                                    <div class="col-md-6 mb-3">
                                         <label class="form-label">Tanggal <span class="text-danger">*</span></label>
                                         <input type="date" name="tanggal" class="form-control"
                                             value="{{ isset($draft->tanggal) ? (is_string($draft->tanggal) ? $draft->tanggal : $draft->tanggal->format('Y-m-d')) : date('Y-m-d') }}"
                                             required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">No. ECP <span class="text-danger">*</span></label>
+                                        <input type="text" name="no_ecp" class="form-control"
+                                            placeholder="Masukkan No. ECP..." value="{{ $draft->no_ecp ?? '' }}" required>
                                     </div>
                                 </div>
                                 <div class="row">
@@ -203,7 +208,8 @@
                     <div class="col-lg-6">
                         <div class="card shadow-sm border-0 h-100">
                             <div class="card-header bg-info bg-gradient text-white">
-                                <h5 class="card-title mb-0 text-white"><i class="ri-truck-line me-2"></i>Vehicle & Gate</h5>
+                                <h5 class="card-title mb-0 text-white"><i class="ri-truck-line me-2"></i>Vehicle & Gate
+                                </h5>
                             </div>
                             <div class="card-body">
                                 <div class="row">
@@ -211,22 +217,34 @@
                                         <label class="form-label">No. Mobil <small class="text-muted">(Pilih WFG / Ketik
                                                 Manual)</small></label>
                                         @php
-                                            $cleanDraftNoMobil = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $draft->no_mobil ?? ''));
+                                            $cleanDraftNoMobil = strtoupper(
+                                                preg_replace('/[^A-Z0-9]/i', '', $draft->no_mobil ?? ''),
+                                            );
                                             $draftSuffix = preg_replace('/^[A-Z]{1,2}/', '', $cleanDraftNoMobil);
 
-                                            $matchVehicle = function($noPol) use ($cleanDraftNoMobil, $draftSuffix) {
-                                                if (empty($cleanDraftNoMobil) || empty($noPol)) return false;
+                                            $matchVehicle = function ($noPol) use ($cleanDraftNoMobil, $draftSuffix) {
+                                                if (empty($cleanDraftNoMobil) || empty($noPol)) {
+                                                    return false;
+                                                }
                                                 $cleanV = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $noPol));
-                                                if ($cleanV === $cleanDraftNoMobil) return true;
-                                                
+                                                if ($cleanV === $cleanDraftNoMobil) {
+                                                    return true;
+                                                }
+
                                                 $vSuffix = preg_replace('/^[A-Z]{1,2}/', '', $cleanV);
-                                                if (!empty($draftSuffix) && !empty($vSuffix) && $draftSuffix === $vSuffix) {
+                                                if (
+                                                    !empty($draftSuffix) &&
+                                                    !empty($vSuffix) &&
+                                                    $draftSuffix === $vSuffix
+                                                ) {
                                                     return true;
                                                 }
                                                 return false;
                                             };
 
-                                            $matchedWfgTx = $wfgVehicles->first(fn($v) => $matchVehicle($v->vehicle->no_pol ?? ''));
+                                            $matchedWfgTx = $wfgVehicles->first(
+                                                fn($v) => $matchVehicle($v->vehicle->no_pol ?? ''),
+                                            );
                                             $isDraftInWfg = !empty($matchedWfgTx);
                                             $driverNameVal = $draft->driver_name ?? ($matchedWfgTx->nama_driver ?? '');
                                         @endphp
@@ -264,46 +282,64 @@
                                             <option value="">-- Select Gate --</option>
 
                                             @foreach (range(1, 30) as $g)
-                                                <option value="{{ $g }}" @selected(isset($draft) && $draft->gate == $g)
-                                                    @disabled(in_array($g, $bookedGates) && (!isset($draft) || $draft->gate != $g))>
-                                                    {{ $g }}
+                                                @php
+                                                    $isBooked =
+                                                        in_array((int) $g, $bookedGates) &&
+                                                        (!isset($draft) || (int) $draft->gate !== (int) $g);
+                                                @endphp
+                                                <option value="{{ $g }}" @selected(isset($draft) && (int) $draft->gate === (int) $g)
+                                                    @disabled($isBooked)>
+                                                    Gate {{ $g }}{{ $isBooked ? ' (Terpakai)' : '' }}
                                                 </option>
                                             @endforeach
                                         </select>
                                     </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Tujuan <span class="text-danger">*</span></label>
-                                    <select name="destinasi_id" id="destinasi_id" class="form-select select2" required>
-                                        <option value="">Pilih Tujuan</option>
-                                        @foreach ($destinations as $destination)
-                                            <option value="{{ $destination->id }}"
-                                                {{ isset($draft) && $draft->destinasi_id == $destination->id ? 'selected' : '' }}>
-                                                {{ $destination->destinasi }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
+                                <div class="row mb-3">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Tujuan <span class="text-danger">*</span></label>
+                                        <select name="destinasi_id" id="destinasi_id" class="form-select select2"
+                                            required>
+                                            <option value="">Pilih Tujuan</option>
+                                            @foreach ($destinations as $destination)
+                                                <option value="{{ $destination->id }}"
+                                                    {{ isset($draft) && $draft->destinasi_id == $destination->id ? 'selected' : '' }}>
+                                                    {{ $destination->destinasi }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
                                         <label class="form-label">No. Kontainer</label>
                                         <input type="text" name="no_kontainer" class="form-control"
                                             value="{{ $draft->no_kontainer ?? '' }}">
                                     </div>
-                                    <div class="col-md-4 mb-3">
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
                                         <label class="form-label">No. Segel BAS</label>
                                         <input type="text" name="no_segel_bas" class="form-control"
                                             value="{{ $draft->no_segel_bas ?? '' }}">
                                     </div>
-                                    <div class="col-md-4 mb-3">
+                                    <div class="col-md-6 mb-3">
                                         <label class="form-label">No. Segel Vendor</label>
                                         <input type="text" name="no_segel_vendor" class="form-control"
                                             value="{{ $draft->no_segel_vendor ?? '' }}">
                                     </div>
                                 </div>
-                                <div class="mb-0">
-                                    <label class="form-label">Jumlah Slipsheet</label>
-                                    <input type="number" name="jumlah_slipsheet" class="form-control"
-                                        value="{{ $draft->jumlah_slipsheet ?? '' }}">
+                                <div class="row">
+                                    <div class="col-md-6 mb-0">
+                                        <label class="form-label">Jumlah Slipsheet</label>
+                                        <input type="number" name="jumlah_slipsheet" class="form-control"
+                                            value="{{ $draft->jumlah_slipsheet ?? '' }}">
+                                    </div>
+                                    <div class="col-md-6 mb-0">
+                                        <label class="form-label">Jumlah TKBM</label>
+                                        <div class="input-group">
+                                            <input type="number" name="jumlah_tkbm" class="form-control"
+                                                placeholder="Contoh: 2" value="{{ $draft->jumlah_tkbm ?? '' }}">
+                                            <span class="input-group-text">Orang</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -337,7 +373,7 @@
                                                 <th>TO Dummy</th>
                                                 <th>TO SAP</th>
                                                 <th class="text-center">Flags</th>
-                                                <th width="50px">Aksi</th>
+                                                <th width="90px" class="text-center">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -680,8 +716,11 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="text-end">
-                            <button type="button" class="btn btn-soft-danger btn-sm" onclick="removeItem(${index})">
+                        <td class="text-end text-nowrap">
+                            <button type="button" class="btn btn-soft-primary btn-sm me-1" onclick="duplicateItem(${index})" title="Duplikat Baris (Row Below)">
+                                <i class="ri-file-copy-line"></i>
+                            </button>
+                            <button type="button" class="btn btn-soft-danger btn-sm" onclick="removeItem(${index})" title="Hapus Baris">
                                 <i class="ri-delete-bin-line"></i>
                             </button>
                         </td>
@@ -792,6 +831,30 @@
             items.splice(index, 1);
             renderTable();
             saveProgress();
+        };
+
+        window.duplicateItem = function(index) {
+            if (items[index]) {
+                const source = items[index];
+                const clone = {
+                    material_id: source.material_id,
+                    mid: source.mid,
+                    nama_barang: source.nama_barang,
+                    batch: source.batch,
+                    jenis: source.jenis,
+                    qty: source.qty,
+                    qty_box: source.qty_box,
+                    to_dummy: source.to_dummy,
+                    to_sap: source.to_sap,
+                    double_po: source.double_po,
+                    cancel_to: source.cancel_to,
+                    manual_picking: source.manual_picking,
+                    principal: source.principal
+                };
+                items.splice(index + 1, 0, clone);
+                renderTable();
+                saveProgress();
+            }
         };
 
         window.updateItemFlag = function(index, flag, value) {
@@ -984,7 +1047,8 @@
                     // 2. Suffix match (misal user ketik 9657UEU vs data B9657UEU)
                     var termSuffix = getPlateSuffix(term);
                     var valSuffix = getPlateSuffix(val);
-                    if (termSuffix.length >= 3 && valSuffix.length >= 3 && valSuffix.indexOf(termSuffix) > -1) {
+                    if (termSuffix.length >= 3 && valSuffix.length >= 3 && valSuffix.indexOf(
+                            termSuffix) > -1) {
                         return data;
                     }
 
@@ -1015,13 +1079,15 @@
                         }
 
                         // Match suffix nopol (misal user ketik 9657UEU vs nopol B9657UEU)
-                        if (termSuffix.length >= 3 && valSuffix.length >= 3 && termSuffix === valSuffix) {
+                        if (termSuffix.length >= 3 && valSuffix.length >= 3 && termSuffix ===
+                            valSuffix) {
                             existsInOptions = true;
                             return false;
                         }
 
                         // Match substring jika user sedang mencari mobil WFG
-                        if (cleanVal.indexOf(cleanTerm) !== -1 || cleanText.indexOf(cleanTerm) !== -1) {
+                        if (cleanVal.indexOf(cleanTerm) !== -1 || cleanText.indexOf(
+                                cleanTerm) !== -1) {
                             existsInOptions = true;
                             return false;
                         }
@@ -1060,6 +1126,25 @@
             });
 
             previousGate = $('#gate').val();
+
+            // Live synchronization status gate terpakai (Muat & Bongkar)
+            $('#gate').on('select2:opening', function() {
+                $.get("{{ route('wfg.bongkar_muat.booked_gates') }}", {
+                    draft_id: '{{ $draft->id }}'
+                }, function(res) {
+                    if (res.status && res.booked_gates) {
+                        const currentGate = $('#gate').val();
+                        $('#gate option').each(function() {
+                            const val = parseInt($(this).val());
+                            if (!val) return;
+                            const isBooked = res.booked_gates.includes(val) && val !==
+                                parseInt(currentGate);
+                            $(this).prop('disabled', isBooked);
+                            $(this).text(`Gate ${val}${isBooked ? ' (Terpakai)' : ''}`);
+                        });
+                    }
+                });
+            });
 
             let saveTimeout;
             $('#form-bongkar-muat input, #form-bongkar-muat select').on('change input', function() {

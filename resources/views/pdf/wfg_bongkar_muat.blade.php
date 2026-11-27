@@ -231,6 +231,14 @@
                             <td class="fw-bold no-border">: {{ $order->jumlah_slipsheet ?? '-' }}</td>
                         </tr>
                         <tr>
+                            <td class="text-muted no-border">Jumlah TKBM</td>
+                            <td class="fw-bold no-border">: {{ $order->jumlah_tkbm ? $order->jumlah_tkbm . ' Orang' : '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted no-border">No. ECP</td>
+                            <td class="fw-bold no-border">: {{ $order->no_ecp ?? '-' }}</td>
+                        </tr>
+                        <tr>
                             <td class="text-muted no-border">Jam Muat</td>
                             <td class="fw-bold no-border">: {{ $order->jam_muat ?? '-' }}</td>
                         </tr>

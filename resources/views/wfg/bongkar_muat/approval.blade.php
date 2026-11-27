@@ -17,13 +17,21 @@
                     <div class="card shadow-sm border-0 mb-3">
                         <div class="card-body">
                             <div class="row align-items-center">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Search</label>
                                     <div class="search-box">
                                         <input type="text" id="searchInput" class="form-control"
-                                            placeholder="Search Document, Wavepick, Shipment...">
+                                            placeholder="Search Document, SPKB, Wavepick...">
                                         <i class="ri-search-line search-icon"></i>
                                     </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Tipe</label>
+                                    <select id="tipeFilter" class="form-select">
+                                        <option value="">Semua Tipe</option>
+                                        <option value="muat">Muat</option>
+                                        <option value="bongkar">Bongkar</option>
+                                    </select>
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Start Date</label>
@@ -33,7 +41,7 @@
                                     <label class="form-label text-muted small fw-bold text-uppercase">End Date</label>
                                     <input type="date" id="endDate" class="form-control">
                                 </div>
-                                <div class="col-md-4 mt-md-4 d-flex gap-2">
+                                <div class="col-md-3 mt-md-4 d-flex gap-2">
                                     <button type="button" class="btn btn-soft-danger flex-fill" id="btnReset">
                                         <i class="ri-refresh-line"></i> Reset
                                     </button>
@@ -200,6 +208,7 @@
                 const search = $('#searchInput').val();
                 const startDate = $('#startDate').val();
                 const endDate = $('#endDate').val();
+                const tipe = $('#tipeFilter').val();
                 const tbody = $('#bongkarMuatApprovalTable tbody');
 
                 tbody.html(
@@ -214,7 +223,8 @@
                         page: page,
                         search: search,
                         start_date: startDate,
-                        end_date: endDate
+                        end_date: endDate,
+                        tipe: tipe
                     },
                     success: function(res) {
                         const paginatedData = res.data;
@@ -264,14 +274,19 @@
                                     </div>
                                 `;
 
+                                const isBongkar = order.tipe === 'bongkar';
+                                const tipeBadge = isBongkar
+                                    ? '<span class="badge bg-warning text-dark ms-1">BONGKAR</span>'
+                                    : '<span class="badge bg-primary-subtle text-primary ms-1">MUAT</span>';
+
                                 const rowHtml = `
                                     <tr>
                                         <td>${noUrut}</td>
-                                        <td>${order.tanggal}</td>
-                                        <td>${order.wavepick_smu ?? '-'}</td>
-                                        <td>${order.shipment_smu ?? '-'}</td>
-                                        <td>${order.wavepick_bas ?? '-'}</td>
-                                        <td>${order.shipment_bas ?? '-'}</td>
+                                        <td>${order.tanggal} ${tipeBadge}</td>
+                                        <td>${isBongkar ? (order.no_spkb ?? '-') : (order.wavepick_smu ?? '-')}</td>
+                                        <td>${isBongkar ? (order.supplier_vendor ?? '-') : (order.shipment_smu ?? '-')}</td>
+                                        <td>${isBongkar ? (order.tujuan_bongkar ?? '-') : (order.wavepick_bas ?? '-')}</td>
+                                        <td>${isBongkar ? (order.no_mobil ?? '-') : (order.shipment_bas ?? '-')}</td>
                                         <td>${forkliftDriverName}</td>
                                         <td>${checkerName}</td>
                                         <td>${driverName}</td>
@@ -364,10 +379,11 @@
                 $('#searchInput').val('');
                 $('#startDate').val('');
                 $('#endDate').val('');
+                $('#tipeFilter').val('');
                 loadData(1);
             });
 
-            $('#startDate, #endDate').change(function() {
+            $('#startDate, #endDate, #tipeFilter').change(function() {
                 loadData(1);
             });
 

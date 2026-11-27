@@ -25,6 +25,12 @@
                                             <i class="bx bx-git-commit fs-12"></i> Form Muat
                                         </a>
                                     </li>
+                                    <li class="nav-item">
+                                        <a href="{{ route('wfg.bongkar_muat.form_bongkar') }}"
+                                            class="nav-link {{ request()->routeIs('wfg.bongkar_muat.form_bongkar') ? 'active' : '' }}">
+                                            <i class="bx bx-git-commit fs-12"></i> Form Bongkar
+                                        </a>
+                                    </li>
                                 @endcan
                                 @can('permission', 'data-bongkar-muat')
                                     <li class="nav-item">

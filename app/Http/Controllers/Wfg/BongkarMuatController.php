@@ -44,9 +44,18 @@ class BongkarMuatController extends Controller
         $endDate = $request->input('end_date');
         $status = $request->input('status');
         $flags = $request->input('flags');
+        $tipe = $request->input('tipe');
 
         $query = BongkarMuat::with(['forkliftDriver', 'checker', 'destinasi', 'details.material', 'verificator'])
             ->whereNotNull('jam_muat');
+
+        if ($tipe === 'bongkar') {
+            $query->where('tipe', 'bongkar');
+        } elseif ($tipe === 'muat') {
+            $query->where(function ($q) {
+                $q->where('tipe', 'muat')->orWhereNull('tipe');
+            });
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -55,6 +64,9 @@ class BongkarMuatController extends Controller
                     ->orWhere('wavepick_bas', 'like', "%{$search}%")
                     ->orWhere('shipment_bas', 'like', "%{$search}%")
                     ->orWhere('no_dokumen', 'like', "%{$search}%")
+                    ->orWhere('no_spkb', 'like', "%{$search}%")
+                    ->orWhere('supplier_vendor', 'like', "%{$search}%")
+                    ->orWhere('tujuan_bongkar', 'like', "%{$search}%")
                     ->orWhere('no_mobil', 'like', "%{$search}%");
             });
         }
@@ -96,6 +108,7 @@ class BongkarMuatController extends Controller
         $search = $request->input('search');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
+        $tipe = $request->input('tipe');
 
         if (!auth()->user()->can('role', 'verificator-bongkar-muat-wfg')) {
             return response()->json([
@@ -113,6 +126,14 @@ class BongkarMuatController extends Controller
         $query = BongkarMuat::with(['forkliftDriver:id,username,nama_lengkap', 'checker:id,username,nama_lengkap', 'destinasi:id,destinasi', 'details.material'])
             ->where('status', 'finished');
 
+        if ($tipe === 'bongkar') {
+            $query->where('tipe', 'bongkar');
+        } elseif ($tipe === 'muat') {
+            $query->where(function ($q) {
+                $q->where('tipe', 'muat')->orWhereNull('tipe');
+            });
+        }
+
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('wavepick_smu', 'like', "%{$search}%")
@@ -120,6 +141,9 @@ class BongkarMuatController extends Controller
                     ->orWhere('wavepick_bas', 'like', "%{$search}%")
                     ->orWhere('shipment_bas', 'like', "%{$search}%")
                     ->orWhere('no_dokumen', 'like', "%{$search}%")
+                    ->orWhere('no_spkb', 'like', "%{$search}%")
+                    ->orWhere('supplier_vendor', 'like', "%{$search}%")
+                    ->orWhere('tujuan_bongkar', 'like', "%{$search}%")
                     ->orWhere('no_mobil', 'like', "%{$search}%");
             });
         }
@@ -145,6 +169,7 @@ class BongkarMuatController extends Controller
         // Check if create_new is requested
         if ($request->query('create_new')) {
             $draft = BongkarMuat::create([
+                'tipe' => 'muat',
                 'created_by' => Auth::id(),
                 'status' => 'draft',
                 'tanggal' => date('Y-m-d'),
@@ -155,8 +180,11 @@ class BongkarMuatController extends Controller
         $draftId = $request->query('draft_id');
 
         if (!$draftId) {
-            // Find latest active/unfinished record for this user
+            // Find latest active/unfinished record for this user (Form Muat)
             $latestActive = BongkarMuat::where('created_by', Auth::id())
+                ->where(function ($q) {
+                    $q->where('tipe', 'muat')->orWhereNull('tipe');
+                })
                 ->whereIn('status', ['draft', 'submitted', 'approved'])
                 ->latest()
                 ->first();
@@ -171,6 +199,7 @@ class BongkarMuatController extends Controller
 
             // If no active records exist at all, create a new draft
             $newDraft = BongkarMuat::create([
+                'tipe' => 'muat',
                 'created_by' => Auth::id(),
                 'status' => 'draft',
                 'tanggal' => date('Y-m-d'),
@@ -182,12 +211,19 @@ class BongkarMuatController extends Controller
         $draft = BongkarMuat::with('details.material')
             ->where('id', $draftId)
             ->where('created_by', Auth::id())
-            ->where('status', 'draft')
             ->first();
 
         if (!$draft) {
             return redirect()->route('wfg.bongkar_muat.form')
                 ->with('error', 'Draft tidak ditemukan atau bukan milik Anda.');
+        }
+
+        if ($draft->status !== 'draft') {
+            return redirect()->route('wfg.bongkar_muat.show', $draft->id);
+        }
+
+        if ($draft->tipe === 'bongkar') {
+            return redirect()->route('wfg.bongkar_muat.form_bongkar', ['draft_id' => $draft->id]);
         }
 
         // Jika row item (details) masih kosong, tanggal otomatis selalu ngikutin today saja
@@ -198,8 +234,11 @@ class BongkarMuatController extends Controller
             $draft->update(['tanggal' => date('Y-m-d')]);
         }
 
-        // Load all active drafts for tabs
+        // Load all active drafts for tabs (Form Muat)
         $allDrafts = BongkarMuat::where('created_by', Auth::id())
+            ->where(function ($q) {
+                $q->where('tipe', 'muat')->orWhereNull('tipe');
+            })
             ->whereIn('status', ['draft', 'submitted', 'approved'])
             ->latest()
             ->get();
@@ -220,6 +259,7 @@ class BongkarMuatController extends Controller
             ->where('id', '!=', $draftId)
             ->whereNotNull('gate')
             ->pluck('gate')
+            ->map(fn($g) => (int) $g)
             ->toArray();
 
         // Kendaraan aktif di area WFG (termasuk slipsheet & curah)
@@ -262,13 +302,466 @@ class BongkarMuatController extends Controller
         return view('wfg.bongkar_muat.form', compact('forkliftDrivers', 'checkers', 'destinations', 'draft', 'bookedGates', 'allDrafts', 'wfgVehicles'));
     }
 
+    private function defaultBongkarInspectionData(): array
+    {
+        return [
+            'doc_coa' => 'Ada',
+            'doc_kartu_checkpoint' => 'Ada',
+            'kondisi_lantai' => 'Baik',
+            'kondisi_dinding' => 'Baik',
+            'kondisi_sealed' => 'Baik',
+            'kondisi_pintu' => 'Baik',
+            'kondisi_kebersihan' => 'Bersih',
+            'kondisi_bau_tajam' => 'Tidak',
+            'foto_plat_nomor' => true,
+            'foto_no_container' => false,
+            'foto_sealed_container' => false,
+            'foto_absorber_fumigan' => false,
+            'foto_material_bermasalah' => false,
+            'foto_container_berlubang' => false,
+            'jumlah_absorber' => '-',
+            'jumlah_fumigan' => '-',
+            'catatan_penyimpangan' => '',
+            'catatan_tkbm' => '',
+        ];
+    }
+
+    public function createBongkar(Request $request)
+    {
+        if ($request->query('create_new')) {
+            $draft = BongkarMuat::create([
+                'tipe' => 'bongkar',
+                'sloc' => 'A001',
+                'jenis_pengiriman' => 'Lokal',
+                'no_kartu' => '-',
+                'inspection_data' => $this->defaultBongkarInspectionData(),
+                'created_by' => Auth::id(),
+                'status' => 'draft',
+                'tanggal' => date('Y-m-d'),
+            ]);
+            return redirect()->route('wfg.bongkar_muat.form_bongkar', ['draft_id' => $draft->id]);
+        }
+
+        $draftId = $request->query('draft_id');
+
+        if (!$draftId) {
+            $latestActive = BongkarMuat::where('created_by', Auth::id())
+                ->where('tipe', 'bongkar')
+                ->whereIn('status', ['draft', 'submitted', 'approved'])
+                ->latest()
+                ->first();
+
+            if ($latestActive) {
+                if ($latestActive->status === 'draft') {
+                    return redirect()->route('wfg.bongkar_muat.form_bongkar', ['draft_id' => $latestActive->id]);
+                } else {
+                    return redirect()->route('wfg.bongkar_muat.show', $latestActive->id);
+                }
+            }
+
+            $newDraft = BongkarMuat::create([
+                'tipe' => 'bongkar',
+                'sloc' => 'A001',
+                'jenis_pengiriman' => 'Lokal',
+                'no_kartu' => '-',
+                'inspection_data' => $this->defaultBongkarInspectionData(),
+                'created_by' => Auth::id(),
+                'status' => 'draft',
+                'tanggal' => date('Y-m-d'),
+            ]);
+            return redirect()->route('wfg.bongkar_muat.form_bongkar', ['draft_id' => $newDraft->id]);
+        }
+
+        $draft = BongkarMuat::with('details.material')
+            ->where('id', $draftId)
+            ->where('created_by', Auth::id())
+            ->first();
+
+        if (!$draft) {
+            return redirect()->route('wfg.bongkar_muat.form_bongkar')
+                ->with('error', 'Draft tidak ditemukan atau bukan milik Anda.');
+        }
+
+        if ($draft->status !== 'draft') {
+            return redirect()->route('wfg.bongkar_muat.show', $draft->id);
+        }
+
+        if ($draft->tipe !== 'bongkar') {
+            return redirect()->route('wfg.bongkar_muat.form', ['draft_id' => $draft->id]);
+        }
+
+        $hasItems = $draft->details->contains(function ($detail) {
+            return !empty($detail->material_id);
+        });
+        if (!$hasItems) {
+            $draft->update(['tanggal' => date('Y-m-d')]);
+        }
+
+        $allDrafts = BongkarMuat::where('created_by', Auth::id())
+            ->where('tipe', 'bongkar')
+            ->whereIn('status', ['draft', 'submitted', 'approved'])
+            ->latest()
+            ->get();
+
+        $forkliftDrivers = UserForkliftAssignmentModel::with('user')
+            ->where('is_active', true)
+            ->get()
+            ->pluck('user')
+            ->unique('id');
+
+        $checkers = User::role('checker')->get();
+        $destinations = MasterDestinasi::select('id', 'destinasi')
+            ->where('active', true)
+            ->get();
+
+        $bookedGates = BongkarMuat::whereIn('status', ['draft', 'submitted', 'approved'])
+            ->where('id', '!=', $draftId)
+            ->whereNotNull('gate')
+            ->pluck('gate')
+            ->map(fn($g) => (int) $g)
+            ->toArray();
+
+        // Kendaraan aktif di area SMU dan WFG jenis bongkaran
+        $wfgVehicles = VehicleTransaction::with(['vehicle', 'targetLocation'])
+            ->where(function ($q) {
+                $q->whereIn('status', ['wfg', 'smu'])
+                    ->orWhere(function ($sub) {
+                        $sub->whereNotIn('status', ['completed', 'timbangan_out'])
+                            ->whereHas('targetLocation', function ($tl) {
+                                $tl->whereIn('s_loc', ['A001', 'SMU', 'A002'])
+                                    ->orWhere('name', 'like', '%WFG%')
+                                    ->orWhere('name', 'like', '%SMU%');
+                            });
+                    });
+            })
+            ->where(function ($q) {
+                $q->where('jenis', 'bongkaran')
+                    ->orWhere('jenis', 'like', '%bongkar%');
+            })
+            ->get()
+            ->filter(function ($tx) {
+                return $tx->vehicle && !empty($tx->vehicle->no_pol);
+            })
+            ->unique(function ($tx) {
+                return strtoupper(str_replace([' ', '-', '.', '_'], '', $tx->vehicle->no_pol));
+            })
+            ->values();
+
+        if (!empty($draft->no_mobil)) {
+            [$resolvedNoMobil, $resolvedDriver] = $this->resolveVehicleInfo($draft->no_mobil, $draft->driver_name);
+            $updateDraft = [];
+            if ($resolvedNoMobil && $draft->no_mobil !== $resolvedNoMobil) {
+                $updateDraft['no_mobil'] = $resolvedNoMobil;
+                $draft->no_mobil = $resolvedNoMobil;
+            }
+            if ($resolvedDriver && empty($draft->driver_name)) {
+                $updateDraft['driver_name'] = $resolvedDriver;
+                $draft->driver_name = $resolvedDriver;
+            }
+
+            // Auto-populate supplier_vendor dari vehicle jika masih kosong
+            if (empty($draft->supplier_vendor)) {
+                $matchedTx = $wfgVehicles->first(function ($tx) use ($resolvedNoMobil, $draft) {
+                    $noPol = $tx->vehicle->no_pol ?? '';
+                    $cleanV = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $noPol));
+                    $cleanD = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $resolvedNoMobil ?: $draft->no_mobil));
+                    return !empty($cleanV) && ($cleanV === $cleanD || str_contains($cleanD, $cleanV) || str_contains($cleanV, $cleanD));
+                });
+                if ($matchedTx && !empty($matchedTx->vendor)) {
+                    $updateDraft['supplier_vendor'] = $matchedTx->vendor;
+                    $draft->supplier_vendor = $matchedTx->vendor;
+                }
+            }
+
+            if (!empty($updateDraft)) {
+                $draft->update($updateDraft);
+            }
+        }
+
+        return view('wfg.bongkar_muat.form_bongkar', compact(
+            'forkliftDrivers',
+            'checkers',
+            'destinations',
+            'draft',
+            'bookedGates',
+            'allDrafts',
+            'wfgVehicles'
+        ));
+    }
+
+    public function getBookedGates(Request $request)
+    {
+        $excludeId = $request->input('draft_id');
+        $booked = BongkarMuat::whereIn('status', ['draft', 'submitted', 'approved'])
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->whereNotNull('gate')
+            ->pluck('gate')
+            ->map(fn($g) => (int) $g)
+            ->unique()
+            ->values();
+
+        return response()->json([
+            'status' => true,
+            'booked_gates' => $booked
+        ]);
+    }
+
+    private function extractInspectionData(Request $request, ?array $existing = null): array
+    {
+        $base = array_merge($this->defaultBongkarInspectionData(), $existing ?? []);
+        $in = $request->input('inspection', []);
+        if (!is_array($in)) {
+            $in = [];
+        }
+
+        return [
+            'doc_coa' => $in['doc_coa'] ?? $base['doc_coa'],
+            'doc_kartu_checkpoint' => $in['doc_kartu_checkpoint'] ?? $base['doc_kartu_checkpoint'],
+            'kondisi_lantai' => $in['kondisi_lantai'] ?? $base['kondisi_lantai'],
+            'kondisi_dinding' => $in['kondisi_dinding'] ?? $base['kondisi_dinding'],
+            'kondisi_sealed' => $in['kondisi_sealed'] ?? $base['kondisi_sealed'],
+            'kondisi_pintu' => $in['kondisi_pintu'] ?? $base['kondisi_pintu'],
+            'kondisi_kebersihan' => $in['kondisi_kebersihan'] ?? $base['kondisi_kebersihan'],
+            'kondisi_bau_tajam' => $in['kondisi_bau_tajam'] ?? $base['kondisi_bau_tajam'],
+            'foto_plat_nomor' => !empty($in['foto_plat_nomor']),
+            'foto_no_container' => !empty($in['foto_no_container']),
+            'foto_sealed_container' => !empty($in['foto_sealed_container']),
+            'foto_absorber_fumigan' => !empty($in['foto_absorber_fumigan']),
+            'foto_material_bermasalah' => !empty($in['foto_material_bermasalah']),
+            'foto_container_berlubang' => !empty($in['foto_container_berlubang']),
+            'jumlah_absorber' => $in['jumlah_absorber'] ?? $base['jumlah_absorber'],
+            'jumlah_fumigan' => $in['jumlah_fumigan'] ?? $base['jumlah_fumigan'],
+            'catatan_penyimpangan' => $in['catatan_penyimpangan'] ?? $base['catatan_penyimpangan'],
+            'catatan_tkbm' => $in['catatan_tkbm'] ?? $base['catatan_tkbm'],
+        ];
+    }
+
+    public function saveDraftBongkar(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $draftId = $request->input('id');
+            if (!$draftId) {
+                return response()->json(['status' => false, 'message' => 'Draft ID is required.'], 400);
+            }
+
+            $order = BongkarMuat::where('id', $draftId)
+                ->where('created_by', Auth::id())
+                ->where('status', 'draft')
+                ->first();
+
+            if (!$order) {
+                return response()->json(['status' => false, 'message' => 'Draft tidak ditemukan atau bukan milik Anda.'], 404);
+            }
+
+            [$resolvedNoMobil, $driverName, $resolvedVendor] = $this->resolveVehicleInfo($request->no_mobil, $request->driver_name, $request->supplier_vendor);
+
+            $order->update([
+                'tipe' => 'bongkar',
+                'tanggal' => $request->tanggal ?: date('Y-m-d'),
+                'no_spkb' => $this->cleanNull($request->no_spkb),
+                'no_ecp' => $this->cleanNull($request->no_ecp),
+                'jumlah_tkbm' => $this->cleanNull($request->jumlah_tkbm),
+                'sloc' => $this->cleanNull($request->sloc) ?? 'A001',
+                'supplier_vendor' => $resolvedVendor ?: $this->cleanNull($request->supplier_vendor),
+                'no_segel_bas' => $this->cleanNull($request->no_segel_bas),
+                'jenis_pengiriman' => $this->cleanNull($request->jenis_pengiriman) ?? 'Lokal',
+                'no_mobil' => $resolvedNoMobil,
+                'driver_name' => $driverName,
+                'gate' => $this->cleanNull($request->gate),
+                'no_kontainer' => $this->cleanNull($request->no_kontainer),
+                'forklift_driver_id' => is_numeric($request->forklift_driver_id) ? $request->forklift_driver_id : null,
+                'inspection_data' => $this->extractInspectionData($request, $order->inspection_data),
+                'updated_by' => Auth::id(),
+                'checker_id' => Auth::id(),
+            ]);
+
+            $hasMaterialDetails = collect($request->details ?? [])->contains(function ($detail) {
+                return !empty($detail['material_id']);
+            });
+
+            if ($hasMaterialDetails) {
+                if (empty($order->jam_muat)) {
+                    $order->jam_muat = Carbon::now()->format('H:i:s');
+                    $order->save();
+                }
+            } else {
+                $order->jam_muat = null;
+                $order->tanggal = date('Y-m-d');
+                $order->save();
+            }
+
+            $order->details()->delete();
+            if ($request->has('details')) {
+                foreach ($request->details as $detail) {
+                    $matId = $this->cleanNull($detail['material_id'] ?? null);
+                    $uomVal = $this->cleanNull($detail['uom'] ?? null);
+                    if ($matId && empty($uomVal)) {
+                        $mat = BarangWfgModel::find($matId);
+                        $uomVal = $mat?->uom ?? 'BOX';
+                    }
+
+                    BongkarMuatDetail::create([
+                        'bongkar_muat_id' => $order->id,
+                        'material_id' => $matId,
+                        'batch_number' => $this->cleanNull($detail['batch_number'] ?? null),
+                        'jenis' => $detail['jenis'] ?? 'P',
+                        'uom' => $uomVal,
+                        'qty' => $detail['qty'] ?? 0,
+                        'keterangan' => $this->cleanNull($detail['keterangan'] ?? null),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            if (!empty($order->no_mobil)) {
+                $this->syncVehicleDraftLoading($order->no_mobil, 'bongkar');
+            }
+
+            $formattedTanggal = $order->tanggal instanceof \DateTimeInterface
+                ? $order->tanggal->format('Y-m-d')
+                : substr((string) $order->tanggal, 0, 10);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Progress saved.',
+                'jam_muat' => $order->jam_muat,
+                'tanggal' => $formattedTanggal,
+                'driver_name' => $order->driver_name,
+                'no_mobil' => $order->no_mobil,
+                'supplier_vendor' => $order->supplier_vendor,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function storeBongkar(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'tanggal' => 'required|date',
+            'no_mobil' => 'required',
+            'details' => 'required|array|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        // Validasi gate bentrok (Muat & Bongkar)
+        $draftId = $request->input('id');
+        if ($request->filled('gate')) {
+            $gateCollision = BongkarMuat::whereIn('status', ['draft', 'submitted', 'approved'])
+                ->where('id', '!=', $draftId)
+                ->where('gate', $request->gate)
+                ->exists();
+
+            if ($gateCollision) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Gate ' . $request->gate . ' sudah digunakan oleh proses lain di area WFG.'
+                ], 422);
+            }
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $draftId = $request->input('id');
+            $order = null;
+            if ($draftId) {
+                $order = BongkarMuat::where('id', $draftId)
+                    ->where('created_by', Auth::id())
+                    ->where('status', 'draft')
+                    ->first();
+            }
+
+            if (!$order) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Draft tidak ditemukan atau bukan milik Anda.'
+                ], 404);
+            }
+
+            $noDok = ($order->no_dokumen === null || $order->no_dokumen === '')
+                ? $this->generateNoDokumen()
+                : $order->no_dokumen;
+
+            [$resolvedNoMobil, $driverName, $resolvedVendor] = $this->resolveVehicleInfo($request->no_mobil, $request->driver_name, $request->supplier_vendor);
+
+            $order->update([
+                'tipe' => 'bongkar',
+                'tanggal' => $request->tanggal,
+                'no_dokumen' => $noDok,
+                'no_spkb' => $this->cleanNull($request->no_spkb),
+                'no_ecp' => $this->cleanNull($request->no_ecp),
+                'jumlah_tkbm' => $this->cleanNull($request->jumlah_tkbm),
+                'sloc' => $this->cleanNull($request->sloc) ?? 'A001',
+                'supplier_vendor' => $resolvedVendor ?: $this->cleanNull($request->supplier_vendor),
+                'no_segel_bas' => $this->cleanNull($request->no_segel_bas),
+                'jenis_pengiriman' => $this->cleanNull($request->jenis_pengiriman) ?? 'Lokal',
+                'no_mobil' => $resolvedNoMobil,
+                'driver_name' => $driverName,
+                'gate' => $this->cleanNull($request->gate),
+                'no_kontainer' => $this->cleanNull($request->no_kontainer),
+                'forklift_driver_id' => is_numeric($request->forklift_driver_id) ? $request->forklift_driver_id : null,
+                'checker_id' => $order->checker_id ?? Auth::id(),
+                'jam_muat' => $order->jam_muat ?: ($request->jam_muat ?: Carbon::now()->format('H:i:s')),
+                'jam_selesai' => Carbon::now()->format('H:i:s'),
+                'inspection_data' => $this->extractInspectionData($request, $order->inspection_data),
+                'status' => 'submitted',
+                'created_by' => Auth::id(),
+            ]);
+
+            $order->details()->delete();
+            foreach ($request->details as $detail) {
+                $matId = $this->cleanNull($detail['material_id'] ?? null);
+                if (!$matId) continue;
+
+                $uomVal = $this->cleanNull($detail['uom'] ?? null);
+                if (empty($uomVal)) {
+                    $mat = BarangWfgModel::find($matId);
+                    $uomVal = $mat?->uom ?? 'BOX';
+                }
+
+                BongkarMuatDetail::create([
+                    'bongkar_muat_id' => $order->id,
+                    'material_id' => $matId,
+                    'batch_number' => $this->cleanNull($detail['batch_number'] ?? null),
+                    'jenis' => $detail['jenis'] ?? 'P',
+                    'uom' => $uomVal,
+                    'qty' => $detail['qty'] ?? 0,
+                    'keterangan' => $this->cleanNull($detail['keterangan'] ?? null),
+                ]);
+            }
+
+            DB::commit();
+
+            if (!empty($order->no_mobil)) {
+                $this->syncVehicleDraftLoading($order->no_mobil, 'bongkar');
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Form Bongkar berhasil disubmit.',
+                'redirect' => route('wfg.bongkar_muat.show', $order->id),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
     /**
-     * Cari kecocokan transaksi kendaraan aktif di WFG dan normalisasi nopol + nama driver.
+     * Cari kecocokan transaksi kendaraan aktif di WFG dan normalisasi nopol + nama driver + vendor.
      */
-    private function resolveVehicleInfo(?string $noMobil, ?string $driverName): array
+    private function resolveVehicleInfo(?string $noMobil, ?string $driverName, ?string $vendor = null): array
     {
         if (empty($noMobil)) {
-            return [null, null];
+            return [null, null, null];
         }
 
         $cleanNoMobil = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $noMobil));
@@ -288,15 +781,21 @@ class BongkarMuatController extends Controller
 
         $resolvedNoMobil = $noMobil;
         $resolvedDriver = $driverName;
+        $resolvedVendor = $vendor;
 
-        if ($matchedTx && $matchedTx->vehicle && !empty($matchedTx->vehicle->no_pol)) {
-            $resolvedNoMobil = $matchedTx->vehicle->no_pol;
+        if ($matchedTx) {
+            if ($matchedTx->vehicle && !empty($matchedTx->vehicle->no_pol)) {
+                $resolvedNoMobil = $matchedTx->vehicle->no_pol;
+            }
             if (empty($resolvedDriver) && !empty($matchedTx->nama_driver)) {
                 $resolvedDriver = $matchedTx->nama_driver;
             }
+            if (empty($resolvedVendor) && !empty($matchedTx->vendor)) {
+                $resolvedVendor = $matchedTx->vendor;
+            }
         }
 
-        return [$resolvedNoMobil, $resolvedDriver];
+        return [$resolvedNoMobil, $resolvedDriver, $resolvedVendor];
     }
 
     private function generateNoDokumen()
@@ -374,6 +873,8 @@ class BongkarMuatController extends Controller
             $order->update([
                 'tanggal' => $request->tanggal,
                 'no_dokumen' => null,
+                'no_ecp' => $this->cleanNull($request->no_ecp),
+                'jumlah_tkbm' => $this->cleanNull($request->jumlah_tkbm),
                 'shipment_smu' => $request->shipment_smu,
                 'wavepick_smu' => $request->wavepick_smu,
                 'shipment_bas' => $request->shipment_bas,
@@ -447,7 +948,6 @@ class BongkarMuatController extends Controller
                 foreach ($request->details as $detail) {
                     BongkarMuatDetail::create([
                         'bongkar_muat_id' => $order->id,
-                        'barcode' => $detail['barcode'] ?? null,
                         'material_id' => $this->cleanNull($detail['material_id'] ?? null),
                         'batch_number' => $detail['batch_number'] ?? null,
                         'jenis' => $detail['jenis'] ?? 'P',
@@ -550,7 +1050,7 @@ class BongkarMuatController extends Controller
             if ($gateCollision) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Gate ' . $request->gate . ' sudah digunakan oleh draft/order lain.'
+                    'message' => 'Gate ' . $request->gate . ' sudah digunakan oleh draft/order lain di area WFG.'
                 ], 422);
             }
         }
@@ -630,6 +1130,8 @@ class BongkarMuatController extends Controller
             $orderData = [
                 'tanggal' => $request->tanggal,
                 'no_dokumen' => $noDok,
+                'no_ecp' => $this->cleanNull($request->no_ecp),
+                'jumlah_tkbm' => $this->cleanNull($request->jumlah_tkbm),
                 'shipment_smu' => $request->shipment_smu,
                 'wavepick_smu' => $request->wavepick_smu,
                 'shipment_bas' => $request->shipment_bas,
@@ -703,8 +1205,9 @@ class BongkarMuatController extends Controller
 
             DB::commit();
 
-            // Selesai muat fisik mobil TIDAK di-sinkronkan otomatis dari form ini,
-            // melainkan diselesaikan secara manual oleh admin/pengawas di Vehicle Monitoring WFG/SMU.
+            if (!empty($order->no_mobil)) {
+                $this->syncVehicleDraftLoading($order->no_mobil, 'muat');
+            }
 
             return response()->json(['status' => true, 'message' => 'Bongkar Muat submitted successfully.', 'redirect' => route('wfg.bongkar_muat.show', $order->id)]);
         } catch (\Exception $e) {
@@ -786,7 +1289,9 @@ class BongkarMuatController extends Controller
         }
 
         $url = $order->status === 'draft'
-            ? route('wfg.bongkar_muat.form', ['draft_id' => $order->id])
+            ? ($order->tipe === 'bongkar'
+                ? route('wfg.bongkar_muat.form_bongkar', ['draft_id' => $order->id])
+                : route('wfg.bongkar_muat.form', ['draft_id' => $order->id]))
             : route('wfg.bongkar_muat.show', $order->id);
 
         $message = $order->status === 'draft'
@@ -1002,6 +1507,7 @@ class BongkarMuatController extends Controller
                     'nama_barang' => $wfgBarang->nama_barang,
                     'batch' => $soh->no_spb,
                     'jenis' => 'P',
+                    'uom' => $wfgBarang->uom ?? 'BOX',
                     'qty' => $soh->qty,
                     'qty_box' => $wfgBarang->qty_box,
                     'principal' => $wfgBarang->principal
@@ -1026,6 +1532,7 @@ class BongkarMuatController extends Controller
                 'text' => "[{$m->mid_barang}] {$m->nama_barang}",
                 'mid' => $m->mid_barang,
                 'nama' => $m->nama_barang,
+                'uom' => $m->uom ?? 'BOX',
                 'qty_box' => $m->qty_box,
                 'principal' => $m->principal
             ];
@@ -1095,6 +1602,35 @@ class BongkarMuatController extends Controller
             } else {
                 $summarySMU[] = $data;
             }
+        }
+
+        if ($order->tipe === 'bongkar') {
+            $groupedBongkar = [];
+            $totalAllQty = 0;
+            $totalAllPallet = 0;
+
+            foreach ($order->details->groupBy('material_id') as $matId => $details) {
+                $material = $details->first()->material;
+                $sumQty = $details->sum('qty');
+                $palletCount = $details->count();
+                $uom = $details->first()->uom ?: ($material->uom ?? 'BOX');
+                $notes = $details->pluck('keterangan')->filter()->unique()->implode(', ');
+
+                $groupedBongkar[] = [
+                    'mid' => $material->mid_barang ?? '-',
+                    'nama_barang' => $material->nama_barang ?? '-',
+                    'uom' => $uom,
+                    'qty' => $sumQty,
+                    'pallet_count' => $palletCount,
+                    'keterangan' => $notes,
+                ];
+                $totalAllQty += $sumQty;
+                $totalAllPallet += $palletCount;
+            }
+
+            $pdf = Pdf::loadView('pdf.wfg_bongkar', compact('order', 'groupedBongkar', 'totalAllQty', 'totalAllPallet'));
+            $filename = 'BONGKAR_' . preg_replace('/[\/\\\\]/', '-', $order->no_dokumen ?? $order->id) . '.pdf';
+            return $pdf->stream($filename);
         }
 
         $pdf = Pdf::loadView('pdf.wfg_bongkar_muat', compact('order', 'totalFullPallet', 'totalReceh', 'summarySMU', 'summaryBAS'));
@@ -1294,14 +1830,14 @@ class BongkarMuatController extends Controller
      * Sinkronisasi status proses muat ke Vehicle Monitoring saat draft disimpan di form Bongkar Muat.
      * Hanya berlaku untuk kendaraan WFG & SMU dengan jenis slipsheet atau curah.
      */
-    private function syncVehicleDraftLoading($noMobil)
+    private function syncVehicleDraftLoading($noMobil, $tipe = 'muat')
     {
         try {
             if (!$noMobil) return;
 
             $cleanNoMobil = strtoupper(str_replace([' ', '-', '.', '_'], '', $noMobil));
 
-            // Cari transaksi aktif kendaraan WFG atau SMU dengan jenis slipsheet / curah
+            // Cari transaksi aktif kendaraan WFG atau SMU dengan jenis slipsheet / curah / bongkaran
             $transaction = VehicleTransaction::whereIn('status', ['wfg', 'smu'])
                 ->whereIn('jenis', ['bongkaran', 'slipsheet', 'curah'])
                 ->whereHas('vehicle', function ($q) use ($cleanNoMobil) {
@@ -1356,6 +1892,7 @@ class BongkarMuatController extends Controller
 
                 $transaction->update($updateData);
 
+                $prosesLabel = ($tipe === 'bongkar') ? 'Bongkar' : 'Muat';
                 $activeTrack = VehicleTracking::where('vehicle_transaction_id', $transaction->id)
                     ->where('location_id', $transaction->current_location_id)
                     ->whereNull('departure_time')
@@ -1364,14 +1901,14 @@ class BongkarMuatController extends Controller
 
                 if ($activeTrack) {
                     $activeTrack->update([
-                        'status_notes' => "Mulai Proses Muat di {$areaName} - Antrian #{$assignedAntrian} (Sinkron dari Form Bongkar Muat Draft)."
+                        'status_notes' => "Mulai Proses {$prosesLabel} di {$areaName} - Antrian #{$assignedAntrian} (Sinkron dari Form Bongkar Muat Draft)."
                     ]);
                 }
 
                 $noPol = $transaction->vehicle ? $transaction->vehicle->no_pol : $noMobil;
 
                 // Release dari kantong parkir jika masih menempati slot
-                $this->releaseKantongParkirSlot($noPol, "Mulai proses Muat di {$areaName} (Form Bongkar Muat Draft)");
+                $this->releaseKantongParkirSlot($noPol, "Mulai proses {$prosesLabel} di {$areaName} (Form Bongkar Muat Draft)");
 
                 event(new VehicleStatusUpdated([
                     'transaction_id' => $transaction->id,
@@ -1379,7 +1916,7 @@ class BongkarMuatController extends Controller
                     'current_location' => $targetSloc,
                     'status' => $newStatus,
                     'no_antrian' => $assignedAntrian,
-                    'message' => "Truk {$noPol} mulai proses Muat di {$areaName} (Antrian #{$assignedAntrian} - Sinkron dari Form Bongkar Muat Draft).",
+                    'message' => "Truk {$noPol} mulai proses {$prosesLabel} di {$areaName} (Antrian #{$assignedAntrian} - Sinkron dari Form Bongkar Muat Draft).",
                     'time' => $now->format('H:i:s')
                 ]));
 
