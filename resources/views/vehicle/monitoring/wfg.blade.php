@@ -5,6 +5,10 @@
 @php
     $canPengawasWfg = auth()->user()->can('permission', 'vms-pengawas-wfg') || auth()->user()->hasRole('super-admin');
     $canAdminWfg = auth()->user()->can('permission', 'vms-admin-wfg') || auth()->user()->hasRole('super-admin');
+    $canUpdateForeman =
+        auth()->user()->hasPermission('vehicle-update-foreman') ||
+        auth()->user()->can('permission', 'vehicle-update-foreman') ||
+        auth()->user()->hasRole('super-admin');
 @endphp
 
 @section('content')
@@ -146,10 +150,6 @@
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
                                             @if ($canAdminWfg)
-                                                <th>Item</th>
-                                                <th>No. SPB</th>
-                                                <th>Qty SPB</th>
-                                                <th>Status</th>
                                                 <th>Durasi Aktivitas</th>
                                             @endif
                                             <th class="text-center" style="width: 240px;">Aksi</th>
@@ -180,7 +180,16 @@
                         <h5 class="modal-title fw-bold text-dark mb-0" id="modalDetailTruckLabel">Detail Rincian Kendaraan
                         </h5>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="d-flex align-items-center gap-2">
+                        @if ($canUpdateForeman)
+                            <button type="button"
+                                class="btn btn-outline-warning btn-sm px-2 btn-edit-ajax btn-edit-from-detail"
+                                title="Edit Data Transaksi">
+                                <i class="ri-edit-line me-1"></i> Edit Data
+                            </button>
+                        @endif
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
                 </div>
                 <div class="modal-body p-4">
                     <div class="row g-3 mb-4">
@@ -282,7 +291,15 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 bg-light py-2">
+                <div class="modal-footer border-0 bg-light py-2 d-flex justify-content-between">
+                    <div>
+                        @if ($canUpdateForeman)
+                            <button type="button" class="btn btn-warning px-3 btn-edit-ajax btn-edit-from-detail"
+                                id="btnEditFromDetail" data-id="" title="Edit Data Transaksi">
+                                <i class="ri-edit-line me-1"></i> Edit Data Transaksi
+                            </button>
+                        @endif
+                    </div>
                     <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
@@ -295,6 +312,7 @@
         $(document).ready(function() {
             const canPengawasWfg = {{ $canPengawasWfg ? 'true' : 'false' }};
             const canAdminWfg = {{ $canAdminWfg ? 'true' : 'false' }};
+            const canUpdateForeman = {{ $canUpdateForeman ? 'true' : 'false' }};
             const totalCols = canAdminWfg ? 10 : 5;
 
             function formatDuration(diffSeconds) {
@@ -516,7 +534,9 @@
                                     ${cancelQueueBtn}
                                 </div>`;
                             } else {
-                                actionBtn = cancelQueueBtn || `<span class="text-muted small">-</span>`;
+                                actionBtn = cancelQueueBtn ?
+                                    `<div class="d-flex gap-1 justify-content-center">${cancelQueueBtn}</div>` :
+                                    `<span class="text-muted small">-</span>`;
                             }
                         } else {
                             if (canOperateWfg) {
@@ -600,10 +620,6 @@
                         let detailsHtml = '';
                         if (canAdminWfg) {
                             detailsHtml = `
-                                <td>${tx.item_name || '-'}</td>
-                                <td>${tx.no_spb || '-'}</td>
-                                <td>${tx.qty_spb || '-'}</td>
-                                <td>${statusBadge}</td>
                                 <td>${durasiHtml}</td>
                             `;
                         }
@@ -1186,7 +1202,7 @@
                 $('#dtDriver').text(`${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})`);
                 $('#dtJenis').html(
                     `<span class="badge bg-soft-info text-info text-capitalize">${tx.jenis || 'Muat'}</span> <span class="badge bg-soft-primary text-primary">Area WFG</span>`
-                    );
+                );
                 $('#dtItem').text(tx.item_name || '-');
                 $('#dtNoSpb').text(tx.no_spb || '-');
                 $('#dtQtySpb').text(tx.qty_spb || '-');
@@ -1195,11 +1211,11 @@
                 if (tx.no_antrian) {
                     $('#dtAntrianBadge').html(
                         `<span class="badge bg-soft-success text-success fs-14 px-3 py-1">Antrian #${tx.no_antrian}</span>`
-                        );
+                    );
                 } else {
                     $('#dtAntrianBadge').html(
                         `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Belum Antri</span>`
-                        );
+                    );
                 }
 
                 // Status Aktivitas
@@ -1208,15 +1224,15 @@
                 if (!tx.no_antrian) {
                     $('#dtStatusBadge').html(
                         `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Menunggu Antrian</span>`
-                        );
+                    );
                 } else if (!isProcess) {
                     $('#dtStatusBadge').html(
                         `<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">Antrian #${tx.no_antrian}</span>`
-                        );
+                    );
                 } else {
                     $('#dtStatusBadge').html(
                         `<span class="badge bg-soft-info text-info fs-13 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1"></i>Proses ${actionLabel}</span>`
-                        );
+                    );
                 }
 
                 // QC Status (WFG default N/A)
@@ -1225,11 +1241,11 @@
                         tx.qc_status === 'rejected' ? 'danger' : 'warning');
                     $('#dtQcBadge').html(
                         `<span class="badge bg-soft-${qcColor} text-${qcColor} fs-13 px-2 py-1 text-uppercase">${tx.qc_status}</span>`
-                        );
+                    );
                 } else {
                     $('#dtQcBadge').html(
                         `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">N/A</span>`
-                        );
+                    );
                 }
 
                 // Timelines
@@ -1244,7 +1260,7 @@
                     const diff = Math.max(0, nowTs - (tx.arrival_timestamp || nowTs));
                     $('#dtLiveDuration').html(
                         `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-muted">(Tunggu Antri)</span>`
-                        );
+                    );
                     $('#dtDurationBreakdown').text('');
                 } else if (!isProcess) {
                     const waitSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx
@@ -1253,7 +1269,7 @@
                         nowTs));
                     $('#dtLiveDuration').html(
                         `<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-warning fw-medium">(Durasi Antri)</span>`
-                        );
+                    );
                     $('#dtDurationBreakdown').text(waitSec > 0 ?
                         `Waktu Tunggu s/d Antri: ${formatDuration(waitSec)}` : '');
                 } else {
@@ -1263,7 +1279,7 @@
                         tx.start_loading_timestamp - tx.queue_taken_timestamp) : 0;
                     $('#dtLiveDuration').html(
                         `<span class="badge bg-soft-info text-info fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-info fw-medium">(Durasi ${actionLabel})</span>`
-                        );
+                    );
                     $('#dtDurationBreakdown').text(antriSec > 0 ?
                         `Durasi Antri sebelumnya: ${formatDuration(antriSec)}` : '');
                 }
@@ -1273,4 +1289,5 @@
             });
         });
     </script>
+    @include('vehicle.monitoring.partials.modal_edit_transaction')
 @endsection

@@ -1061,13 +1061,19 @@ Route::middleware('auth')->group(function () {
         // Laporan History Page
         Route::get('/history', [VehicleTrackingController::class, 'historyIndex'])->name('history');
 
+        // Shared Vehicle Show & Update for Timbangan and Area Foremen (WFG, SMU, WRM, WPM)
+        Route::get('/timbangan/show/{id}', [VehicleTrackingController::class, 'timbanganShow'])
+            ->middleware('permission:vehicle-monitoring-timbangan,vehicle-update-foreman')
+            ->name('timbangan.show');
+        Route::put('/timbangan/update/{id}', [VehicleTrackingController::class, 'timbanganUpdate'])
+            ->middleware('permission:vehicle-monitoring-timbangan,vehicle-update-foreman')
+            ->name('timbangan.update');
+
         // Timbangan (Scales)
         Route::middleware(['permission:vehicle-monitoring-timbangan'])->group(function () {
             Route::get('/timbangan', [VehicleTrackingController::class, 'timbanganIndex'])->name('timbangan');
             Route::get('/timbangan/data', [VehicleTrackingController::class, 'timbanganData'])->name('timbangan.data');
-            Route::get('/timbangan/show/{id}', [VehicleTrackingController::class, 'timbanganShow'])->name('timbangan.show');
             Route::post('/timbangan/check-in', [VehicleTrackingController::class, 'timbanganCheckIn'])->name('timbangan.check_in');
-            Route::put('/timbangan/update/{id}', [VehicleTrackingController::class, 'timbanganUpdate'])->name('timbangan.update');
             Route::delete('/timbangan/delete/{id}', [VehicleTrackingController::class, 'timbanganDestroy'])->name('timbangan.delete');
             Route::post('/timbangan/check-out/{id}', [VehicleTrackingController::class, 'timbanganCheckOut'])->name('timbangan.check_out');
             Route::get('/timbangan/autocomplete-vehicle', [VehicleTrackingController::class, 'autocompleteVehicle'])->name('timbangan.autocomplete_vehicle');

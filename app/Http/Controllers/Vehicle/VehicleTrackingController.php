@@ -1126,7 +1126,9 @@ class VehicleTrackingController extends Controller
         })->orWhereNull('location_id')->orderBy('name')->get();
 
         $vendors = VehicleVendor::orderBy('name')->get();
-        return view('vehicle.monitoring.wpm', compact('vendors', 'items'));
+        $targetLocations = Location::where('s_loc', '!=', 'TMB')->get();
+        $allItems = VehicleItem::orderBy('name')->get();
+        return view('vehicle.monitoring.wpm', compact('vendors', 'items', 'targetLocations', 'allItems'));
     }
 
     /**
@@ -1740,7 +1742,9 @@ class VehicleTrackingController extends Controller
         })->orWhereNull('location_id')->orderBy('name')->get();
 
         $vendors = VehicleVendor::orderBy('name')->get();
-        return view('vehicle.monitoring.wrm', compact('vendors', 'items'));
+        $targetLocations = Location::where('s_loc', '!=', 'TMB')->get();
+        $allItems = VehicleItem::orderBy('name')->get();
+        return view('vehicle.monitoring.wrm', compact('vendors', 'items', 'targetLocations', 'allItems'));
     }
 
     /**
@@ -1970,7 +1974,9 @@ class VehicleTrackingController extends Controller
         })->orWhereNull('location_id')->orderBy('name')->get();
 
         $vendors = VehicleVendor::orderBy('name')->get();
-        return view('vehicle.monitoring.wfg', compact('vendors', 'items'));
+        $targetLocations = Location::where('s_loc', '!=', 'TMB')->get();
+        $allItems = VehicleItem::orderBy('name')->get();
+        return view('vehicle.monitoring.wfg', compact('vendors', 'items', 'targetLocations', 'allItems'));
     }
 
     /**
@@ -2207,7 +2213,9 @@ class VehicleTrackingController extends Controller
         })->orWhereNull('location_id')->orderBy('name')->get();
 
         $vendors = VehicleVendor::orderBy('name')->get();
-        return view('vehicle.monitoring.smu', compact('vendors', 'items'));
+        $targetLocations = Location::where('s_loc', '!=', 'TMB')->get();
+        $allItems = VehicleItem::orderBy('name')->get();
+        return view('vehicle.monitoring.smu', compact('vendors', 'items', 'targetLocations', 'allItems'));
     }
 
     /**

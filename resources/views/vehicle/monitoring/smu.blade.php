@@ -8,6 +8,10 @@
         auth()->user()->can('permission', 'vms-admin-smu') ||
         auth()->user()->hasRole('super-admin');
     $canAdminSmu = auth()->user()->can('permission', 'vms-admin-smu') || auth()->user()->hasRole('super-admin');
+    $canUpdateForeman =
+        auth()->user()->hasPermission('vehicle-update-foreman') ||
+        auth()->user()->can('permission', 'vehicle-update-foreman') ||
+        auth()->user()->hasRole('super-admin');
 @endphp
 
 @section('content')
@@ -97,7 +101,14 @@
                         <h5 class="modal-title fw-bold text-dark mb-0" id="modalDetailTruckLabel">Detail Rincian Kendaraan
                             (SMU)</h5>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="d-flex align-items-center gap-2">
+                        @if ($canUpdateForeman)
+                            <button type="button" class="btn btn-outline-warning btn-sm px-2 btn-edit-ajax btn-edit-from-detail" title="Edit Data Transaksi">
+                                <i class="ri-edit-line me-1"></i> Edit Data
+                            </button>
+                        @endif
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
                 </div>
                 <div class="modal-body p-4">
                     <div class="row g-3 mb-4">
@@ -199,7 +210,14 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 bg-light py-2">
+                <div class="modal-footer border-0 bg-light py-2 d-flex justify-content-between">
+                    <div>
+                        @if ($canUpdateForeman)
+                            <button type="button" class="btn btn-warning px-3 btn-edit-ajax btn-edit-from-detail" id="btnEditFromDetail" data-id="" title="Edit Data Transaksi">
+                                <i class="ri-edit-line me-1"></i> Edit Data Transaksi
+                            </button>
+                        @endif
+                    </div>
                     <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
@@ -212,6 +230,7 @@
         $(document).ready(function() {
             const canPengawasSmu = {{ $canPengawasSmu ? 'true' : 'false' }};
             const canAdminSmu = {{ $canAdminSmu ? 'true' : 'false' }};
+            const canUpdateForeman = {{ $canUpdateForeman ? 'true' : 'false' }};
             const totalCols = canAdminSmu ? 9 : 5;
 
             function formatDuration(diffSeconds) {
@@ -375,7 +394,7 @@
                                     ${cancelQueueBtn}
                                 </div>`;
                             } else {
-                                actionBtn = cancelQueueBtn ||
+                                actionBtn = cancelQueueBtn ? `<div class="d-flex gap-1 justify-content-center">${cancelQueueBtn}</div>` :
                                     `<span class="text-muted small">Menunggu Mulai</span>`;
                             }
                         } else {
@@ -397,8 +416,7 @@
                                     </button>
                                 </div>`;
                             } else {
-                                actionBtn =
-                                    `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1"></i>Sedang ${actionLabel}</span>`;
+                                actionBtn = `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1"></i>Sedang ${actionLabel}</span>`;
                             }
                         }
 
@@ -1147,4 +1165,5 @@
             });
         });
     </script>
+    @include('vehicle.monitoring.partials.modal_edit_transaction')
 @endsection

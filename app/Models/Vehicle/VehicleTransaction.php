@@ -28,6 +28,7 @@ class VehicleTransaction extends Model
         'current_location_id',
         'status',
         'qc_status',
+        'qc_notes',
         'start_sampling_time',
         'start_sampling_by',
         'finish_sampling_time',

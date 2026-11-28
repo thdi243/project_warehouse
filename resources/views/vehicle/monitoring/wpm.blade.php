@@ -8,6 +8,10 @@
         auth()->user()->can('permission', 'vms-admin-wpm') ||
         auth()->user()->hasRole('super-admin');
     $canAdminWpm = auth()->user()->can('permission', 'vms-admin-wpm') || auth()->user()->hasRole('super-admin');
+    $canUpdateForeman =
+        auth()->user()->hasPermission('vehicle-update-foreman') ||
+        auth()->user()->can('permission', 'vehicle-update-foreman') ||
+        auth()->user()->hasRole('super-admin');
 @endphp
 
 @section('content')
@@ -98,7 +102,14 @@
                         <h5 class="modal-title fw-bold text-dark mb-0" id="modalDetailTruckLabel">Detail Rincian Kendaraan
                             (WPM)</h5>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="d-flex align-items-center gap-2">
+                        @if ($canUpdateForeman)
+                            <button type="button" class="btn btn-outline-warning btn-sm px-2 btn-edit-ajax btn-edit-from-detail" title="Edit Data Transaksi">
+                                <i class="ri-edit-line me-1"></i> Edit Data
+                            </button>
+                        @endif
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
                 </div>
                 <div class="modal-body p-4">
                     <div class="row g-3 mb-4">
@@ -196,7 +207,14 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 bg-light py-2">
+                <div class="modal-footer border-0 bg-light py-2 d-flex justify-content-between">
+                    <div>
+                        @if ($canUpdateForeman)
+                            <button type="button" class="btn btn-warning px-3 btn-edit-ajax btn-edit-from-detail" id="btnEditFromDetail" data-id="" title="Edit Data Transaksi">
+                                <i class="ri-edit-line me-1"></i> Edit Data Transaksi
+                            </button>
+                        @endif
+                    </div>
                     <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
@@ -247,6 +265,7 @@
 
             let allWpmData = [];
             let searchQuery = '';
+            const canUpdateForeman = @json($canUpdateForeman);
 
             function renderWpmTable() {
                 let filtered = allWpmData;
@@ -982,4 +1001,5 @@
             });
         });
     </script>
+    @include('vehicle.monitoring.partials.modal_edit_transaction')
 @endsection

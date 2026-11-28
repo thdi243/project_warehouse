@@ -158,6 +158,22 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
+                    <!-- QC Rejected Warning Alert Banner -->
+                    <div class="alert alert-danger border-0 shadow-sm d-flex align-items-start mb-4 py-2 px-3" id="modalQcRejectedAlert" style="display: none;">
+                        <div class="avatar-xs me-3 mt-1">
+                            <span class="avatar-title bg-danger text-white rounded-circle fs-16">
+                                <i class="ri-error-warning-line"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="alert-heading fw-bold mb-1 text-danger">KENDARAAN DITOLAK QC (REJECTED)</h6>
+                            <p class="mb-0 fs-12 text-dark">Hasil pengujian sampling QC ditolak. Silakan periksa catatan QC dan riwayat aktivitas.</p>
+                            <div class="mt-2 p-2 bg-white rounded border border-danger-subtle fs-12 text-danger fw-semibold" id="modalQcRejectedNoteBox" style="display: none;">
+                                <i class="ri-chat-quote-line me-1"></i> Catatan QC: <span id="modalQcRejectedNoteText">-</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- KPI Duration Cards -->
                     <div class="row g-3 mb-4">
                         <div class="col-6 col-md-3">
@@ -254,6 +270,16 @@
                                         <tr>
                                             <td class="text-muted">Check-In Pos 1:</td>
                                             <td id="modalCheckinPos1">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted">Status QC:</td>
+                                            <td id="modalQcStatus"><span class="badge bg-soft-secondary text-secondary">-</span></td>
+                                        </tr>
+                                        <tr id="modalQcNotesRow" style="display: none;">
+                                            <td class="text-muted align-top">Catatan QC:</td>
+                                            <td>
+                                                <div class="p-2 bg-light rounded border fs-12" id="modalQcNotes" style="white-space: pre-wrap;">-</div>
+                                            </td>
                                         </tr>
                                     </table>
                                 </div>
@@ -507,6 +533,7 @@
                                     </td>
                                     <td>
                                         <span class="badge bg-soft-info text-info fs-11">${tx.target_code} - ${tx.target_name}</span>
+                                        ${tx.qc_status === 'rejected' ? '<br><span class="badge bg-danger text-white fs-10 mt-1"><i class="ri-close-circle-line me-1"></i>QC REJECTED</span>' : (tx.qc_status === 'released' ? '<br><span class="badge bg-soft-success text-success fs-10 mt-1"><i class="ri-checkbox-circle-line me-1"></i>QC Released</span>' : '')}
                                     </td>
                                     <td>
                                         <div class="d-flex flex-column gap-1 fs-12">
@@ -579,6 +606,11 @@
                 const tx = transactionsData[idx];
                 if (!tx) return;
 
+                // Reset QC elements
+                $('#modalQcRejectedAlert').hide();
+                $('#modalQcRejectedNoteBox').hide();
+                $('#modalQcNotesRow').hide();
+
                 // Title & Subtitle
                 $('#modalSubtitle').html(
                     `<strong>${tx.no_transaction}</strong> | Plat: <span class="badge bg-soft-primary text-primary">${tx.no_pol}</span> | Driver: <strong>${tx.nama_driver || '-'}</strong>`
@@ -606,6 +638,42 @@
                         ? `<span class="badge bg-soft-primary text-primary font-monospace fs-12">${tx.checkin_pos1}</span>`
                         : '<span class="text-muted">-</span>'
                 );
+
+                // QC Status & Notes
+                const qcStatus = (tx.qc_status || '').toLowerCase();
+                if (qcStatus === 'rejected') {
+                    $('#modalQcStatus').html('<span class="badge bg-danger text-white fs-12"><i class="ri-close-circle-line me-1"></i>REJECTED</span>');
+                    $('#modalQcRejectedAlert').show();
+                    if (tx.qc_notes) {
+                        $('#modalQcRejectedNoteBox').show();
+                        $('#modalQcRejectedNoteText').text(tx.qc_notes);
+                    } else {
+                        $('#modalQcRejectedNoteBox').hide();
+                    }
+                } else if (qcStatus === 'released') {
+                    $('#modalQcStatus').html('<span class="badge bg-success text-white fs-12"><i class="ri-checkbox-circle-line me-1"></i>RELEASED</span>');
+                    $('#modalQcRejectedAlert').hide();
+                    $('#modalQcRejectedNoteBox').hide();
+                } else if (qcStatus === 'on_check') {
+                    $('#modalQcStatus').html('<span class="badge bg-soft-info text-info fs-12"><i class="ri-loader-4-line ri-spin me-1"></i>Sedang Sampling</span>');
+                    $('#modalQcRejectedAlert').hide();
+                    $('#modalQcRejectedNoteBox').hide();
+                } else if (qcStatus === 'waiting_sampling') {
+                    $('#modalQcStatus').html('<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>Antri Sampling</span>');
+                    $('#modalQcRejectedAlert').hide();
+                    $('#modalQcRejectedNoteBox').hide();
+                } else {
+                    $('#modalQcStatus').html(`<span class="badge bg-soft-secondary text-secondary fs-12">${tx.qc_status_label || '-'}</span>`);
+                    $('#modalQcRejectedAlert').hide();
+                    $('#modalQcRejectedNoteBox').hide();
+                }
+
+                if (tx.qc_notes) {
+                    $('#modalQcNotes').text(tx.qc_notes);
+                    $('#modalQcNotesRow').show();
+                } else {
+                    $('#modalQcNotesRow').hide();
+                }
 
                 // Timestamps Container
                 const ts = tx.timestamps || {};
@@ -658,13 +726,30 @@
                 }
 
                 if (ts.finish_sampling && ts.finish_sampling !== '-') {
+                    let qcStatusBadge = '';
+                    if (qcStatus === 'rejected') {
+                        qcStatusBadge = '<span class="badge bg-danger text-white ms-1"><i class="ri-close-circle-line me-1"></i>REJECTED</span>';
+                    } else if (qcStatus === 'released') {
+                        qcStatusBadge = '<span class="badge bg-success text-white ms-1"><i class="ri-checkbox-circle-line me-1"></i>RELEASED</span>';
+                    } else if (tx.qc_status_label) {
+                        qcStatusBadge = `<span class="badge bg-soft-info text-info ms-1">${tx.qc_status_label}</span>`;
+                    }
+
+                    let qcNoteHtml = '';
+                    if (tx.qc_notes) {
+                        qcNoteHtml = `<div class="mt-1 p-2 bg-light rounded border text-muted fs-11"><i class="ri-chat-quote-line text-primary me-1"></i><strong>Catatan QC:</strong> ${tx.qc_notes}</div>`;
+                    }
+
                     tsHtml += `
-                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <div>
-                                <span class="text-muted"><i class="ri-checkbox-circle-line text-info me-1"></i> Selesai Sampling QC</span>
-                                ${ts.finish_sampling_by && ts.finish_sampling_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.finish_sampling_by}</span></small>` : ''}
+                        <div class="py-2 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="text-muted"><i class="ri-checkbox-circle-line text-info me-1"></i> Selesai Sampling QC ${qcStatusBadge}</span>
+                                    ${ts.finish_sampling_by && ts.finish_sampling_by !== '-' ? `<small class="text-muted d-block ms-3"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${ts.finish_sampling_by}</span></small>` : ''}
+                                </div>
+                                <span class="fw-bold text-dark font-monospace">${ts.finish_sampling}</span>
                             </div>
-                            <span class="fw-bold text-dark font-monospace">${ts.finish_sampling}</span>
+                            ${qcNoteHtml}
                         </div>
                     `;
                 }
@@ -721,13 +806,16 @@
                 // Action Breakdown
                 if (tx.action_details && tx.action_details.length > 0) {
                     let actHtml = tx.action_details.map(act => `
-                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <div>
-                                <strong class="text-dark">${act.label}</strong>
-                                <small class="text-muted d-block">${act.start} s/d ${act.finish}</small>
-                                ${act.action_by && act.action_by !== '-' ? `<small class="text-muted d-block"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${act.action_by}</span></small>` : ''}
+                        <div class="py-2 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong class="text-dark">${act.label}</strong>
+                                    <small class="text-muted d-block">${act.start} s/d ${act.finish}</small>
+                                    ${act.action_by && act.action_by !== '-' ? `<small class="text-muted d-block"><i class="ri-user-line me-1"></i>Action by: <span class="fw-semibold text-dark">${act.action_by}</span></small>` : ''}
+                                </div>
+                                <span class="badge bg-soft-primary text-primary fs-12">${act.duration_label}</span>
                             </div>
-                            <span class="badge bg-soft-primary text-primary fs-12">${act.duration_label}</span>
+                            ${act.qc_notes ? `<div class="mt-1 p-2 bg-light rounded border text-muted fs-11"><i class="ri-chat-quote-line text-primary me-1"></i><strong>Catatan:</strong> ${act.qc_notes}</div>` : ''}
                         </div>
                     `).join('');
 
@@ -781,6 +869,8 @@
                         let locBadge = 'bg-soft-primary text-primary';
                         if (st.location_code === 'TMB') locBadge =
                             'bg-soft-secondary text-secondary';
+                        else if (st.location_code === 'POS 1' || st.location_code === 'POS1') locBadge =
+                            'bg-soft-primary text-primary';
                         else if (st.location_code === 'QC') locBadge =
                             'bg-soft-warning text-warning';
                         else if (st.location_code === 'B006') locBadge = 'bg-soft-info text-info';
