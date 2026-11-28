@@ -68,9 +68,6 @@
                                             <th>No. Polisi</th>
                                             <th>Vendor</th>
                                             @if ($canAdminSmu)
-                                                <th>Item</th>
-                                                <th>No. SPB / Qty</th>
-                                                <th>Status</th>
                                                 <th>Durasi Aktivitas</th>
                                             @endif
                                             <th class="text-center" style="width: 240px;">Aksi</th>
@@ -103,7 +100,9 @@
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         @if ($canUpdateForeman)
-                            <button type="button" class="btn btn-outline-warning btn-sm px-2 btn-edit-ajax btn-edit-from-detail" title="Edit Data Transaksi">
+                            <button type="button"
+                                class="btn btn-outline-warning btn-sm px-2 btn-edit-ajax btn-edit-from-detail"
+                                title="Edit Data Transaksi">
                                 <i class="ri-edit-line me-1"></i> Edit Data
                             </button>
                         @endif
@@ -213,7 +212,8 @@
                 <div class="modal-footer border-0 bg-light py-2 d-flex justify-content-between">
                     <div>
                         @if ($canUpdateForeman)
-                            <button type="button" class="btn btn-warning px-3 btn-edit-ajax btn-edit-from-detail" id="btnEditFromDetail" data-id="" title="Edit Data Transaksi">
+                            <button type="button" class="btn btn-warning px-3 btn-edit-ajax btn-edit-from-detail"
+                                id="btnEditFromDetail" data-id="" title="Edit Data Transaksi">
                                 <i class="ri-edit-line me-1"></i> Edit Data Transaksi
                             </button>
                         @endif
@@ -394,7 +394,8 @@
                                     ${cancelQueueBtn}
                                 </div>`;
                             } else {
-                                actionBtn = cancelQueueBtn ? `<div class="d-flex gap-1 justify-content-center">${cancelQueueBtn}</div>` :
+                                actionBtn = cancelQueueBtn ?
+                                    `<div class="d-flex gap-1 justify-content-center">${cancelQueueBtn}</div>` :
                                     `<span class="text-muted small">Menunggu Mulai</span>`;
                             }
                         } else {
@@ -416,7 +417,8 @@
                                     </button>
                                 </div>`;
                             } else {
-                                actionBtn = `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1"></i>Sedang ${actionLabel}</span>`;
+                                actionBtn =
+                                    `<span class="badge bg-soft-info text-info"><i class="ri-loader-4-line ri-spin me-1"></i>Sedang ${actionLabel}</span>`;
                             }
                         }
 
@@ -479,15 +481,6 @@
                         let detailsHtml = '';
                         if (canAdminSmu) {
                             detailsHtml = `
-                                <td>
-                                    <strong>${tx.item_name}</strong><br>
-                                    <small class="text-muted">${tx.jenis}</small>
-                                </td>
-                                <td>
-                                    <strong>${tx.no_spb}</strong><br>
-                                    <small class="text-muted">${tx.qty_spb}</small>
-                                </td>
-                                <td>${statusBadge}</td>
                                 <td>${durasiHtml}</td>
                             `;
                         }
@@ -1078,7 +1071,7 @@
                 $('#dtDriver').text(`${tx.nama_driver || '-'} (${tx.no_hp_driver || '-'})`);
                 $('#dtJenis').html(
                     `<span class="badge bg-soft-warning text-dark text-capitalize">${tx.jenis || 'Muat'}</span> <span class="badge bg-soft-primary text-primary">Area SMU</span>`
-                    );
+                );
                 $('#dtItem').text(tx.item_name || '-');
                 $('#dtNoSpb').text(tx.no_spb || '-');
                 $('#dtQtySpb').text(tx.qty_spb || '-');
@@ -1087,11 +1080,11 @@
                 if (tx.no_antrian) {
                     $('#dtAntrianBadge').html(
                         `<span class="badge bg-soft-success text-success fs-14 px-3 py-1">Antrian #${tx.no_antrian}</span>`
-                        );
+                    );
                 } else {
                     $('#dtAntrianBadge').html(
                         `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Belum Antri</span>`
-                        );
+                    );
                 }
 
                 // Status Aktivitas
@@ -1100,15 +1093,15 @@
                 if (!tx.no_antrian) {
                     $('#dtStatusBadge').html(
                         `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">Menunggu Antrian</span>`
-                        );
+                    );
                 } else if (!isProcess) {
                     $('#dtStatusBadge').html(
                         `<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">Antrian #${tx.no_antrian}</span>`
-                        );
+                    );
                 } else {
                     $('#dtStatusBadge').html(
                         `<span class="badge bg-soft-info text-info fs-13 px-2 py-1"><i class="ri-loader-4-line ri-spin me-1"></i>Proses ${actionLabel}</span>`
-                        );
+                    );
                 }
 
                 // QC Status (SMU default N/A)
@@ -1117,11 +1110,11 @@
                         tx.qc_status === 'rejected' ? 'danger' : 'warning');
                     $('#dtQcBadge').html(
                         `<span class="badge bg-soft-${qcColor} text-${qcColor} fs-13 px-2 py-1 text-uppercase">${tx.qc_status}</span>`
-                        );
+                    );
                 } else {
                     $('#dtQcBadge').html(
                         `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">N/A</span>`
-                        );
+                    );
                 }
 
                 // Timelines
@@ -1136,7 +1129,7 @@
                     const diff = Math.max(0, nowTs - (tx.arrival_timestamp || nowTs));
                     $('#dtLiveDuration').html(
                         `<span class="badge bg-soft-secondary text-secondary fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-muted">(Tunggu Antri)</span>`
-                        );
+                    );
                     $('#dtDurationBreakdown').text('');
                 } else if (!isProcess) {
                     const waitSec = tx.queue_taken_timestamp ? Math.max(0, tx.queue_taken_timestamp - tx
@@ -1145,7 +1138,7 @@
                         nowTs));
                     $('#dtLiveDuration').html(
                         `<span class="badge bg-soft-warning text-warning fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-warning fw-medium">(Durasi Antri)</span>`
-                        );
+                    );
                     $('#dtDurationBreakdown').text(waitSec > 0 ?
                         `Waktu Tunggu s/d Antri: ${formatDuration(waitSec)}` : '');
                 } else {
@@ -1155,7 +1148,7 @@
                         tx.start_loading_timestamp - tx.queue_taken_timestamp) : 0;
                     $('#dtLiveDuration').html(
                         `<span class="badge bg-soft-info text-info fs-13 px-2 py-1">${formatDuration(diff)}</span> <span class="text-info fw-medium">(Durasi ${actionLabel})</span>`
-                        );
+                    );
                     $('#dtDurationBreakdown').text(antriSec > 0 ?
                         `Durasi Antri sebelumnya: ${formatDuration(antriSec)}` : '');
                 }
