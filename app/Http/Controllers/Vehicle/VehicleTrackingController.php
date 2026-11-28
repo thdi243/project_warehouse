@@ -1290,7 +1290,6 @@ class VehicleTrackingController extends Controller
 
             if (!$isAlreadyCompleted) {
                 $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
-                $updateData['timbangan_out_by'] = $transaction->timbangan_out_by ?? Auth::id();
                 $updateData['current_location_id'] = $timbanganLoc->id;
                 $updateData['status'] = 'timbangan_out';
             }
@@ -1499,8 +1498,8 @@ class VehicleTrackingController extends Controller
 
             DB::commit();
 
-            // Poin 4: Notifikasi untuk barang pengecualian ('Packaging', 'Import') langsung ke area dock terkait
-            $this->notifyDriverDirectToDockIfException($transaction);
+            // Poin 4: Notifikasi untuk barang pengecualian ('Packaging', 'Import') langsung ke area dock terkait (sementara di-comment)
+            // $this->notifyDriverDirectToDockIfException($transaction);
 
             return response()->json(['success' => true, 'message' => "No Antrian {$formattedAntrian} berhasil diset otomatis. Kendaraan masuk antrian sampling."]);
         } catch (\Exception $e) {
@@ -1664,15 +1663,22 @@ class VehicleTrackingController extends Controller
             $actionLabel = $request->qc_status === 'released' ? 'QC Lolos (Released)' : 'QC Ditolak (Rejected)';
             $this->releaseKantongParkirSlot($noPol, $actionLabel);
 
+            $qcNotes = $request->filled('notes') ? trim($request->notes) : null;
+
             // Update QC lifecycle data only (tidak merubah status pergerakan fisik kendaraan)
             $updateData = [
                 'qc_status' => $request->qc_status,
+                'qc_notes' => $qcNotes,
                 'start_sampling_time' => $transaction->start_sampling_time ?? $now,
                 'start_sampling_by' => $transaction->start_sampling_by ?? Auth::id(),
                 'finish_sampling_time' => $transaction->finish_sampling_time ?? $now,
                 'finish_sampling_by' => Auth::id(),
                 'updated_by' => Auth::id()
             ];
+
+            if ($qcNotes) {
+                $updateData['follow_up_notes'] = $qcNotes;
+            }
 
             $transaction->update($updateData);
 
@@ -1683,9 +1689,10 @@ class VehicleTrackingController extends Controller
                 ->latest()
                 ->first();
 
+            $qcResultLabel = strtoupper($request->qc_status);
+            $noteText = "QC Hasil: {$qcResultLabel}." . ($qcNotes ? " Catatan: {$qcNotes}" : '');
+
             if ($activeTrack) {
-                $qcResultLabel = strtoupper($request->qc_status);
-                $noteText = "QC Hasil: {$qcResultLabel}." . ($request->notes ? " Catatan: {$request->notes}" : '');
                 $activeTrack->update([
                     'status_notes' => $noteText
                 ]);
@@ -1896,7 +1903,6 @@ class VehicleTrackingController extends Controller
 
             if (!$isAlreadyCompleted) {
                 $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
-                $updateData['timbangan_out_by'] = $transaction->timbangan_out_by ?? Auth::id();
                 $updateData['current_location_id'] = $timbanganLoc->id;
                 $updateData['status'] = 'timbangan_out';
             }
@@ -2378,7 +2384,6 @@ class VehicleTrackingController extends Controller
 
             if (!$isAlreadyCompleted) {
                 $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
-                $updateData['timbangan_out_by'] = $transaction->timbangan_out_by ?? Auth::id();
                 $updateData['current_location_id'] = $timbanganLoc->id;
                 $updateData['status'] = 'timbangan_out';
             }
@@ -2496,7 +2501,6 @@ class VehicleTrackingController extends Controller
 
             if (!$isAlreadyCompleted) {
                 $updateData['timbangan_out_time'] = $transaction->timbangan_out_time ?? $now;
-                $updateData['timbangan_out_by'] = $transaction->timbangan_out_by ?? Auth::id();
                 $updateData['current_location_id'] = $timbanganLoc->id;
                 $updateData['status'] = 'timbangan_out';
             }
@@ -2578,6 +2582,7 @@ class VehicleTrackingController extends Controller
                 'status' => 'completed',
                 'check_out_time' => $now,
                 'check_out_by' => Auth::id(),
+                'timbangan_out_by' => Auth::id(),
                 'updated_by' => Auth::id()
             ]);
 
@@ -3894,18 +3899,63 @@ class VehicleTrackingController extends Controller
             }
         }
 
+        // Resolve QC Notes & Decision
+        $qcNotes = $tx->qc_notes ?: ($tx->follow_up_notes ?: null);
+        
+        // If still null, check if any tracking log has QC note
+        if (!$qcNotes && $tx->tracking) {
+            foreach ($tx->tracking as $tr) {
+                if ($tr->status_notes && str_contains($tr->status_notes, 'QC Hasil:')) {
+                    if (preg_match('/Catatan:\s*(.+)$/i', $tr->status_notes, $matches)) {
+                        $parsed = trim($matches[1]);
+                        if ($parsed !== '-' && $parsed !== '') {
+                            $qcNotes = $parsed;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        $qcStatusLabel = '-';
+        if ($tx->qc_status === 'rejected') {
+            $qcStatusLabel = 'REJECTED (Ditolak QC)';
+        } elseif ($tx->qc_status === 'released') {
+            $qcStatusLabel = 'RELEASED (Lolos QC)';
+        } elseif ($tx->qc_status === 'on_check') {
+            $qcStatusLabel = 'Sedang Sampling QC';
+        } elseif ($tx->qc_status === 'waiting_sampling') {
+            $qcStatusLabel = 'Menunggu Sampling QC';
+        } elseif ($tx->qc_status === 'waiting_dokumen') {
+            $qcStatusLabel = 'Menunggu Dokumen QC';
+        } elseif ($tx->qc_status === 'not_required') {
+            $qcStatusLabel = 'Tidak Perlu QC';
+        }
+
         // Aksi QC Sampling
-        if ($tx->start_sampling_time) {
+        if ($tx->start_sampling_time || in_array($tx->qc_status, ['released', 'rejected', 'on_check'])) {
             $qcFinish = $tx->finish_sampling_time ?: $now;
-            $qcSec = abs($qcFinish->diffInSeconds($tx->start_sampling_time, false));
-            $actionSeconds += $qcSec;
+            $qcSec = $tx->start_sampling_time ? abs($qcFinish->diffInSeconds($tx->start_sampling_time, false)) : 0;
+            if ($qcSec > 0) {
+                $actionSeconds += $qcSec;
+            }
+            $qcDecision = '';
+            if ($tx->qc_status === 'rejected') {
+                $qcDecision = ' [REJECTED - Ditolak]';
+            } elseif ($tx->qc_status === 'released') {
+                $qcDecision = ' [RELEASED - Lolos]';
+            } elseif (!$tx->finish_sampling_time) {
+                $qcDecision = ' (Sedang Berjalan)';
+            }
             $actionDetails[] = [
-                'label' => 'QC Sampling' . (!$tx->finish_sampling_time ? ' (Sedang Berjalan)' : ''),
+                'label' => 'QC Sampling' . $qcDecision,
                 'duration_sec' => $qcSec,
                 'duration_label' => $formatDuration($qcSec),
-                'start' => $tx->start_sampling_time->format('H:i'),
-                'finish' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('H:i') : 'Sedang Berjalan',
+                'start' => $tx->start_sampling_time ? $tx->start_sampling_time->format('H:i') : '-',
+                'finish' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('H:i') : ($tx->qc_status === 'rejected' ? 'REJECTED' : ($tx->qc_status === 'released' ? 'RELEASED' : 'Sedang Berjalan')),
                 'action_by' => $getUserName($tx->finishSamplingBy ?: $tx->startSamplingBy),
+                'qc_status' => $tx->qc_status,
+                'qc_notes' => $qcNotes,
             ];
         }
 
@@ -3944,66 +3994,149 @@ class VehicleTrackingController extends Controller
             }
         }
 
-        // 5. Tracking Steps (Perpindahan Lokasi & Catatan)
-        $trackingCount = $tx->tracking ? $tx->tracking->count() : 0;
-        $trackingSteps = $tx->tracking ? $tx->tracking->values()->map(function ($track, $stepIndex) use ($formatDuration, $getUserName, $tx, $trackingCount, $now) {
-            $locName = $track->location ? $track->location->name : 'N/A';
-            $locCode = $track->location ? $track->location->s_loc : '-';
+        // Resolve dock user from transaction or corresponding BongkarMuat records
+        $resolvedDockUser = $tx->finishLoadingBy ?: $tx->startLoadingBy;
 
-            $isQcTrack = false;
-            if ($track->status_notes && (
-                str_contains($track->status_notes, 'QC Hasil') ||
-                str_contains($track->status_notes, 'Sampling') ||
-                str_contains($track->status_notes, 'Dokumen')
-            )) {
-                $isQcTrack = true;
-            }
+        if (!$resolvedDockUser && $tx->vehicle) {
+            $cleanPlate = strtoupper(str_replace([' ', '-', '.', '_'], '', $tx->vehicle->no_pol));
+            $targetCode = $tx->targetLocation ? $tx->targetLocation->s_loc : '';
 
-            if ($isQcTrack) {
-                $locName = 'QC (Quality Control)';
-                $locCode = 'QC';
-            }
-
-            $durSec = $track->duration_seconds ? abs($track->duration_seconds) : ($track->arrival_time && !$track->departure_time ? abs($now->diffInSeconds($track->arrival_time, false)) : 0);
-
-            // Tentukan Action By yang akurat berdasarkan aktivitas tahapan
-            $actionUser = null;
-
-            if ($isQcTrack) {
-                // Tahapan QC
-                $actionUser = $tx->finishSamplingBy ?: ($tx->startSamplingBy ?: $track->creator);
-            } elseif ($locCode === 'TMB') {
-                // Cek apakah ini Timbangan Masuk (awal) atau Timbangan Keluar (akhir)
-                $notes = strtolower($track->status_notes ?? '');
-                if ($stepIndex === 0 || str_contains($notes, 'masuk')) {
-                    // Timbangan Masuk -> Operator Check-In
-                    $actionUser = $tx->creator ?: $track->creator;
-                } elseif ($stepIndex === ($trackingCount - 1) || str_contains($notes, 'keluar') || str_contains($notes, 'check-out')) {
-                    // Timbangan Keluar / Selesai Check-Out -> Operator Check-Out / Timbangan Out
-                    $actionUser = $tx->checkOutBy ?: ($tx->timbanganOutBy ?: $tx->creator ?: $track->creator);
-                } else {
-                    $actionUser = $track->creator;
+            if ($targetCode === 'B006' || in_array($tx->status, ['wrm', 'wrm_bongkar'])) {
+                $wrmOrder = \App\Models\Wrm\WrmBongkarMuat::with(['checker', 'creator'])
+                    ->where(function ($q) use ($cleanPlate) {
+                        $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_mobil, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanPlate]);
+                    })
+                    ->latest('id')
+                    ->first();
+                if ($wrmOrder) {
+                    $resolvedDockUser = $wrmOrder->checker ?: $wrmOrder->creator;
                 }
-            } else {
-                // Area Dock (WRM, WPM, WFG, SMU, dll)
-                $actionUser = $tx->finishLoadingBy ?: ($tx->startLoadingBy ?: $track->creator);
+            } elseif ($targetCode === 'C001' || $tx->status === 'wpm') {
+                $wpmOrder = \App\Models\Wpm\WpmBongkarMuat::with(['checker', 'creator'])
+                    ->where(function ($q) use ($cleanPlate) {
+                        $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_mobil, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanPlate]);
+                    })
+                    ->latest('id')
+                    ->first();
+                if ($wpmOrder) {
+                    $resolvedDockUser = $wpmOrder->checker ?: $wpmOrder->creator;
+                }
+            } elseif (in_array($targetCode, ['A001', 'A002']) || in_array($tx->status, ['wfg', 'smu'])) {
+                $wfgOrder = \App\Models\Wfg\BongkarMuat::with(['checker', 'creator'])
+                    ->where(function ($q) use ($cleanPlate) {
+                        $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(no_mobil, ' ', ''), '-', ''), '.', ''), '_', '') = ?", [$cleanPlate]);
+                    })
+                    ->latest('id')
+                    ->first();
+                if ($wfgOrder) {
+                    $resolvedDockUser = $wfgOrder->checker ?: $wfgOrder->creator;
+                }
             }
+        }
 
-            return [
-                'id' => $track->id,
-                'location_name' => $locName,
-                'location_code' => $locCode,
-                'arrival_time' => $track->arrival_time ? $track->arrival_time->format('H:i') : '-',
-                'departure_time' => $track->departure_time ? $track->departure_time->format('H:i') : ($track->arrival_time ? 'Aktif' : '-'),
-                'arrival_full' => $track->arrival_time ? $track->arrival_time->format('d-m-Y H:i:s') : '-',
-                'departure_full' => $track->departure_time ? $track->departure_time->format('d-m-Y H:i:s') : ($track->arrival_time ? 'Aktif / Berjalan' : '-'),
-                'duration_sec' => $durSec,
-                'duration_label' => $formatDuration($durSec),
-                'status_notes' => $track->status_notes ?? '-',
-                'action_by' => $getUserName($actionUser),
-                'is_active' => empty($track->departure_time),
-            ];
-        }) : collect();
+        // If dock user still not resolved and timbangan_out_by was assigned to a dock operator
+        if (!$resolvedDockUser && $tx->timbanganOutBy && $tx->timbangan_out_by !== $tx->created_by) {
+            $resolvedDockUser = $tx->timbanganOutBy;
+        }
+
+        // Scale Out Operator: Operator timbangan keluar (bukan dock user)
+        $scaleOutUser = null;
+        if ($tx->checkOutBy && (!$resolvedDockUser || $tx->check_out_by !== $resolvedDockUser->id)) {
+            $scaleOutUser = $tx->checkOutBy;
+        } elseif ($tx->timbanganOutBy && (!$resolvedDockUser || $tx->timbangan_out_by !== $resolvedDockUser->id)) {
+            $scaleOutUser = $tx->timbanganOutBy;
+        } else {
+            $scaleOutUser = $tx->creator;
+        }
+
+        // 5. Tracking Steps (Perpindahan Lokasi & Catatan)
+        $trackingSteps = collect();
+
+        // 5a. Checkpoint Pos 1 (Security Gate) jika ada data checkin_pos1
+        if ($tx->checkin_pos1) {
+            $pos1Sec = ($checkIn && $checkIn->gte($tx->checkin_pos1)) ? abs($checkIn->diffInSeconds($tx->checkin_pos1, false)) : 0;
+            $trackingSteps->push([
+                'id' => 'pos1',
+                'location_name' => 'Pos 1 (Security Gate)',
+                'location_code' => 'POS 1',
+                'arrival_time' => $tx->checkin_pos1->format('H:i'),
+                'departure_time' => $checkIn ? $checkIn->format('H:i') : '-',
+                'arrival_full' => $tx->checkin_pos1->format('d-m-Y H:i:s'),
+                'departure_full' => $checkIn ? $checkIn->format('d-m-Y H:i:s') : '-',
+                'duration_sec' => $pos1Sec,
+                'duration_label' => $formatDuration($pos1Sec),
+                'status_notes' => 'Check-In Security Pos 1. Menuju Timbangan.',
+                'action_by' => 'Security Pos 1',
+                'is_active' => false,
+            ]);
+        }
+
+        // 5b. Checkpoints dari riwayat perpindahan lokasi tracking
+        $trackingCount = $tx->tracking ? $tx->tracking->count() : 0;
+        if ($tx->tracking) {
+            foreach ($tx->tracking->values() as $stepIndex => $track) {
+                $locName = $track->location ? $track->location->name : 'N/A';
+                $locCode = $track->location ? $track->location->s_loc : '-';
+
+                $isQcTrack = false;
+                if ($track->status_notes && (
+                    str_contains($track->status_notes, 'QC Hasil') ||
+                    str_contains($track->status_notes, 'Sampling') ||
+                    str_contains($track->status_notes, 'Dokumen')
+                )) {
+                    $isQcTrack = true;
+                }
+
+                if ($isQcTrack) {
+                    $locName = 'QC (Quality Control)';
+                    $locCode = 'QC';
+                }
+
+                $durSec = $track->duration_seconds ? abs($track->duration_seconds) : ($track->arrival_time && !$track->departure_time ? abs($now->diffInSeconds($track->arrival_time, false)) : 0);
+
+                // Tentukan Action By yang akurat berdasarkan aktivitas tahapan
+                $actionUser = null;
+                $statusNotes = $track->status_notes ?? '-';
+
+                if ($isQcTrack) {
+                    // Tahapan QC
+                    $actionUser = $tx->finishSamplingBy ?: ($tx->startSamplingBy ?: $track->creator);
+                    if ($qcNotes && !str_contains($statusNotes, $qcNotes)) {
+                        $statusNotes = ($statusNotes !== '-' ? $statusNotes . ' | ' : '') . "Catatan QC: {$qcNotes}";
+                    }
+                } elseif ($locCode === 'TMB') {
+                    // Cek apakah ini Timbangan Masuk (awal) atau Timbangan Keluar (akhir)
+                    $notes = strtolower($track->status_notes ?? '');
+                    if ($stepIndex === 0 || str_contains($notes, 'masuk')) {
+                        // Timbangan Masuk -> Operator Check-In
+                        $actionUser = $tx->creator ?: $track->creator;
+                    } elseif ($stepIndex === ($trackingCount - 1) || str_contains($notes, 'keluar') || str_contains($notes, 'check-out')) {
+                        // Timbangan Keluar / Selesai Check-Out -> Operator Timbangan Out / Check-Out
+                        $actionUser = $scaleOutUser ?: ($tx->checkOutBy ?: ($tx->creator ?: $track->creator));
+                    } else {
+                        $actionUser = $track->creator;
+                    }
+                } else {
+                    // Area Dock (WRM, WPM, WFG, SMU, dll)
+                    $actionUser = $resolvedDockUser ?: ($tx->finishLoadingBy ?: ($tx->startLoadingBy ?: $track->creator));
+                }
+
+                $trackingSteps->push([
+                    'id' => $track->id,
+                    'location_name' => $locName,
+                    'location_code' => $locCode,
+                    'arrival_time' => $track->arrival_time ? $track->arrival_time->format('H:i') : '-',
+                    'departure_time' => $track->departure_time ? $track->departure_time->format('H:i') : ($track->arrival_time ? 'Aktif' : '-'),
+                    'arrival_full' => $track->arrival_time ? $track->arrival_time->format('d-m-Y H:i:s') : '-',
+                    'departure_full' => $track->departure_time ? $track->departure_time->format('d-m-Y H:i:s') : ($track->arrival_time ? 'Aktif / Berjalan' : '-'),
+                    'duration_sec' => $durSec,
+                    'duration_label' => $formatDuration($durSec),
+                    'status_notes' => $statusNotes,
+                    'action_by' => $getUserName($actionUser),
+                    'is_active' => empty($track->departure_time),
+                ]);
+            }
+        }
 
         // Path rute ringkas
         $historyPath = $trackingSteps->map(function ($step) {
@@ -4030,6 +4163,8 @@ class VehicleTrackingController extends Controller
             'no_antrian' => $tx->no_antrian,
             'status' => $tx->status,
             'qc_status' => $tx->qc_status,
+            'qc_status_label' => $qcStatusLabel,
+            'qc_notes' => $qcNotes ?: '-',
             'unloading_status' => $tx->unloading_status ?? 'pending',
             'check_in' => $checkIn ? $checkIn->format('d-m-Y H:i') : '-',
             'check_out' => $checkOut ? $checkOut->format('d-m-Y H:i') : '-',
@@ -4055,22 +4190,26 @@ class VehicleTrackingController extends Controller
             // Timestamps lengkap
             'timestamps' => [
                 'checkin_pos1' => $tx->checkin_pos1 ? $tx->checkin_pos1->format('d-m-Y H:i:s') : '-',
+                'checkin_pos1_by' => 'Security Pos 1',
                 'check_in' => $checkIn ? $checkIn->format('d-m-Y H:i:s') : '-',
                 'check_in_by' => $getUserName($tx->creator),
                 'queue_taken' => $tx->queue_taken_time ? $tx->queue_taken_time->format('d-m-Y H:i:s') : '-',
                 'queue_taken_by' => $getUserName($tx->queueTakenBy),
                 'start_sampling' => $tx->start_sampling_time ? $tx->start_sampling_time->format('d-m-Y H:i:s') : '-',
                 'start_sampling_by' => $getUserName($tx->startSamplingBy),
-                'finish_sampling' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('d-m-Y H:i:s') : '-',
-                'finish_sampling_by' => $getUserName($tx->finishSamplingBy),
+                'finish_sampling' => $tx->finish_sampling_time ? $tx->finish_sampling_time->format('d-m-Y H:i:s') : ($tx->qc_status === 'rejected' ? 'Ditolak QC (REJECTED)' : ($tx->qc_status === 'released' ? 'Lolos QC (RELEASED)' : '-')),
+                'finish_sampling_by' => $getUserName($tx->finishSamplingBy ?: $tx->startSamplingBy),
+                'qc_status' => $tx->qc_status,
+                'qc_status_label' => $qcStatusLabel,
+                'qc_notes' => $qcNotes ?: '-',
                 'start_loading' => $tx->start_loading_time ? $tx->start_loading_time->format('d-m-Y H:i:s') : '-',
-                'start_loading_by' => $getUserName($tx->startLoadingBy),
+                'start_loading_by' => $getUserName($tx->startLoadingBy ?: $resolvedDockUser),
                 'finish_loading' => $tx->finish_loading_time ? $tx->finish_loading_time->format('d-m-Y H:i:s') : '-',
-                'finish_loading_by' => $getUserName($tx->finishLoadingBy),
+                'finish_loading_by' => $getUserName($tx->finishLoadingBy ?: $resolvedDockUser),
                 'timbangan_out' => $tx->timbangan_out_time ? $tx->timbangan_out_time->format('d-m-Y H:i:s') : '-',
-                'timbangan_out_by' => $getUserName($tx->timbanganOutBy),
+                'timbangan_out_by' => $getUserName($scaleOutUser),
                 'check_out' => $checkOut ? $checkOut->format('d-m-Y H:i:s') : '-',
-                'check_out_by' => $getUserName($tx->checkOutBy),
+                'check_out_by' => $getUserName($scaleOutUser ?: $tx->checkOutBy),
             ],
         ];
     }
@@ -5248,6 +5387,8 @@ class VehicleTrackingController extends Controller
 
             $itemName = $transaction->item ? $transaction->item->name : 'Packaging / Import';
 
+            // Pesan notifikasi langsung ke dock untuk Packaging / Import sementara di-comment
+            /*
             $greeting = $this->casualGreeting($driver['name']);
             $confirm = $this->casualConfirm();
             $footer = $this->dynamicMessageFooter('QC-DIRECT');
@@ -5268,6 +5409,9 @@ class VehicleTrackingController extends Controller
             }
 
             return $res;
+            */
+
+            return ['status' => false, 'message' => 'Notifikasi WA langsung ke dock (Packaging/Import) sementara dinonaktifkan/di-comment.'];
         } catch (\Exception $e) {
             Log::error("[VehicleTracking] Gagal kirim WA langsung ke dock: " . $e->getMessage());
             return ['status' => false, 'message' => $e->getMessage()];
