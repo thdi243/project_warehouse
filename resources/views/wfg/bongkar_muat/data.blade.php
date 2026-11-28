@@ -347,6 +347,16 @@
                                 <input type="number" name="jumlah_slipsheet" id="edit-header-slipsheet"
                                     class="form-control">
                             </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">No. ECP</label>
+                                <input type="text" name="no_ecp" id="edit-header-no_ecp" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Jumlah TKBM</label>
+                                <input type="number" name="jumlah_tkbm" id="edit-header-jumlah_tkbm" class="form-control">
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -405,6 +415,10 @@
                                 <tr class="detail-bongkar-only">
                                     <td class="text-muted">No. SPKB</td>
                                     <td class="fw-bold">: <span id="detail-no_spkb"></span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">No. ECP</td>
+                                    <td class="fw-bold">: <span id="detail-no_ecp"></span></td>
                                 </tr>
                                 <tr class="detail-bongkar-only">
                                     <td class="text-muted">Supplier / Vendor</td>
@@ -465,6 +479,10 @@
                                 <tr class="detail-muat-only">
                                     <td class="text-muted">Slipsheet</td>
                                     <td class="fw-bold">: <span id="detail-jumlah_slipsheet"></span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Jumlah TKBM</td>
+                                    <td class="fw-bold">: <span id="detail-jumlah_tkbm"></span></td>
                                 </tr>
                             </table>
                         </div>
@@ -908,6 +926,7 @@
                 $('#detail-wavepick_bas').text(order.wavepick_bas || '-');
                 $('#detail-shipment_bas').text(order.shipment_bas || '-');
                 $('#detail-no_spkb').text(order.no_spkb || '-');
+                $('#detail-no_ecp').text(order.no_ecp || '-');
                 $('#detail-supplier_vendor').text(order.supplier_vendor || '-');
                 $('#detail-tujuan_bongkar').text(order.tujuan_bongkar || '-');
                 $('#detail-status').text(order.status ? order.status.toUpperCase() : '-');
@@ -924,6 +943,7 @@
                 $('#detail-no_segel_bas').text(order.no_segel_bas || '-');
                 $('#detail-no_segel_vendor').text(order.no_segel_vendor || '-');
                 $('#detail-jumlah_slipsheet').text(order.jumlah_slipsheet || '0');
+                $('#detail-jumlah_tkbm').text(order.jumlah_tkbm ? (order.jumlah_tkbm + ' Orang') : '-');
 
                 renderDetailItems(order.details);
 
@@ -1305,6 +1325,8 @@
                 $('#edit-header-no_segel_bas').val(order.no_segel_bas);
                 $('#edit-header-no_segel_vendor').val(order.no_segel_vendor);
                 $('#edit-header-slipsheet').val(order.jumlah_slipsheet);
+                $('#edit-header-no_ecp').val(order.no_ecp || '');
+                $('#edit-header-jumlah_tkbm').val(order.jumlah_tkbm || '');
 
                 $('#editHeaderModal').modal('show');
             });

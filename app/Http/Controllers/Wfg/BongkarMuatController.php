@@ -1797,6 +1797,8 @@ class BongkarMuatController extends Controller
             'no_segel_bas' => 'nullable|string',
             'no_segel_vendor' => 'nullable|string',
             'jumlah_slipsheet' => 'nullable|numeric',
+            'no_ecp' => 'nullable|string|max:100',
+            'jumlah_tkbm' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
